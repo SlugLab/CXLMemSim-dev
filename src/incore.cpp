@@ -103,13 +103,12 @@ int Incore::read_cpu_elems(struct CPUElem *elem) {
 }
 Incore::Incore(const pid_t pid, const int cpu, struct PerfConfig *perf_config) : perf_config(perf_config) {
     /* reset all pmc values */
-    // this->init_all_dram_rds(pid, cpu);
+    this->init_all_dram_rds(pid, cpu);
     this->init_cpu_mem_read(pid, cpu);
     this->init_cpu_l2stall(pid, cpu);
     this->init_cpu_llcl_hits(pid, cpu);
     this->init_cpu_llcl_miss(pid, cpu);
-    this->init_cpu_ebpf(pid, cpu);
-    // this->init_cpu_mem_write(pid, cpu);
+    this->init_cpu_mem_write(pid, cpu);
 }
 bool get_cpu_info(struct CPUInfo *cpu_info) {
     char buffer[1024];
@@ -127,7 +126,7 @@ bool get_cpu_info(struct CPUInfo *cpu_info) {
     buf.ibuf[1] = cpuinfo.array[3];
     buf.ibuf[2] = cpuinfo.array[2];
 
-    if (strncmp(buf.cbuf, "GenuineIntel", 4 * 3) != 0) {
+    if (strncmp(buf.cbuf, "GenuineIntel", 12) != 0) {
         LOG(ERROR) << fmt::format("We only Support Intel CPU\n");
         return false;
     }
