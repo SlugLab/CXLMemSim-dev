@@ -30,7 +30,7 @@ jobs:
       run: sudo sed -i 's/NL_SET_ERR_MSG_MOD/\/\/NL_SET_ERR_MSG_MOD/g' /usr/src/linux-headers-`uname -r`/include/net/flow_offload.h
 
     - name: Install conan
-      run: pip3 install conan && mkdir build && cd build && conan install ..
+      run: pip3 install conan && conan profile detect && mkdir build && cd build && conan install ..
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
