@@ -53,12 +53,6 @@ void Incore::init_cpu_llcl_miss(const pid_t pid, const int cpu) {
 void Incore::init_cpu_mem_write(const pid_t pid, const int cpu) {
     this->perf[5] = init_incore_perf(pid, cpu, perf_config->cpu_bandwidth_write_config, 0);
 }
-void Incore::init_cpu_ebpf(const pid_t pid, const int cpu) {
-    if (cpu == 0)
-        this->perf[4] = init_incore_bpf_perf(pid, cpu);
-    else
-        this->perf[4] = nullptr;
-}
 int Incore::read_cpu_elems(struct CPUElem *elem) {
     ssize_t r;
 
