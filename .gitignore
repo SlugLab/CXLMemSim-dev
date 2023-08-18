@@ -11,3 +11,4 @@ py_smdk_pkg
 lib
 *conan*
 CMakePresets.json
+.cmake

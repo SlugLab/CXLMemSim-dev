@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sudo apt install llvm-dev clang libbpf-dev libclang-dev libcxxopts-dev libfmt-dev librange-v3-dev ninja-build
+sudo apt install llvm-dev clang libbpf-dev libclang-dev libcxxopts-dev libfmt-dev ninja-build
 
 mkdir build
 cd build
