@@ -13,6 +13,7 @@ union CPUID_INFO {
         unsigned int eax, ebx, ecx, edx;
     } reg;
 };
+/** This is a per cha metrics*/
 class Incore {
 public:
     PerfInfo *perf[5];
@@ -21,7 +22,7 @@ public:
     ~Incore() = default;
     int start();
     int stop();
-    void init_all_dram_rds(const pid_t pid, const int cpu);
+    // void init_all_dram_rds(const pid_t pid, const int cpu);
     void init_cpu_l2stall(const pid_t pid, const int cpu);
     void init_cpu_llcl_hits(const pid_t pid, const int cpu);
     void init_cpu_llcl_miss(const pid_t pid, const int cpu);

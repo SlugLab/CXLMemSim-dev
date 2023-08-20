@@ -35,9 +35,9 @@ int Incore::stop() {
     }
     return r;
 }
-void Incore::init_all_dram_rds(const pid_t pid, const int cpu) {
-    this->perf[0] = init_incore_perf(pid, cpu, perf_config->all_dram_rds_config, perf_config->all_dram_rds_config1);
-}
+// void Incore::init_all_dram_rds(const pid_t pid, const int cpu) {
+//     this->perf[0] = init_incore_perf(pid, cpu, perf_config->all_dram_rds_config, perf_config->all_dram_rds_config1);
+// }
 void Incore::init_cpu_mem_read(const pid_t pid, const int cpu) {
     this->perf[0] = init_incore_perf(pid, cpu, perf_config->cpu_bandwidth_read_config, 0);
 }
@@ -51,7 +51,7 @@ void Incore::init_cpu_llcl_miss(const pid_t pid, const int cpu) {
     this->perf[3] = init_incore_perf(pid, cpu, perf_config->cpu_llcl_miss_config, 0);
 }
 void Incore::init_cpu_mem_write(const pid_t pid, const int cpu) {
-    this->perf[5] = init_incore_perf(pid, cpu, perf_config->cpu_bandwidth_write_config, 0);
+    this->perf[4] = init_incore_perf(pid, cpu, perf_config->cpu_bandwidth_write_config, 0);
 }
 int Incore::read_cpu_elems(struct CPUElem *elem) {
     ssize_t r;
@@ -90,20 +90,16 @@ int Incore::read_cpu_elems(struct CPUElem *elem) {
     //     return r;
     // }
     // LOG(DEBUG) << fmt::format("read cpu_bandwidth_read:{}\n", elem->cpu_bandwidth_read);
-    // r = this->perf[5]->read_pmu(&elem->cpu_bandwidth_write);
-    // if (r < 0) {
-    //     LOG(ERROR) << fmt::format("read cpu_bandwidth_write failed.\n");
-    //     return r;
-    // }
-    // LOG(DEBUG) << fmt::format("read cpu_bandwidth_write:{}\n", elem->cpu_bandwidth_write);
-    if (this->perf[4] != nullptr) {
-        elem->cpu_munmap_address_length = this->perf[4]->read_trace_pipe();
-        LOG(DEBUG) << "read munmap result with size:" << elem->cpu_munmap_address_length.size() << "\n";
+    r = this->perf[4]->read_pmu(&elem->cpu_bandwidth_write);
+    if (r < 0) {
+        LOG(ERROR) << fmt::format("read cpu_bandwidth_write failed.\n");
+        return r;
     }
+    LOG(DEBUG) << fmt::format("read cpu_bandwidth_write:{}\n", elem->cpu_bandwidth_write);
 }
 Incore::Incore(const pid_t pid, const int cpu, struct PerfConfig *perf_config) : perf_config(perf_config) {
     /* reset all pmc values */
-    this->init_all_dram_rds(pid, cpu);
+    // this->init_all_dram_rds(pid, cpu);
     this->init_cpu_mem_read(pid, cpu);
     this->init_cpu_l2stall(pid, cpu);
     this->init_cpu_llcl_hits(pid, cpu);

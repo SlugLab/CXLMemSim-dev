@@ -15,11 +15,8 @@ PerfInfo::PerfInfo(int group_fd, int cpu, pid_t pid, unsigned long flags, struct
     ioctl(this->fd, PERF_EVENT_IOC_RESET, 0);
 }
 PerfInfo::PerfInfo(int fd, int group_fd, int cpu, pid_t pid, unsigned long flags, struct perf_event_attr attr)
-    : fd(fd), group_fd(group_fd), cpu(cpu), pid(pid), flags(flags), attr(attr) {
-    this->map = new ThreadSafeMap();
-}
+    : fd(fd), group_fd(group_fd), cpu(cpu), pid(pid), flags(flags), attr(attr) {}
 PerfInfo::~PerfInfo() {
-    this->j.join();
     if (this->fd != -1) {
         close(this->fd);
         this->fd = -1;
@@ -52,17 +49,6 @@ int PerfInfo::stop() {
         return -1;
     }
     return 0;
-}
-std::map<uint64_t, uint64_t> PerfInfo::read_trace_pipe() {
-    auto traces = map->get();
-    std::map<uint64_t, uint64_t> addr_map;
-    for (auto r : traces) {
-        std::cout << r.first << " " << std::get<0>(r.second) << " " << std::get<1>(r.second) << std::endl;
-        // address, length, time -> address, length no lazyaccess
-        addr_map[r.first] = std::get<0>(r.second);
-    }
-    map->reset();
-    return addr_map;
 }
 
 PerfInfo *init_incore_perf(const pid_t pid, const int cpu, uint64_t conf, uint64_t conf1) {
