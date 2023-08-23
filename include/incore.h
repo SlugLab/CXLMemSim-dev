@@ -18,17 +18,15 @@ class Incore {
 public:
     PerfInfo *perf[5];
     struct PerfConfig *perf_config;
-    Incore(const pid_t pid, const int cpu, struct PerfConfig *perf_config);
+    Incore(pid_t pid, int cpu, struct PerfConfig *perf_config);
     ~Incore() = default;
     int start();
     int stop();
-    // void init_all_dram_rds(const pid_t pid, const int cpu);
-    void init_cpu_l2stall(const pid_t pid, const int cpu);
-    void init_cpu_llcl_hits(const pid_t pid, const int cpu);
-    void init_cpu_llcl_miss(const pid_t pid, const int cpu);
-    void init_cpu_mem_read(const pid_t pid, const int cpu);
-    void init_cpu_mem_write(const pid_t pid, const int cpu);
-    void init_cpu_ebpf(const pid_t pid, const int cpu);
+    void init_cpu_l2stall(pid_t pid,int cpu);
+    void init_cpu_llcl_hits(pid_t pid,int cpu);
+    void init_cpu_llcl_miss(pid_t pid,int cpu);
+    void init_cpu_mem_read(pid_t pid,int cpu);
+    void init_cpu_mem_write(pid_t pid,int cpu);
 
     int read_cpu_elems(struct CPUElem *cpu_elem);
 };

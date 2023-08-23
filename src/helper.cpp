@@ -7,7 +7,7 @@
 const struct ModelContext model_ctx[] = {{CPU_MDL_BDX,
                                           {"/sys/bus/event_source/devices/uncore_cbox_%u/type",
                                            /*
-                                            * cbo_config:
+                                            * cha_config:
                                             *    unc_c_llc_victims.m_state
                                             *    umask=0x1,event=0x37
                                             */
@@ -51,7 +51,7 @@ const struct ModelContext model_ctx[] = {{CPU_MDL_BDX,
                                          {CPU_MDL_SKX,
                                           {"/sys/bus/event_source/devices/uncore_cha_%u/type",
                                            /*
-                                            * cbo_config:
+                                            * cha_config:
                                             *   UNC_C_LLC_VICTIMS
                                             *   umask=0x21,event=37
                                             */
@@ -95,7 +95,7 @@ const struct ModelContext model_ctx[] = {{CPU_MDL_BDX,
                                          {CPU_MDL_SPR,
                                           {"/sys/bus/event_source/devices/uncore_cha_%u/type",
                                            /*
-                                            * cbo_config:
+                                            * cha_config:
                                             *   UNC_C_LLC_VICTIMS => OFFCORE_REQUESTS.L3_MISS_DEMAND_DATA_RD
                                             *   umask=0x10,event=b0
                                             */
@@ -139,7 +139,7 @@ const struct ModelContext model_ctx[] = {{CPU_MDL_BDX,
                                          {CPU_MDL_ADL,
                                           {"/sys/bus/event_source/devices/uncore_cbox_%u/type",
                                            /*
-                                            * cbo_config:
+                                            * cha_config:
                                             *   UNC_C_LLC_VICTIMS => OFFCORE_REQUESTS.L3_MISS_DEMAND_DATA_RD
                                             *   umask=0x21,event=10
                                             */
@@ -192,21 +192,21 @@ int Helper::num_of_cpu() {
     return ncpu;
 }
 
-int Helper::num_of_cbo() {
-    int ncbo = 0;
-    for (; ncbo < 128; ++ncbo) {
-        std::string path = fmt::format("/sys/bus/event_source/devices/uncore_cbox_{}/type", ncbo);
-        // LOG(DEBUG) << path;
+int Helper::num_of_cha() {
+    int ncha = 0;
+    for (; ncha < 128; ++ncha) {
+        std::string path = fmt::format("/sys/bus/event_source/devices/uncore_cha_{}/type", ncha);
+//         LOG(DEBUG) << path;
         if (!std::filesystem::exists(path)) {
             break;
         }
     }
-    LOG(DEBUG) << fmt::format("num_of_cbo={}\n", ncbo);
-    return ncbo;
+    LOG(DEBUG) << fmt::format("num_of_cha={}\n", ncha);
+    return ncha;
 }
 
 double Helper::cpu_frequency() const {
-    int i = 0;
+    int i;
     int cpu = 0;
     double cpu_mhz = 0.0;
     double max_cpu_mhz = 0.0;
@@ -232,13 +232,13 @@ PerfConfig Helper::detect_model(uint32_t model) {
         }
         i++;
     }
-    LOG(ERROR) << "Failed to execute. This CPU model is not supported. Update src/types.c\n";
+    LOG(ERROR) << "Failed to execute. This CPU model is not supported. Refer to perfmon or pcm to add support\n";
     throw;
 }
 Helper::Helper() : perf_conf({}) {
     cpu = num_of_cpu();
     LOG(DEBUG) << cpu;
-    cbo = num_of_cbo();
+    cha = num_of_cha();
     cpu_freq = cpu_frequency();
 }
 void Helper::noop_handler(int sig) { ; }
@@ -248,7 +248,7 @@ void Helper::detach_children() {
     sa.sa_handler = noop_handler;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESTART | SA_NOCLDWAIT;
-    if (sigaction(SIGCHLD, &sa, NULL) < 0) {
+    if (sigaction(SIGCHLD, &sa, nullptr) < 0) {
         LOG(ERROR) << fmt::format("Failed to sigaction: %s", strerror(errno));
     }
 }
@@ -267,16 +267,16 @@ int PMUInfo::start_all_pmcs() {
 PMUInfo::PMUInfo(pid_t pid, Helper *helper, struct PerfConfig *perf_config) : helper(helper) {
     int i, r, n;
 
-    n = helper->num_of_cbo();
+    n = helper->num_of_cha();
 
     for (i = 0; i < n; i++) {
-        this->cbos.emplace_back(i, perf_config);
+        this->chas.emplace_back(i, perf_config);
     }
 
     // unfreeze counters
-    r = this->unfreeze_counters_cbo_all();
+    r = this->unfreeze_counters_cha_all();
     if (r < 0) {
-        LOG(DEBUG) << fmt::format("unfreeze_counters_cbo_all failed.\n");
+        LOG(DEBUG) << fmt::format("unfreeze_counters_cha_all failed.\n");
         throw;
     }
 
@@ -305,25 +305,25 @@ int PMUInfo::stop_all_pmcs() {
     return 0;
 }
 
-int PMUInfo::unfreeze_counters_cbo_all() {
+int PMUInfo::unfreeze_counters_cha_all() {
     int i, r;
 
-    for (i = 0; i < helper->num_of_cbo(); i++) {
-        r = this->cbos[i].perf->start();
+    for (i = 0; i < helper->num_of_cha(); i++) {
+        r = this->chas[i].perf->start();
         if (r < 0) {
-            LOG(ERROR) << fmt::format("perf_start failed. cbo:{}\n", i);
+            LOG(ERROR) << fmt::format("perf_start failed. cha:{}\n", i);
             return r;
         }
     }
     return 0;
 }
-int PMUInfo::freeze_counters_cbo_all() {
+int PMUInfo::freeze_counters_cha_all() {
     int i, r;
 
-    for (i = 0; i < helper->num_of_cbo(); i++) {
-        r = this->cbos[i].perf->stop();
+    for (i = 0; i < helper->num_of_cha(); i++) {
+        r = this->chas[i].perf->stop();
         if (r < 0) {
-            LOG(ERROR) << fmt::format("perf_stop failed. cbo:{}\n", i);
+            LOG(ERROR) << fmt::format("perf_stop failed. cha:{}\n", i);
             return r;
         }
     }
@@ -331,5 +331,6 @@ int PMUInfo::freeze_counters_cbo_all() {
 }
 PMUInfo::~PMUInfo() {
     this->cpus.clear();
-    this->cbos.clear();
+    this->chas.clear();
+    stop_all_pmcs();
 }

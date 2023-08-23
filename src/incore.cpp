@@ -35,9 +35,6 @@ int Incore::stop() {
     }
     return r;
 }
-// void Incore::init_all_dram_rds(const pid_t pid, const int cpu) {
-//     this->perf[0] = init_incore_perf(pid, cpu, perf_config->all_dram_rds_config, perf_config->all_dram_rds_config1);
-// }
 void Incore::init_cpu_mem_read(const pid_t pid, const int cpu) {
     this->perf[0] = init_incore_perf(pid, cpu, perf_config->cpu_bandwidth_read_config, 0);
 }
@@ -84,12 +81,6 @@ int Incore::read_cpu_elems(struct CPUElem *elem) {
     }
     LOG(DEBUG) << fmt::format("read cpu_llcl_miss:{}\n", elem->cpu_llcl_miss);
 
-    // r = this->perf[4]->read_pmu(&elem->cpu_bandwidth_read);
-    // if (r < 0) {
-    //     LOG(ERROR) << fmt::format("read cpu_bandwidth_read failed.\n");
-    //     return r;
-    // }
-    // LOG(DEBUG) << fmt::format("read cpu_bandwidth_read:{}\n", elem->cpu_bandwidth_read);
     r = this->perf[4]->read_pmu(&elem->cpu_bandwidth_write);
     if (r < 0) {
         LOG(ERROR) << fmt::format("read cpu_bandwidth_write failed.\n");
@@ -99,7 +90,6 @@ int Incore::read_cpu_elems(struct CPUElem *elem) {
 }
 Incore::Incore(const pid_t pid, const int cpu, struct PerfConfig *perf_config) : perf_config(perf_config) {
     /* reset all pmc values */
-    // this->init_all_dram_rds(pid, cpu);
     this->init_cpu_mem_read(pid, cpu);
     this->init_cpu_l2stall(pid, cpu);
     this->init_cpu_llcl_hits(pid, cpu);

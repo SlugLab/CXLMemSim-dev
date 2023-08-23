@@ -16,7 +16,7 @@ public:
     Uncore(const uint32_t unc_idx, PerfConfig *perf_config);
     ~Uncore() = default;
 
-    int read_cbo_elems(struct CBOElem *elem);
+    int read_cha_elems(struct CHAElem *elem);
 };
 
 #endif // CXL_MEM_SIMULATOR_UNCORE_H

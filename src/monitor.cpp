@@ -3,8 +3,8 @@
 //
 
 #include "monitor.h"
-Monitors::Monitors(int tnum, cpu_set_t *use_cpuset, int nmem, Helper h) {
-    mon = std::vector<Monitor>(tnum, Monitor(nmem, h));
+Monitors::Monitors(int tnum, cpu_set_t *use_cpuset, Helper h) {
+    mon = std::vector<Monitor>(tnum, Monitor(h));
     /* init mon */
     for (int i = 0; i < tnum; i++) {
         disable(i);
@@ -87,7 +87,7 @@ int Monitors::enable(const uint32_t tgid, const uint32_t tid, bool is_process, u
                                   mon[target].tid);
     }
 
-    LOG(INFO) << fmt::format("========== Process {}[tgid={}, tid={}] monitoring start ==========\n", target,
+    LOG(INFO) << fmt::format("pid {}[tgid={}, tid={}] monitoring start\n", target,
                              mon[target].tgid, mon[target].tid);
     return 0;
 }
@@ -233,20 +233,12 @@ void Monitor::clear_time(struct timespec *time) {
     time->tv_sec = 0;
     time->tv_nsec = 0;
 }
-Monitor::Monitor(const int nmem, Helper h)
+Monitor::Monitor(Helper h)
     : tgid(0), tid(0), cpu_core(0), status(0), injected_delay({0}), wasted_delay({0}), squabble_delay({0}),
       before(nullptr), after(nullptr), total_delay(0), start_exec_ts({0}), end_exec_ts({0}), is_process(false),
       pebs_ctx(nullptr) {
     for (auto &j : this->elem) {
-        j.cpus = (struct CPUElem *)calloc(sizeof(struct CPUElem), h.cpu);
-        if (j.cpus == nullptr) {
-            LOG(ERROR) << "calloc";
-            throw;
-        }
-        j.cbos = (struct CBOElem *)calloc(sizeof(struct CBOElem), h.cbo);
-        if (j.cbos == nullptr) {
-            LOG(ERROR) << "calloc";
-            throw;
-        }
+        j.cpus = std::vector<CPUElem>(h.cpu);
+        j.chas = std::vector<CHAElem>(h.cha);
     }
 }

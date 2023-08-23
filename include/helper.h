@@ -21,6 +21,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <vector>
+#include <optional>
 
 /* CPU Models */
 enum { CPU_MDL_BDX = 63, CPU_MDL_SKX = 85, CPU_MDL_SPR = 143, CPU_MDL_ADL = 151, CPU_MDL_END = 0x0ffff };
@@ -51,18 +52,25 @@ struct LatencyPass {
     double ma_wb;
 };
 
-struct CBOElem {
+struct CHAElem {
     uint64_t llc_wb;
 };
 
 struct CPUElem {
-    uint64_t all_dram_rds;
     uint64_t cpu_l2stall_t;
     uint64_t cpu_llcl_hits;
     uint64_t cpu_llcl_miss;
     uint64_t cpu_bandwidth_read;
     uint64_t cpu_bandwidth_write;
-    std::map<uint64_t, uint64_t> cpu_munmap_address_length;
+};
+
+struct CPUTargetElem {
+    uint64_t all_dram_rds;
+    uint64_t cpu_l2stall_t;
+    uint64_t cpu_llcl_hits;
+    uint64_t cpu_llcl_miss;
+    uint64_t cpu_cxl_traffic_read;
+    uint64_t cpu_cxl_traffic_write;
 };
 
 struct PEBSElem {
@@ -79,27 +87,27 @@ struct CPUInfo {
 
 struct Elem {
     struct CPUInfo cpuinfo;
-    struct CBOElem *cbos;
-    struct CPUElem *cpus;
+    std::vector<CHAElem> chas;
+    std::vector<CPUElem> cpus;
     struct PEBSElem pebs;
 };
 
 class PMUInfo {
 public:
-    std::vector<Uncore> cbos;
+    std::vector<Uncore> chas;
     std::vector<Incore> cpus;
     Helper *helper;
     PMUInfo(pid_t pid, Helper *h, struct PerfConfig *perf_config);
     ~PMUInfo();
     int start_all_pmcs();
     int stop_all_pmcs();
-    int freeze_counters_cbo_all();
-    int unfreeze_counters_cbo_all();
+    int freeze_counters_cha_all();
+    int unfreeze_counters_cha_all();
 };
 
 struct PerfConfig {
-    const char *path_format_cbo_type;
-    uint64_t cbo_config;
+    const char *path_format_cha_type;
+    uint64_t cha_config;
     uint64_t all_dram_rds_config;
     uint64_t all_dram_rds_config1;
     uint64_t cpu_l2stall_config;
@@ -107,6 +115,8 @@ struct PerfConfig {
     uint64_t cpu_llcl_miss_config;
     uint64_t cpu_bandwidth_read_config;
     uint64_t cpu_bandwidth_write_config;
+    std::optional<uint64_t> cpu_cxl_traffic_read_config; // use this to initialize the cxl traffic
+    std::optional<uint64_t> cpu_cxl_traffic_write_config; // use this to initialize the cxl traffic
 };
 
 struct ModelContext {
@@ -117,12 +127,12 @@ struct ModelContext {
 class Helper {
 public:
     int cpu;
-    int cbo;
+    int cha;
     double cpu_freq;
     PerfConfig perf_conf;
     Helper();
     static int num_of_cpu();
-    static int num_of_cbo();
+    static int num_of_cha();
     static void detach_children();
     static void noop_handler(int signum);
     double cpu_frequency() const;
