@@ -13,7 +13,7 @@ class Uncore {
 public:
     uint32_t unc_idx;
     PerfInfo *perf;
-    Uncore(const uint32_t unc_idx, PerfConfig *perf_config);
+    Uncore(uint32_t unc_idx, PerfConfig *perf_config);
     ~Uncore() = default;
 
     int read_cha_elems(struct CHAElem *elem);

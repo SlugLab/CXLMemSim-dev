@@ -60,17 +60,7 @@ struct CPUElem {
     uint64_t cpu_l2stall_t;
     uint64_t cpu_llcl_hits;
     uint64_t cpu_llcl_miss;
-    uint64_t cpu_bandwidth_read;
-    uint64_t cpu_bandwidth_write;
-};
-
-struct CPUTargetElem {
-    uint64_t all_dram_rds;
-    uint64_t cpu_l2stall_t;
-    uint64_t cpu_llcl_hits;
-    uint64_t cpu_llcl_miss;
-    uint64_t cpu_cxl_traffic_read;
-    uint64_t cpu_cxl_traffic_write;
+    uint64_t cpu_bandwidth;
 };
 
 struct PEBSElem {
@@ -113,10 +103,8 @@ struct PerfConfig {
     uint64_t cpu_l2stall_config;
     uint64_t cpu_llcl_hits_config;
     uint64_t cpu_llcl_miss_config;
-    uint64_t cpu_bandwidth_read_config;
-    uint64_t cpu_bandwidth_write_config;
-    std::optional<uint64_t> cpu_cxl_traffic_read_config; // use this to initialize the cxl traffic
-    std::optional<uint64_t> cpu_cxl_traffic_write_config; // use this to initialize the cxl traffic
+    uint64_t cpu_bandwidth_config;
+    std::optional<uint64_t> cpu_cxl_traffic_config; // use this to initialize the cxl traffic
 };
 
 struct ModelContext {

@@ -6,6 +6,7 @@
 #include "helper.h"
 #include "perf.h"
 #include <sys/types.h>
+
 class CXLController;
 union CPUID_INFO {
     int array[4];
@@ -16,7 +17,7 @@ union CPUID_INFO {
 /** This is a per cha metrics*/
 class Incore {
 public:
-    PerfInfo *perf[5];
+    PerfInfo *perf[4]; // should only be 4 counters
     struct PerfConfig *perf_config;
     Incore(pid_t pid, int cpu, struct PerfConfig *perf_config);
     ~Incore() = default;

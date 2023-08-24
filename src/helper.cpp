@@ -52,7 +52,7 @@ const struct ModelContext model_ctx[] = {{CPU_MDL_BDX,
                                           {"/sys/bus/event_source/devices/uncore_cha_%u/type",
                                            /*
                                             * cha_config:
-                                            *   UNC_C_LLC_VICTIMS
+                                            *   UNC_CHA_LLC_VICTIMS
                                             *   umask=0x21,event=37
                                             */
                                            0x2137,
@@ -96,7 +96,7 @@ const struct ModelContext model_ctx[] = {{CPU_MDL_BDX,
                                           {"/sys/bus/event_source/devices/uncore_cha_%u/type",
                                            /*
                                             * cha_config:
-                                            *   UNC_C_LLC_VICTIMS => OFFCORE_REQUESTS.L3_MISS_DEMAND_DATA_RD
+                                            *   UNC_CHA_LLC_VICTIMS
                                             *   umask=0x10,event=b0
                                             */
                                            0x10b0,
@@ -143,7 +143,7 @@ const struct ModelContext model_ctx[] = {{CPU_MDL_BDX,
                                             *   UNC_C_LLC_VICTIMS => OFFCORE_REQUESTS.L3_MISS_DEMAND_DATA_RD
                                             *   umask=0x21,event=10
                                             */
-                                           0x2110,
+                                           0x2110, // no use
                                            /*
                                             * all_dram_rds_config:
                                             *   OCR.ALL_READS.L3_MISS.SNOOP_NONE => OCR.DEMAND_DATA_RD.L3_MISS

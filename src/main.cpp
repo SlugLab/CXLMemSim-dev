@@ -36,6 +36,7 @@ int main(int argc, char *argv[]) {
                           cxxopts::value<std::string>()->default_value("./microbench/many_calloc"))(
         "h,help", "The value for epoch value", cxxopts::value<bool>()->default_value("false"))(
         "i,interval", "The value for epoch value", cxxopts::value<int>()->default_value("5"))(
+        "s,source", "Collection Phase or Validation Phase", cxxopts::value<bool>()->default_value("false"))(
         "c,cpuset", "The CPUSET for CPU to set affinity on and only run the target process on those CPUs",
         cxxopts::value<std::vector<int>>()->default_value("0,1,2,3,4,5,6,7"))(
         "d,dramlatency", "The current platform's dram latency", cxxopts::value<double>()->default_value("110"))(
@@ -43,7 +44,7 @@ int main(int argc, char *argv[]) {
         "m,mode", "Page mode or cacheline mode", cxxopts::value<std::string>()->default_value("p"))(
         "o,topology", "The newick tree input for the CXL memory expander topology",
         cxxopts::value<std::string>()->default_value("(1,(2,3))"))(
-        "s,capacity", "The capacity vector of the CXL memory expander with the firsgt local",
+        "e,capacity", "The capacity vector of the CXL memory expander with the firsgt local",
         cxxopts::value<std::vector<int>>()->default_value("0,20,20,20"))(
         "f,frequency", "The frequency for the running thread", cxxopts::value<double>()->default_value("4000"))(
         "l,latency", "The simulated latency by epoch based calculation for injected latency",
@@ -70,6 +71,7 @@ int main(int argc, char *argv[]) {
     auto capacity = result["capacity"].as<std::vector<int>>();
     auto dramlatency = result["dramlatency"].as<double>();
     auto mode = result["mode"].as<std::string>() == "p";
+    auto source = result["source"].as<bool>();
     Helper helper{};
     InterleavePolicy *policy = new InterleavePolicy();
     CXLController *controller;
@@ -273,7 +275,7 @@ int main(int argc, char *argv[]) {
                 uint64_t target_l2stall = 0, target_llcmiss = 0, target_llchits = 0;
                 for (int j = 0; j < ncpu; ++j) {
                     pmu.cpus[j].read_cpu_elems(&mon.after->cpus[j]);
-                    read_config += mon.after->cpus[j].cpu_bandwidth_read - mon.before->cpus[j].cpu_bandwidth_read;
+                    read_config += mon.after->cpus[j].cpu_bandwidth - mon.before->cpus[j].cpu_bandwidth;
                 }
                 /* read PEBS sample */
                 if (mon.pebs_ctx->read(controller, &mon.after->pebs) < 0) {

@@ -39,7 +39,7 @@ Uncore::Uncore(const uint32_t unc_idx, PerfConfig *perf_config) {
     auto attr = perf_event_attr{
         .type = (uint32_t)value,
         .size = sizeof(struct perf_event_attr),
-        .config = perf_config->cha_config,
+        .config = PERF_COUNT_HW_CPU_CYCLES,
         .disabled = 1,
         .inherit = 1,
         .enable_on_exec = 1,
