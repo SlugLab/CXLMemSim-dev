@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
         "c,cpuset", "The CPUSET for CPU to set affinity on and only run the target process on those CPUs",
         cxxopts::value<std::vector<int>>()->default_value("0,1,2,3,4,5,6,7"))(
         "d,dramlatency", "The current platform's dram latency", cxxopts::value<double>()->default_value("110"))(
-        "p,pebsperiod", "The pebs sample period", cxxopts::value<int>()->default_value("1"))(
+        "p,pebsperiod", "The pebs sample period", cxxopts::value<int>()->default_value("100"))(
         "m,mode", "Page mode or cacheline mode", cxxopts::value<std::string>()->default_value("p"))(
         "o,topology", "The newick tree input for the CXL memory expander topology",
         cxxopts::value<std::string>()->default_value("(1,(2,3))"))(

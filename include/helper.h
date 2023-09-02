@@ -97,14 +97,17 @@ public:
 
 struct PerfConfig {
     const char *path_format_cha_type;
-    uint64_t cha_config;
+    uint64_t cha_llc_write_back_config;
+    uint64_t cha_llc_write_back_config1;
     uint64_t all_dram_rds_config;
     uint64_t all_dram_rds_config1;
     uint64_t cpu_l2stall_config;
     uint64_t cpu_llcl_hits_config;
     uint64_t cpu_llcl_miss_config;
-    uint64_t cpu_bandwidth_config;
-    std::optional<uint64_t> cpu_cxl_traffic_config; // use this to initialize the cxl traffic
+    uint64_t cpu_bandwidth_read_config;
+    uint64_t cpu_bandwidth_write_config;
+    std::optional<uint64_t> cpu_cxl_traffic_read_config; // use this to initialize the cxl traffic
+    std::optional<uint64_t> cpu_cxl_traffic_write_config; // use this to initialize the cxl traffic
 };
 
 struct ModelContext {

@@ -14,8 +14,6 @@ PerfInfo::PerfInfo(int group_fd, int cpu, pid_t pid, unsigned long flags, struct
     }
     ioctl(this->fd, PERF_EVENT_IOC_RESET, 0);
 }
-PerfInfo::PerfInfo(int fd, int group_fd, int cpu, pid_t pid, unsigned long flags, struct perf_event_attr attr)
-    : fd(fd), group_fd(group_fd), cpu(cpu), pid(pid), flags(flags), attr(attr) {}
 PerfInfo::~PerfInfo() {
     if (this->fd != -1) {
         close(this->fd);
@@ -58,7 +56,7 @@ PerfInfo *init_incore_perf(const pid_t pid, const int cpu, uint64_t conf, uint64
         .clockid = 0
     };
     n_pid = pid;
-    n_cpu = -1;
+    n_cpu = cpu;
 
     group_fd = -1;
     flags = 0x08;

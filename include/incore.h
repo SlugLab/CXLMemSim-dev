@@ -26,8 +26,7 @@ public:
     void init_cpu_l2stall(pid_t pid,int cpu);
     void init_cpu_llcl_hits(pid_t pid,int cpu);
     void init_cpu_llcl_miss(pid_t pid,int cpu);
-    void init_cpu_mem_read(pid_t pid,int cpu);
-    void init_cpu_mem_write(pid_t pid,int cpu);
+    void init_cpu_all_read(pid_t pid, int cpu);
 
     int read_cpu_elems(struct CPUElem *cpu_elem);
 };
