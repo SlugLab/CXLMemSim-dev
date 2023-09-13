@@ -13,30 +13,38 @@
 #include <cstdlib>
 #include <ctime>
 #include <cxxopts.hpp>
-#include <range/v3/view.hpp>
+#include <ranges>
 #include <sys/poll.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
 
 #define SOCKET_PATH "/tmp/cxl_mem_simulator.sock"
+/** Barry's work*/
+struct Enumerate : std::ranges::range_adaptor_closure<Enumerate> {
+    template <std::ranges::viewable_range R> constexpr auto operator()(R &&r) const {
+        return std::views::zip(std::views::iota(0), (R &&)r);
+    }
+};
 
+inline constexpr Enumerate enumerate;
 int main(int argc, char *argv[]) {
 
     cxxopts::Options options("CXL-MEM-Simulator",
-                             "For simulation of CXL.mem Type 3 on Broadwell, Skylake, and Saphire Rapids");
+                             "For simulation of CXL.mem Type 3 on Broadwell, Skylake, Alderlake and Sapphire Rapids");
     options.add_options()("t,target", "The script file to execute",
                           cxxopts::value<std::string>()->default_value("./microbench/many_calloc"))(
         "h,help", "The value for epoch value", cxxopts::value<bool>()->default_value("false"))(
         "i,interval", "The value for epoch value", cxxopts::value<int>()->default_value("5"))(
-        "c,cpuset", "The CPUSET for CPU to set affinity on",
-        cxxopts::value<std::vector<int>>()->default_value("0,1,2,3,4,5,6,7,8,9,10,11,12,13,14"))(
-        "d,dramlatency", "The current platform's dram latency", cxxopts::value<double>()->default_value("85"))(
-        "p,pebsperiod", "The pebs sample period", cxxopts::value<int>()->default_value("1"))(
+        "s,source", "Collection Phase or Validation Phase", cxxopts::value<bool>()->default_value("false"))(
+        "c,cpuset", "The CPUSET for CPU to set affinity on and only run the target process on those CPUs",
+        cxxopts::value<std::vector<int>>()->default_value("0,1,2,3,4,5,6,7"))(
+        "d,dramlatency", "The current platform's dram latency", cxxopts::value<double>()->default_value("110"))(
+        "p,pebsperiod", "The pebs sample period", cxxopts::value<int>()->default_value("100"))(
         "m,mode", "Page mode or cacheline mode", cxxopts::value<std::string>()->default_value("p"))(
         "o,topology", "The newick tree input for the CXL memory expander topology",
         cxxopts::value<std::string>()->default_value("(1,(2,3))"))(
-        "s,capacity", "The capacity vector of the CXL memory expander with the firsgt local",
+        "e,capacity", "The capacity vector of the CXL memory expander with the firsgt local",
         cxxopts::value<std::vector<int>>()->default_value("0,20,20,20"))(
         "f,frequency", "The frequency for the running thread", cxxopts::value<double>()->default_value("4000"))(
         "l,latency", "The simulated latency by epoch based calculation for injected latency",
@@ -62,7 +70,8 @@ int main(int argc, char *argv[]) {
     auto topology = result["topology"].as<std::string>();
     auto capacity = result["capacity"].as<std::vector<int>>();
     auto dramlatency = result["dramlatency"].as<double>();
-    auto mode = result["mode"].as<std::string>() == "p" ? true : false;
+    auto mode = result["mode"].as<std::string>() == "p";
+    auto source = result["source"].as<bool>();
     Helper helper{};
     InterleavePolicy *policy = new InterleavePolicy();
     CXLController *controller;
@@ -78,9 +87,9 @@ int main(int argc, char *argv[]) {
     auto tnum = CPU_COUNT(&use_cpuset);
     auto cur_processes = 0;
     auto ncpu = helper.cpu;
-    auto ncbo = helper.cbo;
+    auto ncbo = helper.cha;
     LOG(DEBUG) << fmt::format("tnum:{}, intrval:{}, weight:{}\n", tnum, interval, weight);
-    for (auto const &[idx, value] : capacity | ranges::views::enumerate) {
+    for (auto const &[idx, value] : capacity | enumerate) {
         if (idx == 0) {
             LOG(DEBUG) << fmt::format("local_memory_region capacity:{}\n", value);
             controller = new CXLController(policy, capacity[0], mode, interval);
@@ -110,9 +119,9 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
     LOG(DEBUG) << fmt::format("cpu_freq:{}\n", frequency);
-    LOG(DEBUG) << fmt::format("num_of_cbo:{}\n", ncbo);
+    LOG(DEBUG) << fmt::format("num_of_cha:{}\n", ncbo);
     LOG(DEBUG) << fmt::format("num_of_cpu:{}\n", ncpu);
-    Monitors monitors{tnum, &use_cpuset, static_cast<int>(capacity.size()) - 1, helper};
+    Monitors monitors{tnum, &use_cpuset, helper};
 
     // https://stackoverflow.com/questions/24796266/tokenizing-a-string-to-pass-as-char-into-execve
     char cmd_buf[1024] = {0};
@@ -197,10 +206,10 @@ int main(int argc, char *argv[]) {
 
     /* read CBo params */
     for (auto mon : monitors.mon) {
-        for (auto const &[idx, value] : pmu.cbos | ranges::views::enumerate) {
-            pmu.cbos[idx].read_cbo_elems(&mon.before->cbos[idx]);
+        for (auto const &[idx, value] : pmu.chas | enumerate) {
+            pmu.chas[idx].read_cha_elems(&mon.before->chas[idx]);
         }
-        for (auto const &[idx, value] : pmu.cpus | ranges::views::enumerate) {
+        for (auto const &[idx, value] : pmu.cpus | enumerate) {
             pmu.cpus[idx].read_cpu_elems(&mon.before->cpus[idx]);
         }
     }
@@ -244,7 +253,7 @@ int main(int argc, char *argv[]) {
         }
         clock_gettime(CLOCK_MONOTONIC, &sleep_end_ts);
 
-        for (auto const &[i, mon] : monitors.mon | ranges::views::enumerate) {
+        for (auto const &[i, mon] : monitors.mon | enumerate) {
             if (mon.status == MONITOR_DISABLE) {
                 continue;
             }
@@ -256,8 +265,8 @@ int main(int argc, char *argv[]) {
                 /* read CBo values */
                 uint64_t wb_cnt = 0;
                 for (int j = 0; j < ncbo; j++) {
-                    pmu.cbos[j].read_cbo_elems(&mon.after->cbos[j]);
-                    wb_cnt += mon.after->cbos[j].llc_wb - mon.before->cbos[j].llc_wb;
+                    pmu.chas[j].read_cha_elems(&mon.after->chas[j]);
+                    wb_cnt += mon.after->chas[j].llc_wb - mon.before->chas[j].llc_wb;
                 }
                 LOG(INFO) << fmt::format("[{}:{}:{}] LLC_WB = {}\n", i, mon.tgid, mon.tid, wb_cnt);
 
@@ -266,13 +275,7 @@ int main(int argc, char *argv[]) {
                 uint64_t target_l2stall = 0, target_llcmiss = 0, target_llchits = 0;
                 for (int j = 0; j < ncpu; ++j) {
                     pmu.cpus[j].read_cpu_elems(&mon.after->cpus[j]);
-                    if (pmu.cpus[j].perf[4] != nullptr) {
-                        for (auto &i : mon.after->cpus[j].cpu_munmap_address_length) { // delete by ebpf
-                            LOG(DEBUG) << fmt::format("munmap address:{}, length:{}\n", i.first, i.second);
-                            controller->delete_entry(i.first, i.second);
-                        }
-                    }
-                    read_config += mon.after->cpus[j].cpu_bandwidth_read - mon.before->cpus[j].cpu_bandwidth_read;
+                    read_config += mon.after->cpus[j].cpu_bandwidth - mon.before->cpus[j].cpu_bandwidth;
                 }
                 /* read PEBS sample */
                 if (mon.pebs_ctx->read(controller, &mon.after->pebs) < 0) {
@@ -284,7 +287,7 @@ int main(int argc, char *argv[]) {
                 //     mon.after->cpus[mon.cpu_core].cpu_l2stall_t - mon.before->cpus[mon.cpu_core].cpu_l2stall_t;
                 // target_llchits =
                 //     mon.after->cpus[mon.cpu_core].cpu_llcl_hits - mon.before->cpus[mon.cpu_core].cpu_llcl_hits;
-                for (auto const &[idx, value] : pmu.cpus | ranges::views::enumerate) {
+                for (auto const &[idx, value] : pmu.cpus | enumerate) {
                     target_l2stall += mon.after->cpus[idx].cpu_l2stall_t - mon.before->cpus[idx].cpu_l2stall_t;
                     target_llchits += mon.after->cpus[idx].cpu_llcl_hits - mon.before->cpus[idx].cpu_llcl_hits;
                 }
@@ -374,7 +377,7 @@ int main(int argc, char *argv[]) {
                 mon.after = swap;
 
                 /* continue suspended processes: send SIGCONT */
-                // unfreeze_counters_cbo_all(fds.msr[0]);
+                // unfreeze_counters_cha_all(fds.msr[0]);
                 // start_pmc(&fds, i);
                 if (calibrated_delay == 0) {
                     mon.clear_time(&mon.wasted_delay);

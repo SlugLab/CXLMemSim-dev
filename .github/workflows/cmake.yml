@@ -2,13 +2,14 @@ name: CMake
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "asplos-dev" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "asplos-dev"  ]
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
+
 
 jobs:
   build:
@@ -21,18 +22,16 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Install dependencies
-      run: sudo apt install llvm-dev clang libbpf-dev libclang-dev libcxxopts-dev libfmt-dev librange-v3-dev
+      run: sudo apt install llvm-dev clang libbpf-dev libclang-dev python3-pip gcc-13 g++-13
 
-    - name: Install Custom dependencies
-      run: wget http://launchpadlibrarian.net/605552811/libbpf0_0.8.0-1_amd64.deb && wget http://launchpadlibrarian.net/605552807/libbpf-dev_0.8.0-1_amd64.deb && sudo dpkg -i ./libbpf0_0.8.0-1_amd64.deb && sudo dpkg -i ./libbpf-dev_0.8.0-1_amd64.deb 
-
-    - name: Sed Current uncompiled include file
-      run: sudo sed -i 's/NL_SET_ERR_MSG_MOD/\/\/NL_SET_ERR_MSG_MOD/g' /usr/src/linux-headers-`uname -r`/include/net/flow_offload.h
+    - name: Install conan
+      working-directory: ${{github.workspace}}
+      run: pip3 install conan && conan profile detect && mkdir build && cd build && cp ../conanfile.txt . && conan install .
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+      run: CC=gcc-13 CXX=g++-13 cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
     - name: Build
       # Build your program with the given configuration

@@ -29,7 +29,7 @@ class Monitor;
 class Monitors {
 public:
     std::vector<Monitor> mon;
-    Monitors(int tnum, cpu_set_t *use_cpuset, int nmem, Helper h);
+    Monitors(int tnum, cpu_set_t *use_cpuset, Helper h);
     ~Monitors() = default;
 
     void stop_all(const int);
@@ -57,7 +57,7 @@ public:
     bool is_process;
     struct PEBS *pebs_ctx;
 
-    Monitor(const int nmem, Helper h);
+    Monitor(Helper h);
 
     void stop();
     void run();

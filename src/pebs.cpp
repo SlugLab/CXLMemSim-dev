@@ -30,7 +30,7 @@ PEBS::PEBS(pid_t pid, uint64_t sample_period, bool is_page) : pid(pid), sample_p
         .type = PERF_TYPE_RAW,
         .size = sizeof(struct perf_event_attr),
         .config = 0x20d1, // mem_load_retired.l3_miss
-        .sample_period = 1,
+        .sample_period = sample_period,
         .sample_type = PERF_SAMPLE_TID | PERF_SAMPLE_TIME | PERF_SAMPLE_ADDR | PERF_SAMPLE_READ | PERF_SAMPLE_PHYS_ADDR,
         .read_format = PERF_FORMAT_TOTAL_TIME_ENABLED,
         .disabled = 1, // Event is initially disabled

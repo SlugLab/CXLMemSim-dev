@@ -6,6 +6,7 @@
 #include "helper.h"
 #include "perf.h"
 #include <sys/types.h>
+
 class CXLController;
 union CPUID_INFO {
     int array[4];
@@ -13,21 +14,19 @@ union CPUID_INFO {
         unsigned int eax, ebx, ecx, edx;
     } reg;
 };
+/** This is a per cha metrics*/
 class Incore {
 public:
-    PerfInfo *perf[5];
+    PerfInfo *perf[4]; // should only be 4 counters
     struct PerfConfig *perf_config;
-    Incore(const pid_t pid, const int cpu, struct PerfConfig *perf_config);
+    Incore(pid_t pid, int cpu, struct PerfConfig *perf_config);
     ~Incore() = default;
     int start();
     int stop();
-    void init_all_dram_rds(const pid_t pid, const int cpu);
-    void init_cpu_l2stall(const pid_t pid, const int cpu);
-    void init_cpu_llcl_hits(const pid_t pid, const int cpu);
-    void init_cpu_llcl_miss(const pid_t pid, const int cpu);
-    void init_cpu_mem_read(const pid_t pid, const int cpu);
-    void init_cpu_mem_write(const pid_t pid, const int cpu);
-    void init_cpu_ebpf(const pid_t pid, const int cpu);
+    void init_cpu_l2stall(pid_t pid,int cpu);
+    void init_cpu_llcl_hits(pid_t pid,int cpu);
+    void init_cpu_llcl_miss(pid_t pid,int cpu);
+    void init_cpu_all_read(pid_t pid, int cpu);
 
     int read_cpu_elems(struct CPUElem *cpu_elem);
 };

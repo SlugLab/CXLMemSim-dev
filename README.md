@@ -5,11 +5,11 @@ The epoch design of this project is mostly refering to [mes](https://github.com/
 ```bash
 $ uname -a
 Linux gpu01 5.19.0-29-generic #30-Ubuntu SMP PREEMPT_DYNAMIC Wed Jan 4 12:14:09 UTC 2023 x86_64 x86_64 x86_64 GNU/Linux
-$ sudo apt install llvm-dev clang libbpf-dev libclang-dev libcxxopts-dev libfmt-dev librange-v3-dev
+$ sudo apt install llvm-dev clang libbpf-dev libclang-dev libcxxopts-dev libfmt-dev
 ```
 ## User input
 ```bash
-LOGV=1 ./CXL-MEM-Simulator -t ./microbench/many_calloc -i 5 -c 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14
+LOGV=1 ./CXL-MEM-Simulator -t ./microbench/many_calloc -i 5 -c 0,1,2,3,4,5,6,7
 ```
 1. -t Target: The path to the executable
 2. -i Interval: The epoch of the simulator, the parameter is in milisecond

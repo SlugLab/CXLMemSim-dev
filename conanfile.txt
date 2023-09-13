@@ -1,0 +1,6 @@
+[requires]
+cxxopts/3.0.0
+fmt/9.0.0
+
+[generators]
+CMakeDeps

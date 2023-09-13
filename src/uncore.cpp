@@ -10,7 +10,7 @@ Uncore::Uncore(const uint32_t unc_idx, PerfConfig *perf_config) {
     char path[64], buf[32];
 
     memset(path, 0, sizeof(path));
-    snprintf(path, sizeof(path) - 1, perf_config->path_format_cbo_type, unc_idx);
+    snprintf(path, sizeof(path) - 1, perf_config->path_format_cha_type, unc_idx);
 
     fd = open(path, O_RDONLY);
     if (fd < 0) {
@@ -34,22 +34,23 @@ Uncore::Uncore(const uint32_t unc_idx, PerfConfig *perf_config) {
     }
 
     int cpu = (int)unc_idx;
-    pid_t pid = -1; /* when using uncore, pid must be -1. */
+    pid_t pid = -1; // when using uncore, pid must be -1.
     int group_fd = -1;
     auto attr = perf_event_attr{
         .type = (uint32_t)value,
         .size = sizeof(struct perf_event_attr),
-        .config = perf_config->cbo_config,
+        .config =  perf_config->cha_llc_write_back_config,
         .disabled = 1,
         .inherit = 1,
         .enable_on_exec = 1,
+        .config1 = perf_config->cha_llc_write_back_config1.value(),
     };
 
     /* when using uncore, don't set exclude_xxx flags. */
     this->perf = new PerfInfo(group_fd, cpu, pid, 0, attr);
 }
 
-int Uncore::read_cbo_elems(struct CBOElem *elem) {
+int Uncore::read_cha_elems(struct CHAElem *elem) {
     int r = this->perf->read_pmu(&elem->llc_wb);
     if (r < 0) {
         LOG(ERROR) << fmt::format("perf_read_pmu failed.\n");
