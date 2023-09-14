@@ -23,9 +23,9 @@ public:
     ~Incore() = default;
     int start();
     int stop();
-    void init_cpu_l2stall(pid_t pid,int cpu);
+    void init_cpu_ldm_stalling(pid_t pid,int cpu);
     void init_cpu_llcl_hits(pid_t pid,int cpu);
-    void init_cpu_llcl_miss(pid_t pid,int cpu);
+    void init_cpu_llc_writeback(pid_t pid,int cpu);
     void init_cpu_all_read(pid_t pid, int cpu);
 
     int read_cpu_elems(struct CPUElem *cpu_elem);

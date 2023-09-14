@@ -101,9 +101,9 @@ struct PerfConfig {
     uint64_t cha_llc_write_back_config1;
     uint64_t all_dram_rds_config;
     uint64_t all_dram_rds_config1;
-    uint64_t cpu_l2stall_config;
+    uint64_t cpu_ldm_stalling_config;
     uint64_t cpu_llcl_hits_config;
-    uint64_t cpu_llcl_miss_config;
+    uint64_t cpu_llc_writeback_config;
     uint64_t cpu_bandwidth_read_config;
     uint64_t cpu_bandwidth_write_config;
     std::optional<uint64_t> cpu_cxl_traffic_read_config; // use this to initialize the cxl traffic
