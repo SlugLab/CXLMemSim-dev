@@ -1,12 +1,13 @@
 #include <iostream>
 
-void movdir64b(void* dest, const void* src) {
-    __asm {
-        mov rdi, dest
-        mov rsi, src
-        movdir64b [rdi], rsi
+    void movdir64b(void* dest, const void* src) {
+        asm volatile (
+            "movdir64b (%1), %0"
+            :
+            : "r" (src), "r" (dest)
+            : "memory"
+        );
     }
-}
 
 int main() {
     alignas(64) char src[64] = "Hello, MOVDIR64B!";

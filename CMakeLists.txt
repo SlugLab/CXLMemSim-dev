@@ -8,7 +8,7 @@ find_package(fmt REQUIRED)
 file(GLOB_RECURSE SOURCE_FILES src/*.cpp)
 
 execute_process(COMMAND uname -r OUTPUT_VARIABLE arch OUTPUT_STRIP_TRAILING_WHITESPACE)
-set(CMAKE_CXX_FLAGS "-Wall -g -pthread -lrt -rdynamic")
+set(CMAKE_CXX_FLAGS "-Wall -pthread -lrt -rdynamic mmmx -msse2 -mavx -mavx512f -mpreferred-stack-boundary=4 -g -O3")
 set(CMAKE_CXX_STANDARD 23)
 
 add_executable(CXL-MEM-Simulator ${SOURCE_FILES})
