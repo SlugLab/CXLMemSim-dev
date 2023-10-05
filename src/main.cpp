@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < helper.cpu; i++) {
         if (!use_cpus || use_cpus & 1UL << i) {
             CPU_SET(i, &use_cpuset);
-            LOG(DEBUG) << fmt::format("use cpuid: {}{}\n", i, use_cpus); /** TODO: set CAT here */
+            LOG(DEBUG) << fmt::format("use cpuid: {}{}\n", i, use_cpus);
         }
     }
     auto tnum = CPU_COUNT(&use_cpuset);

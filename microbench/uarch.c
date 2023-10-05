@@ -883,18 +883,6 @@ void seq_nt(char *start_addr, char *end_addr, long size) {
                  : "%r8", "%r9");
     KERNEL_END
 }
-void movdir64b(void *dest, const void *src, long size) {
-    KERNEL_BEGIN
-    asm volatile(
-        
-        "movdir64b (%1), %0"
-
-                 ::"r"(src),
-                 "r"(dest), [size] "r"(size)
-                 : "%r8", "%r9");
-
-    KERNEL_END
-}
 
 struct timespec tstart, tend;
 unsigned int c_store_start_hi, c_store_start_lo;
@@ -1052,24 +1040,5 @@ int main() {
         aggregated2 += c_ntload_end - c_store_start;
     }
     printf("pointer chasing 4 hop %lld %lld\n", aggregated / 100000 / count, aggregated2 / 100000 / count);
-
-    aggregated = 0;
-    aggregated2 = 0;
-    for (i = 0; i < 100000; i++) {
-        char *dest = malloc(4096 * 1024);
-        dest = dest + 64 - (((long)dest) % 64);
-        char *src = malloc(4096 * 1024);
-        src = src + 64 - (((long)src) % 64);
-        RAW_BEFORE_WRITE
-        RAW_BEFORE_READ
-        movdir64b(dest, src, stride_size);
-        asm volatile("mfence \n" :::);
-        RAW_FINAL("raw-dsa-async")
-
-        aggregated += diff;
-        aggregated2 += c_ntload_end - c_store_start;
-    }
-    printf("dsa async %lld %lld\n", aggregated / 100000 / count, aggregated2 / 100000 / count);
-
     return 0;
 }
