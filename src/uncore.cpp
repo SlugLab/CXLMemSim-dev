@@ -43,7 +43,7 @@ Uncore::Uncore(const uint32_t unc_idx, PerfConfig *perf_config) {
         .disabled = 1,
         .inherit = 1,
         .enable_on_exec = 1,
-        .config1 = perf_config->cha_llc_write_back_config1.value(),
+        .config1 = perf_config->cha_llc_write_back_config1,
     };
 
     /* when using uncore, don't set exclude_xxx flags. */

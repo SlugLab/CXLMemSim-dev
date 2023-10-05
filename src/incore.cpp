@@ -44,6 +44,9 @@ void Incore::init_cpu_llc_writeback(const pid_t pid, const int cpu) {
 void Incore::init_cpu_all_read(const pid_t pid, const int cpu) {
     this->perf[3] = init_incore_perf(pid, cpu, perf_config->all_dram_rds_config, perf_config->all_dram_rds_config1);
 }
+void Incore::init_cpu_llcl_hits(const pid_t pid, const int cpu) {
+    this->perf[4] = init_incore_perf(pid, cpu, perf_config->cpu_llcl_hits_config , 0);
+}
 
 int Incore::read_cpu_elems(struct CPUElem *elem) {
     ssize_t r;
@@ -77,12 +80,12 @@ int Incore::read_cpu_elems(struct CPUElem *elem) {
 }
 Incore::Incore(const pid_t pid, const int cpu, struct PerfConfig *perf_config) : perf_config(perf_config) {
     /* reset all pmc values */
-    this->init_cpu_l2stall(pid, cpu);
+    this->init_cpu_ldm_stalling(pid, cpu);
     this->init_cpu_llcl_hits(pid, cpu);
-    this->init_cpu_llcl_miss(pid, cpu);
-    this->init_cpu_mem_bandwidth(pid, cpu);
-    this->init_cpu_cxl_bandwidth(pid, cpu);
+    this->init_cpu_llc_writeback(pid, cpu);
+    this->init_cpu_all_read(pid, cpu);
 }
+
 bool get_cpu_info(struct CPUInfo *cpu_info) {
     char buffer[1024];
     union {
