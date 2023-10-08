@@ -1,11 +1,11 @@
 # CXL.mem Simulator
-The epoch design of this project is mostly refering to [mes](https://github.com/takahiro-hirofuchi/mesmeric-emulator), the novelty is use pebs to construct the topology and calculate the hierachy latency based on this. See the [talk](https://docs.google.com/file/d/1bZi2rbB-u5xMw_YET726gb2s9QuxMZJE/edit?usp=docslist_api&filetype=mspresentation)
+The epoch design of this project is mostly refering to [mes](https://github.com/takahiro-hirofuchi/mesmeric-emulator), the novelty is use pebs to construct the topology and calculate the hierachy latency based on this. See the [talk](https://docs.google.com/file/d/1bZi2rbB-u5xMw_YET726gb2s9QuxMZJE/edit?usp=docslist_api&filetype=mspresentation). Now we support Saph
 
 ## Prerequisite
 ```bash
 $ uname -a
-Linux gpu01 5.19.0-29-generic #30-Ubuntu SMP PREEMPT_DYNAMIC Wed Jan 4 12:14:09 UTC 2023 x86_64 x86_64 x86_64 GNU/Linux
-$ sudo apt install llvm-dev clang libbpf-dev libclang-dev libcxxopts-dev libfmt-dev
+Linux banana 6.4.0+ #86 SMP PREEMPT_DYNAMIC Fri Jul 28 23:49:33 UTC 2023 x86_64 x86_64 x86_64 GNU/Linux
+$ echo 0 | sudo tee /sys/devices/system/node/node1/cpu*/online >/dev/null 2>&1
 ```
 ## User input
 ```bash
@@ -30,16 +30,3 @@ LOGV=1 ./CXL-MEM-Simulator -t ./microbench/many_calloc -i 5 -c 0,1,2,3,4,5,6,7
                   3
 ```
 9. env LOGV stands for logs level that you can see.
-## Limitation
-The pebs requires no larger than 5 `perf_open_event` attached to certain PID, so I limit the bpf program to munmap(kprobe) and sbrk(kprobe/kretprobe), you can configure them. For multiple process application, I need to first SIGSTOP the process and `send/recv` back the PID information. For client and server application, I need to SIGSTOP/SIGCONT on both client and server simultaneously, which is not implemented yet.
-
-## Cite
-```bash
-@article{yangyarch23,
-  title={CXLMemSim: A pure software simulated CXL.mem for performance characterization},
-  author={Yiwei Yang, Pooneh Safayenikoo, Jiacheng Ma, Tanvir Ahmed Khan, Andrew Quinn},
-  journal={arXiv preprint arXiv:2303.06153},
-  booktitle={The fifth Young Architect Workshop (YArch'23)},
-  year={2023}
-}
-```

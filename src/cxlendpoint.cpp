@@ -188,7 +188,7 @@ double CXLSwitch::calculate_bandwidth(BandwidthPass elem) {
     return bw;
 }
 int CXLSwitch::insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr, int index) {
-    for (auto &expander : this->expanders) {
+    for (auto &expander : this->expanders) { // differ read and write。
         auto ret = expander->insert(timestamp, phys_addr, virt_addr, index);
         if (ret == 1) {
             this->counter.inc_store();
@@ -212,6 +212,7 @@ int CXLSwitch::insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr
             return 0;
         }
     }
+    return 0;
 }
 std::tuple<double, std::vector<uint64_t>> CXLSwitch::calculate_congestion() {
     double latency = 0.0;
