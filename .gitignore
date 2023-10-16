@@ -12,3 +12,4 @@ lib
 *conan*
 CMakePresets.json
 .cmake
+CMakeUserPresets.json

@@ -8,7 +8,7 @@ find_package(fmt REQUIRED)
 file(GLOB_RECURSE SOURCE_FILES src/*.cpp)
 
 execute_process(COMMAND uname -r OUTPUT_VARIABLE arch OUTPUT_STRIP_TRAILING_WHITESPACE)
-set(CMAKE_CXX_FLAGS "-pthread -lrt -rdynamic -mmmx -msse2 -mavx -mavx512f -mpreferred-stack-boundary=4 -O3")
+set(CMAKE_CXX_FLAGS "-pthread -lrt -rdynamic -mmmx -msse2 -mavx -mavx512f -mpreferred-stack-boundary=4 -O0 -g")
 set(CMAKE_CXX_STANDARD 23)
 
 add_executable(CXL-MEM-Simulator ${SOURCE_FILES})
@@ -17,3 +17,4 @@ include_directories(CXL-MEM-Simulator include ${cxxopts_INCLUDE_DIR} ${fmt_INCLU
 target_link_libraries(CXL-MEM-Simulator fmt::fmt cxxopts::cxxopts)
 
 add_subdirectory(microbench)
+#add_subdirectory(workloads)

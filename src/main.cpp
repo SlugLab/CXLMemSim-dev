@@ -204,7 +204,7 @@ int main(int argc, char *argv[]) {
     LOG(DEBUG) << "The target process starts running.\n";
     LOG(DEBUG) << fmt::format("set nano sec = {}\n", waittime.tv_nsec);
 
-    /* read CBo params */
+    /* read CHA params */
     for (auto mon : monitors.mon) {
         for (auto const &[idx, value] : pmu.chas | enumerate) {
             pmu.chas[idx].read_cha_elems(&mon.before->chas[idx]);

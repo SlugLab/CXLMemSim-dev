@@ -39,13 +39,13 @@ void Incore::init_cpu_ldm_stalling(const pid_t pid, const int cpu) {
     this->perf[0] = init_incore_perf(pid, cpu, perf_config->cpu_ldm_stalling_config, 0);
 }
 void Incore::init_cpu_llc_writeback(const pid_t pid, const int cpu) {
-    this->perf[2] = init_incore_perf(pid, cpu, perf_config->cpu_llc_writeback_config, 0);
+    this->perf[1] = init_incore_perf(pid, cpu, perf_config->cpu_llc_writeback_config, 0);
 }
 void Incore::init_cpu_all_read(const pid_t pid, const int cpu) {
-    this->perf[3] = init_incore_perf(pid, cpu, perf_config->all_dram_rds_config, perf_config->all_dram_rds_config1);
+    this->perf[2] = init_incore_perf(pid, cpu, perf_config->all_dram_rds_config, perf_config->all_dram_rds_config1);
 }
 void Incore::init_cpu_llcl_hits(const pid_t pid, const int cpu) {
-    this->perf[4] = init_incore_perf(pid, cpu, perf_config->cpu_llcl_hits_config , 0);
+    this->perf[3] = init_incore_perf(pid, cpu, perf_config->cpu_llcl_hits_config , 0);
 }
 
 int Incore::read_cpu_elems(struct CPUElem *elem) {
