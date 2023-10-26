@@ -1,3 +1,6 @@
 [submodule "workloads/memcached-ycsb"]
 	path = workloads/memcached-ycsb
 	url = https://github.com/SlugLab/YCSB/
+[submodule "workloads/memcached"]
+	path = workloads/memcached
+	url = https://github.com/memcached/memcached

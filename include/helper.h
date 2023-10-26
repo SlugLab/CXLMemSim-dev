@@ -53,7 +53,10 @@ struct LatencyPass {
 };
 
 struct CHAElem {
-    uint64_t llc_wb;
+    uint64_t cpu_llcl_hits;
+    uint64_t cpu_llcl_miss;
+    uint64_t cpu_bandwidth;
+    uint64_t cpu_llc_wb;
 };
 
 struct CPUElem {

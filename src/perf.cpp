@@ -61,5 +61,5 @@ PerfInfo *init_incore_perf(const pid_t pid, const int cpu, uint64_t conf, uint64
     group_fd = -1;
     flags = 0x08;
 
-    return new PerfInfo(group_fd, n_cpu, n_pid, static_cast<unsigned long>(flags), attr);
+    return new PerfInfo {group_fd, n_cpu, n_pid, static_cast<unsigned long>(flags), attr};
 }

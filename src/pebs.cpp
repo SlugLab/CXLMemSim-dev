@@ -68,14 +68,13 @@ int PEBS::read(CXLController *controller, struct PEBSElem *elem) {
         return -1;
 
     int r = 0;
-    int i;
     struct perf_event_header *header;
     struct perf_sample *data;
     uint64_t last_head;
     char *dp = ((char *)mp) + PAGE_SIZE;
 
     do {
-        this->seq = mp->lock;
+        this->seq = mp->lock; // explicit copy
         barrier();
         last_head = mp->data_head;
         while ((uint64_t)this->rdlen < last_head) {

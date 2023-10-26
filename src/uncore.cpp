@@ -47,11 +47,11 @@ Uncore::Uncore(const uint32_t unc_idx, PerfConfig *perf_config) {
     };
 
     /* when using uncore, don't set exclude_xxx flags. */
-    this->perf = new PerfInfo(group_fd, cpu, pid, 0, attr);
+    this->perf { PerfInfo(group_fd, cpu, pid, 0, attr)};
 }
 
 int Uncore::read_cha_elems(struct CHAElem *elem) {
-    int r = this->perf->read_pmu(&elem->llc_wb);
+    int r = this->perf[].read_pmu(&elem->llc_wb);
     if (r < 0) {
         LOG(ERROR) << fmt::format("perf_read_pmu failed.\n");
     }

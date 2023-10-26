@@ -62,7 +62,7 @@ int Helper::num_of_cpu() {
 
 int Helper::num_of_cha() {
     int ncha = 0;
-    for (; ncha < 128; ++ncha) {
+    for (; ncha < 24; ++ncha) {
         std::string path = fmt::format("/sys/bus/event_source/devices/uncore_cha_{}/type", ncha);
         //         LOG(DEBUG) << path;
         if (!std::filesystem::exists(path)) {
@@ -177,10 +177,12 @@ int PMUInfo::unfreeze_counters_cha_all() {
     int i, r;
 
     for (i = 0; i < helper->num_of_cha(); i++) {
-        r = this->chas[i].perf->start();
-        if (r < 0) {
-            LOG(ERROR) << fmt::format("perf_start failed. cha:{}\n", i);
-            return r;
+        for (int j:{0,1,2,3}) {
+            r = this->chas[i].perf[j].start();
+            if (r < 0) {
+                LOG(ERROR) << fmt::format("perf_start failed. cha:{}\n", i);
+                return r;
+            }
         }
     }
     return 0;
@@ -189,10 +191,12 @@ int PMUInfo::freeze_counters_cha_all() {
     int i, r;
 
     for (i = 0; i < helper->num_of_cha(); i++) {
-        r = this->chas[i].perf->stop();
-        if (r < 0) {
-            LOG(ERROR) << fmt::format("perf_stop failed. cha:{}\n", i);
-            return r;
+        for (int j:{0,1,2,3}) {
+            r = this->chas[i].perf[j].stop();
+            if (r < 0) {
+                LOG(ERROR) << fmt::format("perf_stop failed. cha:{}\n", i);
+                return r;
+            }
         }
     }
     return 0;

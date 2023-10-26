@@ -5,7 +5,8 @@
 #define CXL_MEM_SIMULATOR_INCORE_H
 #include "helper.h"
 #include "perf.h"
-#include <sys/types.h>
+#include <array>
+#include <cstdint>
 
 class CXLController;
 union CPUID_INFO {
@@ -17,16 +18,12 @@ union CPUID_INFO {
 /** This is a per cha metrics*/
 class Incore {
 public:
-    PerfInfo *perf[4]; // should only be 4 counters
+    std::array<PerfInfo *,4> perf; // should only be 4 counters
     struct PerfConfig *perf_config;
     Incore(pid_t pid, int cpu, struct PerfConfig *perf_config);
     ~Incore() = default;
     int start();
     int stop();
-    void init_cpu_ldm_stalling(pid_t pid,int cpu);
-    void init_cpu_llcl_hits(pid_t pid,int cpu);
-    void init_cpu_llc_writeback(pid_t pid,int cpu);
-    void init_cpu_all_read(pid_t pid, int cpu);
 
     int read_cpu_elems(struct CPUElem *cpu_elem);
 };

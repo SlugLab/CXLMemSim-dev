@@ -215,8 +215,8 @@ int main(int argc, char *argv[]) {
     }
 
     uint32_t diff_nsec = 0;
-    struct timespec start_ts, end_ts;
-    struct timespec sleep_start_ts, sleep_end_ts;
+    struct timespec start_ts{}, end_ts{};
+    struct timespec sleep_start_ts{}, sleep_end_ts{};
 
     // Wait all the target processes until emulation process initialized.
     monitors.run_all(cur_processes);
@@ -262,11 +262,11 @@ int main(int argc, char *argv[]) {
                 LOG(DEBUG) << fmt::format("[{}:{}:{}] start_ts: {}.{}\n", i, mon.tgid, mon.tid, start_ts.tv_sec,
                                           start_ts.tv_nsec);
                 mon.stop();
-                /* read CBo values */
+                /* read CHA values */
                 uint64_t wb_cnt = 0;
                 for (int j = 0; j < ncbo; j++) {
                     pmu.chas[j].read_cha_elems(&mon.after->chas[j]);
-                    wb_cnt += mon.after->chas[j].llc_wb - mon.before->chas[j].llc_wb;
+                    wb_cnt += mon.after->chas[j].cpu_llc_wb - mon.before->chas[j].cpu_llc_wb;
                 }
                 LOG(INFO) << fmt::format("[{}:{}:{}] LLC_WB = {}\n", i, mon.tgid, mon.tid, wb_cnt);
 

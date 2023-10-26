@@ -33,7 +33,7 @@ public:
     uint64_t sample_period;
     uint32_t seq{};
     size_t rdlen{};
-    size_t mplen;
+    size_t mplen{};
     struct perf_event_mmap_page *mp;
     bool is_page;
     PEBS(pid_t, uint64_t, bool);
