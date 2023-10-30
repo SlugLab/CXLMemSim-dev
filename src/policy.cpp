@@ -4,9 +4,9 @@
 
 #include "policy.h"
 #include <numeric>
-//TODO:
-Policy::Policy() {}
-InterleavePolicy::InterleavePolicy() {}
+// TODO:
+Policy::Policy() = default;
+InterleavePolicy::InterleavePolicy() = default;
 // If the number is -1 for local, else it is the index of the remote server
 int InterleavePolicy::compute_once(CXLController *controller) {
     auto per_size = controller->is_page ? 4096 : 64;

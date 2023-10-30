@@ -31,7 +31,7 @@ public:
     void construct_topo(std::string_view newick_tree);
     void insert_end_point(CXLMemExpander *end_point);
     std::vector<std::string> tokenize(const std::string_view &s);
-    std::tuple<double,std::vector<uint64_t>> calculate_congestion() override;
+    std::tuple<double, std::vector<uint64_t>> calculate_congestion() override;
     void set_epoch(int epoch) override;
     std::tuple<int, int> get_all_access() override;
     double calculate_latency(LatencyPass elem); // traverse the tree to calculate the latency

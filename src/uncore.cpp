@@ -4,64 +4,43 @@
 
 #include "uncore.h"
 Uncore::Uncore(const uint32_t unc_idx, PerfConfig *perf_config) {
-    int ret, fd;
-    ssize_t r;
-    unsigned long value;
-    char path[64], buf[32];
-
-    memset(path, 0, sizeof(path));
-    snprintf(path, sizeof(path) - 1, perf_config->path_format_cha_type, unc_idx);
-
-    fd = open(path, O_RDONLY);
-    if (fd < 0) {
-        LOG(ERROR) << fmt::format("open {} failed", path);
-        throw std::runtime_error("open");
-    }
-
-    memset(buf, 0, sizeof(buf));
-    r = read(fd, buf, sizeof(buf) - 1);
-    if (r < 0) {
-        LOG(ERROR) << fmt::format("read {} failed", path);
-        close(fd);
-        throw std::runtime_error("read");
-    }
-    close(fd);
-
-    value = strtoul(buf, nullptr, 10);
-    if (value == ULONG_MAX) {
-        LOG(ERROR) << fmt::format("strtoul {} failed", path);
-        throw std::runtime_error("strtoul");
-    }
-
-    int cpu = (int)unc_idx;
-    pid_t pid = -1; // when using uncore, pid must be -1.
-    int group_fd = -1;
-    auto attr = perf_event_attr{
-        .type = (uint32_t)value,
-        .size = sizeof(struct perf_event_attr),
-        .config = perf_config->cha_llc_write_back_config,
-        .disabled = 1,
-        .inherit = 1,
-        .enable_on_exec = 1,
-        .config1 = perf_config->cha_llc_write_back_config1,
-    };
-
-    /* when using uncore, don't set exclude_xxx flags. */
-    for (int i = 0; i < 3; i++) {
-        this->perf[i] = PerfInfo(group_fd, cpu, pid, 0, attr);
-    }
+    this->perf[0] = init_uncore_perf(-1, unc_idx, perf_config->cha_llc_write_back_config,
+                                     perf_config->cha_llc_write_back_config1, perf_config->path_format_cha_type);
+    this->perf[1] =
+        init_uncore_perf(-1, unc_idx, perf_config->cpu_bandwidth_read_config, 0, perf_config->path_format_cha_type);
+    this->perf[2] =
+        init_uncore_perf(-1, unc_idx, perf_config->cpu_bandwidth_write_config, 0, perf_config->path_format_cha_type);
+    this->perf[3] =
+        init_uncore_perf(-1, unc_idx, perf_config->cpu_llcl_hits_config, 0, perf_config->path_format_cha_type);
 }
 
 int Uncore::read_cha_elems(struct CHAElem *elem) {
     int r;
-    
-    for (auto const &[idx, value] : this->perf | enumerate) {
-        r = this->perf[idx].read_pmu(&elem);
-        if (r < 0) {
-            LOG(ERROR) << fmt::format("perf_read_pmu failed.\n");
-        }
 
-        LOG(DEBUG) << fmt::format("llc_wb:{}\n", elem->cpu_llc_wb);
+    r = this->perf[0].read_pmu(&elem->cpu_llc_hits);
+    if (r < 0) {
+        LOG(ERROR) << fmt::format("perf_read_pmu failed.\n");
     }
+
+    LOG(DEBUG) << fmt::format("llc_hits:{}\n", elem->cpu_llc_hits);
+    r = this->perf[1].read_pmu(&elem->cpu_llc_miss);
+    if (r < 0) {
+        LOG(ERROR) << fmt::format("perf_read_pmu failed.\n");
+    }
+
+    LOG(DEBUG) << fmt::format("llc_miss:{}\n", elem->cpu_llc_miss);
+    r = this->perf[2].read_pmu(&elem->cpu_read_bandwidth);
+    if (r < 0) {
+        LOG(ERROR) << fmt::format("perf_read_pmu failed.\n");
+    }
+
+    LOG(DEBUG) << fmt::format("read_bandwidth:{}\n", elem->cpu_read_bandwidth);
+    r = this->perf[3].read_pmu(&elem->cpu_llc_wb);
+    if (r < 0) {
+        LOG(ERROR) << fmt::format("perf_read_pmu failed.\n");
+    }
+
+    LOG(DEBUG) << fmt::format("llc_wb:{}\n", elem->cpu_llc_wb);
+
     return r;
 }

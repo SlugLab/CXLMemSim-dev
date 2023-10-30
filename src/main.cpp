@@ -81,7 +81,10 @@ int main(int argc, char *argv[]) {
     auto cur_processes = 0;
     auto ncpu = helper.cpu;
     auto ncbo = helper.cha;
-    LOG(DEBUG) << fmt::format("tnum:{}, intrval:{}, weight:{}\n", tnum, interval, weight);
+    LOG(DEBUG) << fmt::format("tnum:{}, intrval:{}\n", tnum, interval);
+    for (auto const &[idx, value] : w | enumerate) {
+        LOG(DEBUG) << fmt::format("weight[{}]:{}\n", idx, value);
+    }
     for (auto const &[idx, value] : capacity | enumerate) {
         if (idx == 0) {
             LOG(DEBUG) << fmt::format("local_memory_region capacity:{}\n", value);
@@ -345,7 +348,7 @@ int main(int argc, char *argv[]) {
                     .read_config = read_config,
                     .write_config = read_config,
                 };
-                emul_delay += controller->calculate_latency(lat_pass);
+                emul_delay += const_cast<uint64_t>(controller->calculate_latency(lat_pass));
                 emul_delay += controller->calculate_bandwidth(bw_pass);
                 emul_delay += std::get<0>(controller->calculate_congestion());
 
@@ -376,8 +379,8 @@ int main(int argc, char *argv[]) {
                 // unfreeze_counters_cha_all(fds.msr[0]);
                 // start_pmc(&fds, i);
                 if (calibrated_delay == 0) {
-                    mon.clear_time(&mon.wasted_delay);
-                    mon.clear_time(&mon.injected_delay);
+                    Monitor::clear_time(&mon.wasted_delay);
+                    Monitor::clear_time(&mon.injected_delay);
                     mon.run();
                 }
             } else if (mon.status == MONITOR_OFF) {
@@ -385,7 +388,7 @@ int main(int argc, char *argv[]) {
                 clock_gettime(CLOCK_MONOTONIC, &start_ts);
                 uint64_t sleep_diff = (sleep_end_ts.tv_sec - sleep_start_ts.tv_sec) * 1000000000 +
                                       (sleep_end_ts.tv_nsec - sleep_start_ts.tv_nsec);
-                struct timespec sleep_time;
+                struct timespec sleep_time {};
                 sleep_time.tv_sec = sleep_diff / 1000000000;
                 sleep_time.tv_nsec = sleep_diff % 1000000000;
                 mon.wasted_delay.tv_sec += sleep_time.tv_sec;
@@ -394,8 +397,8 @@ int main(int argc, char *argv[]) {
                                           mon.tgid, mon.tid, mon.injected_delay.tv_nsec, mon.wasted_delay.tv_nsec,
                                           waittime.tv_nsec, mon.squabble_delay.tv_nsec);
                 if (monitors.check_continue(i, sleep_time)) {
-                    mon.clear_time(&mon.wasted_delay);
-                    mon.clear_time(&mon.injected_delay);
+                    Monitor::clear_time(&mon.wasted_delay);
+                    Monitor::clear_time(&mon.injected_delay);
                     mon.run();
                 }
                 clock_gettime(CLOCK_MONOTONIC, &end_ts);
@@ -411,12 +414,12 @@ int main(int argc, char *argv[]) {
                         LOG(DEBUG) << fmt::format("[SQ]total: {}| wasted : {}| waittime : {}| squabble : {}\n",
                                                   mon.injected_delay.tv_nsec, mon.wasted_delay.tv_nsec,
                                                   waittime.tv_nsec, mon.squabble_delay.tv_nsec);
-                        mon.clear_time(&mon.wasted_delay);
-                        mon.clear_time(&mon.injected_delay);
+                        Monitor::clear_time(&mon.wasted_delay);
+                        Monitor::clear_time(&mon.injected_delay);
                         mon.run();
                     } else {
                         mon.injected_delay.tv_nsec += mon.squabble_delay.tv_nsec;
-                        mon.clear_time(&mon.squabble_delay);
+                        Monitor::clear_time(&mon.squabble_delay);
                     }
                 }
             }

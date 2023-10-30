@@ -13,13 +13,12 @@ struct PerfConfig;
 class Uncore {
 public:
     uint32_t unc_idx{};
-    std::array<PerfInfo,4> perf;
+    std::array<PerfInfo, 4> perf{};
     Uncore(const uint32_t unc_idx, PerfConfig *perf_config);
 
     ~Uncore() = default;
 
     int read_cha_elems(struct CHAElem *elem);
-
 };
 
 #endif // CXL_MEM_SIMULATOR_UNCORE_H

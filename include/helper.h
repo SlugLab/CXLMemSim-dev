@@ -8,6 +8,7 @@
 #include "incore.h"
 #include "logging.h"
 #include "uncore.h"
+#include <csignal>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -16,12 +17,11 @@
 #include <fnmatch.h>
 #include <linux/perf_event.h>
 #include <map>
-#include <csignal>
+#include <optional>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <vector>
-#include <optional>
 
 /* CPU Models */
 enum { CPU_MDL_BDX = 63, CPU_MDL_SKX = 85, CPU_MDL_SPR = 143, CPU_MDL_ADL = 151, CPU_MDL_END = 0x0ffff };
@@ -53,9 +53,9 @@ struct LatencyPass {
 };
 
 struct CHAElem {
-    uint64_t cpu_llcl_hits;
-    uint64_t cpu_llcl_miss;
-    uint64_t cpu_bandwidth;
+    uint64_t cpu_llc_hits;
+    uint64_t cpu_llc_miss;
+    uint64_t cpu_read_bandwidth;
     uint64_t cpu_llc_wb;
 };
 
@@ -114,7 +114,7 @@ struct PerfConfig {
 };
 
 struct ModelContext {
-    uint32_t model;
+    uint32_t model{};
     struct PerfConfig perf_conf;
 };
 

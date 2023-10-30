@@ -6,10 +6,10 @@
 #define CXL_MEM_SIMULATOR_CXLCOUNTER_H
 
 #include <cstdint>
-#include <vector>
-#include <string>
 #include <map>
+#include <string>
 #include <tuple>
+#include <vector>
 
 /** TODO: Whether to using the pebs to record the state. add back invalidation */
 class CXLSwitchEvent {

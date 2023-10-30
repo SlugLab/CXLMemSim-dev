@@ -74,13 +74,12 @@ int Helper::num_of_cha() {
 }
 
 double Helper::cpu_frequency() const {
-    int i;
-    int cpu = 0;
+    int i, c = 0;
     double cpu_mhz = 0.0;
     double max_cpu_mhz = 0.0;
     std::ifstream fp("/proc/cpuinfo");
 
-    for (std::string line; cpu != this->cpu - 1; std::getline(fp, line)) {
+    for (std::string line; c != this->cpu - 1; std::getline(fp, line)) {
         // LOG(DEBUG) << fmt::format("line: {}\n", line);
         i = std::sscanf(line.c_str(), "cpu MHz : %lf", &cpu_mhz);
         max_cpu_mhz = i == 1 ? std::max(max_cpu_mhz, cpu_mhz) : max_cpu_mhz;
@@ -111,7 +110,7 @@ Helper::Helper() : perf_conf({}) {
 }
 void Helper::noop_handler(int sig) { ; }
 void Helper::detach_children() {
-    struct sigaction sa;
+    struct sigaction sa {};
 
     sa.sa_handler = noop_handler;
     sigemptyset(&sa.sa_mask);
@@ -177,7 +176,7 @@ int PMUInfo::unfreeze_counters_cha_all() {
     int i, r;
 
     for (i = 0; i < helper->num_of_cha(); i++) {
-        for (int j:{0,1,2,3}) {
+        for (int j : {0, 1, 2, 3}) {
             r = this->chas[i].perf[j].start();
             if (r < 0) {
                 LOG(ERROR) << fmt::format("perf_start failed. cha:{}\n", i);
@@ -191,7 +190,7 @@ int PMUInfo::freeze_counters_cha_all() {
     int i, r;
 
     for (i = 0; i < helper->num_of_cha(); i++) {
-        for (int j:{0,1,2,3}) {
+        for (int j : {0, 1, 2, 3}) {
             r = this->chas[i].perf[j].stop();
             if (r < 0) {
                 LOG(ERROR) << fmt::format("perf_stop failed. cha:{}\n", i);

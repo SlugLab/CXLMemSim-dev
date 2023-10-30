@@ -18,7 +18,7 @@ union CPUID_INFO {
 /** This is a per cha metrics*/
 class Incore {
 public:
-    std::array<PerfInfo, 4> perf; // should only be 4 counters
+    std::array<PerfInfo, 4> perf{}; // should only be 4 counters
     struct PerfConfig *perf_config;
     Incore(pid_t pid, int cpu, struct PerfConfig *perf_config);
     ~Incore() = default;
