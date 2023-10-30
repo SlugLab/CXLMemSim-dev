@@ -1,5 +1,5 @@
 # CXL.mem Simulator
-The epoch design of this project is mostly refering to [mes](https://github.com/takahiro-hirofuchi/mesmeric-emulator), the novelty is use pebs to construct the topology and calculate the hierachy latency based on this. See the [talk](https://docs.google.com/file/d/1bZi2rbB-u5xMw_YET726gb2s9QuxMZJE/edit?usp=docslist_api&filetype=mspresentation). Now we support Saph
+The CXL.mem simulator is to use the target latency for simulating the CPU perspective taking ROB and different cacheline state's into panelty from the application level.
 
 ## Prerequisite
 ```bash
@@ -9,12 +9,12 @@ $ echo 0 | sudo tee /sys/devices/system/node/node1/cpu*/online >/dev/null 2>&1
 ```
 ## User input
 ```bash
-LOGV=1 ./CXL-MEM-Simulator -t ./microbench/many_calloc -i 5 -c 0,1,2,3,4,5,6,7
+LOGV=1 ./CXL-MEM-Simulator -t ./microbench/ld -i 5 -c 0,2 -d 85 -b 10,10 -l 100,100 -c 100,100 -w 85.5,86.5,87.5,85.5,86.5,87.5,88. -o "(1,(2,3))"
 ```
 1. -t Target: The path to the executable
 2. -i Interval: The epoch of the simulator, the parameter is in milisecond
 3. -c CPUSet: The core id to run the executable and the rest will be `setaffinity` to one other core
-4. -d Dram Latency: The current platform's DRAM latency, default is 85ns
+4. -d Dram Latency: The current platform's DRAM latency, default is 85ns # mark that bw in the remote
 5. -b, -l Bandwidth, Latency: Both use 2 input in the vector, first for read, second for write
 6. -c Capacity: The capacity of the memory with first be local, remaining accordingly to the input vector.
 7. -w Weight: Use the heuristic to calculate the bandwidth

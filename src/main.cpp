@@ -41,8 +41,6 @@ int main(int argc, char *argv[]) {
         "f,frequency", "The frequency for the running thread", cxxopts::value<double>()->default_value("4000"))(
         "l,latency", "The simulated latency by epoch based calculation for injected latency",
         cxxopts::value<std::vector<int>>()->default_value("100,150,100,150,100,150"))(
-        "w,weight", "The simulated weight for multiplying with the LLC miss",
-        cxxopts::value<double>()->default_value("4.1"))(
         "b,bandwidth", "The simulated bandwidth by linear regression",
         cxxopts::value<std::vector<int>>()->default_value("50,50,50,50,50,50"));
 
@@ -56,8 +54,8 @@ int main(int argc, char *argv[]) {
     auto cpuset = result["cpuset"].as<std::vector<int>>();
     auto pebsperiod = result["pebsperiod"].as<int>();
     auto latency = result["latency"].as<std::vector<int>>();
-    auto weight =
-        result["weight"].as<std::vector<double>>(); // input as an array for [400, 800, 1200, 1600, 2000,2400,]
+//    auto weight =
+//        result["weight"].as<std::vector<double>>(); // input as an array for [400, 800, 1200, 1600, 2000,2400,3000]
     auto bandwidth = result["bandwidth"].as<std::vector<int>>();
     auto frequency = result["frequency"].as<double>();
     auto topology = result["topology"].as<std::string>();
@@ -82,8 +80,10 @@ int main(int argc, char *argv[]) {
     auto ncpu = helper.cpu;
     auto ncbo = helper.cha;
     LOG(DEBUG) << fmt::format("tnum:{}, intrval:{}\n", tnum, interval);
-    for (auto const &[idx, value] : w | enumerate) {
-        LOG(DEBUG) << fmt::format("weight[{}]:{}\n", idx, value);
+    std::vector<int> weight_vec = {400, 800, 1200, 1600, 2000, 2400, 3000};
+    std::vector<double> weight = {88,88,88,88,88,88,88};
+    for (auto const &[idx, value] : weight | enumerate) {
+        LOG(DEBUG) << fmt::format("weight[{}]:{}\n", weight_vec[idx], value);
     }
     for (auto const &[idx, value] : capacity | enumerate) {
         if (idx == 0) {
@@ -159,7 +159,6 @@ int main(int argc, char *argv[]) {
         LOG(ERROR) << "Exec: failed to create target process\n";
         exit(1);
     }
-    /** TODO: bind the rest of core in 0-7 and affine the CXL Simulator to 8 */
     // In case of process, use SIGSTOP.
     auto res = monitors.enable(t_process, t_process, true, pebsperiod, tnum, mode);
     if (res == -1) {
@@ -298,7 +297,7 @@ int main(int argc, char *argv[]) {
                 // the LLC misses of the CPU core (target_llcmiss) to that
                 // of the LLC misses of all the CPU cores and the
                 // prefetchers (cpus_dram_rds).
-                llcmiss_wb = wb_cnt * ((double)target_llcmiss / read_config);
+                llcmiss_wb = wb_cnt * std::lround(((double)target_llcmiss) / ((double)read_config));
 
                 uint64_t llcmiss_ro = 0;
                 if (target_llcmiss < llcmiss_wb) {
@@ -324,8 +323,8 @@ int main(int argc, char *argv[]) {
                 //              ((double)(weight * llcmiss_ro) / (double)(target_llchits + (weight * target_llcmiss))) *
                 //              1000;
                 LOG(DEBUG) << fmt::format(
-                    "l2stall={}, mastall_wb={}, mastall_ro={}, target_llchits={}, target_llcmiss={}, weight={}\n",
-                    target_l2stall, mastall_wb, mastall_ro, target_llchits, target_llcmiss, weight);
+                    "l2stall={}, mastall_wb={}, mastall_ro={}, target_llchits={}, target_llcmiss={}\n",
+                    target_l2stall, mastall_wb, mastall_ro, target_llchits, target_llcmiss);
 
                 auto ma_wb = (double)mastall_wb / dramlatency;
                 auto ma_ro = (double)mastall_ro / dramlatency;
@@ -348,9 +347,9 @@ int main(int argc, char *argv[]) {
                     .read_config = read_config,
                     .write_config = read_config,
                 };
-                emul_delay += const_cast<uint64_t>(controller->calculate_latency(lat_pass));
-                emul_delay += controller->calculate_bandwidth(bw_pass);
-                emul_delay += std::get<0>(controller->calculate_congestion());
+                emul_delay += std::lround(controller->calculate_latency(lat_pass));
+//                emul_delay += controller->calculate_bandwidth(bw_pass);
+//                emul_delay += std::get<0>(controller->calculate_congestion());
 
                 mon.before->pebs.total = mon.after->pebs.total;
 
@@ -367,8 +366,8 @@ int main(int argc, char *argv[]) {
                 diff_nsec = 0;
 
                 /* insert emulated NVM latency */
-                mon.injected_delay.tv_sec += (calibrated_delay / 1000000000);
-                mon.injected_delay.tv_nsec += (calibrated_delay % 1000000000);
+                mon.injected_delay.tv_sec += std::lround(calibrated_delay / 1000000000);
+                mon.injected_delay.tv_nsec += std::lround(calibrated_delay % 1000000000);
                 LOG(DEBUG) << fmt::format("[{}:{}:{}]delay:{} , total delay:{}\n", i, mon.tgid, mon.tid,
                                           calibrated_delay, mon.total_delay);
                 auto swap = mon.before;
@@ -389,8 +388,8 @@ int main(int argc, char *argv[]) {
                 uint64_t sleep_diff = (sleep_end_ts.tv_sec - sleep_start_ts.tv_sec) * 1000000000 +
                                       (sleep_end_ts.tv_nsec - sleep_start_ts.tv_nsec);
                 struct timespec sleep_time {};
-                sleep_time.tv_sec = sleep_diff / 1000000000;
-                sleep_time.tv_nsec = sleep_diff % 1000000000;
+                sleep_time.tv_sec = std::lround(sleep_diff / 1000000000);
+                sleep_time.tv_nsec = std::lround(sleep_diff % 1000000000);
                 mon.wasted_delay.tv_sec += sleep_time.tv_sec;
                 mon.wasted_delay.tv_nsec += sleep_time.tv_nsec;
                 LOG(DEBUG) << fmt::format("[{}:{}:{}][OFF] total: {}| wasted : {}| waittime : {}| squabble : {}\n", i,

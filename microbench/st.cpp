@@ -15,7 +15,7 @@ int main() {
     int ret;
 
     for (i = 0; i < 100000; i++) {
-        char *buf = malloc(4096 * 1024);
+        char *buf = static_cast<char *>(malloc(4096 * 1024));
         buf = buf + 64 - (((long)buf) % 64);
         // Separate RaW job
         RAW_BEFORE_WRITE
