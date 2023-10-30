@@ -12,9 +12,9 @@
 struct PerfConfig;
 class Uncore {
 public:
-    uint32_t unc_idx;
+    uint32_t unc_idx{};
     std::array<PerfInfo,4> perf;
-    Uncore(uint32_t unc_idx, PerfConfig *perf_config);
+    Uncore(const uint32_t unc_idx, PerfConfig *perf_config);
 
     ~Uncore() = default;
 

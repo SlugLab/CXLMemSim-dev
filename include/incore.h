@@ -18,14 +18,14 @@ union CPUID_INFO {
 /** This is a per cha metrics*/
 class Incore {
 public:
-    std::array<PerfInfo *,4> perf; // should only be 4 counters
+    std::array<PerfInfo, 4> perf; // should only be 4 counters
     struct PerfConfig *perf_config;
     Incore(pid_t pid, int cpu, struct PerfConfig *perf_config);
     ~Incore() = default;
     int start();
     int stop();
 
-    int read_cpu_elems(struct CPUElem *cpu_elem);
+    ssize_t read_cpu_elems(struct CPUElem *cpu_elem);
 };
 
 void pcm_cpuid(unsigned leaf, CPUID_INFO *info);

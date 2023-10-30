@@ -77,7 +77,7 @@ int Monitors::enable(const uint32_t tgid, const uint32_t tid, bool is_process, u
     disable(target);
     mon[target].status = MONITOR_ON;
     mon[target].tgid = tgid;
-    mon[target].tid = tid;
+    mon[target].tid = tid; // We can setup the process here
     mon[target].is_process = is_process;
 
     if (pebs_sample_period) {
@@ -87,12 +87,11 @@ int Monitors::enable(const uint32_t tgid, const uint32_t tid, bool is_process, u
                                   mon[target].tid);
     }
 
-    LOG(INFO) << fmt::format("pid {}[tgid={}, tid={}] monitoring start\n", target,
-                             mon[target].tgid, mon[target].tid);
+    LOG(INFO) << fmt::format("pid {}[tgid={}, tid={}] monitoring start\n", target, mon[target].tgid, mon[target].tid);
     return 0;
 }
 void Monitors::disable(const uint32_t target) {
-    mon[target].is_process = false;
+    mon[target].is_process = false; // Here to add the multi process.
     mon[target].status = MONITOR_DISABLE;
     mon[target].tgid = 0;
     mon[target].tid = 0;
@@ -114,9 +113,9 @@ void Monitors::disable(const uint32_t target) {
         mon[target].pebs_ctx->mp = nullptr;
         mon[target].pebs_ctx->sample_period = 0;
     }
-    for (int j = 0; j < 2; j++) {
-        mon[target].elem[j].pebs.total = 0;
-        mon[target].elem[j].pebs.llcmiss = 0;
+    for (auto &j : mon[target].elem) {
+        j.pebs.total = 0;
+        j.pebs.llcmiss = 0;
     }
 }
 bool Monitors::check_all_terminated(const uint32_t processes) {

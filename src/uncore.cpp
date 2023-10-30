@@ -39,7 +39,7 @@ Uncore::Uncore(const uint32_t unc_idx, PerfConfig *perf_config) {
     auto attr = perf_event_attr{
         .type = (uint32_t)value,
         .size = sizeof(struct perf_event_attr),
-        .config =  perf_config->cha_llc_write_back_config,
+        .config = perf_config->cha_llc_write_back_config,
         .disabled = 1,
         .inherit = 1,
         .enable_on_exec = 1,
@@ -47,15 +47,21 @@ Uncore::Uncore(const uint32_t unc_idx, PerfConfig *perf_config) {
     };
 
     /* when using uncore, don't set exclude_xxx flags. */
-    this->perf { PerfInfo(group_fd, cpu, pid, 0, attr)};
+    for (int i = 0; i < 3; i++) {
+        this->perf[i] = PerfInfo(group_fd, cpu, pid, 0, attr);
+    }
 }
 
 int Uncore::read_cha_elems(struct CHAElem *elem) {
-    int r = this->perf[].read_pmu(&elem->llc_wb);
-    if (r < 0) {
-        LOG(ERROR) << fmt::format("perf_read_pmu failed.\n");
-    }
+    int r;
+    
+    for (auto const &[idx, value] : this->perf | enumerate) {
+        r = this->perf[idx].read_pmu(&elem);
+        if (r < 0) {
+            LOG(ERROR) << fmt::format("perf_read_pmu failed.\n");
+        }
 
-    LOG(DEBUG) << fmt::format("llc_wb:{}\n", elem->llc_wb);
+        LOG(DEBUG) << fmt::format("llc_wb:{}\n", elem->cpu_llc_wb);
+    }
     return r;
 }

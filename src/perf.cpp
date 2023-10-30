@@ -49,7 +49,7 @@ int PerfInfo::stop() {
     return 0;
 }
 
-PerfInfo *init_incore_perf(const pid_t pid, const int cpu, uint64_t conf, uint64_t conf1) {
+PerfInfo init_incore_perf(const pid_t pid, const int cpu, uint64_t conf, uint64_t conf1) {
     int n_pid, n_cpu, group_fd, flags;
     struct perf_event_attr attr {
         .type = PERF_TYPE_RAW, .size = sizeof(attr), .config = conf, .disabled = 1, .inherit = 1, .config1 = conf1,
@@ -61,5 +61,5 @@ PerfInfo *init_incore_perf(const pid_t pid, const int cpu, uint64_t conf, uint64
     group_fd = -1;
     flags = 0x08;
 
-    return new PerfInfo {group_fd, n_cpu, n_pid, static_cast<unsigned long>(flags), attr};
+    return PerfInfo {group_fd, n_cpu, n_pid, static_cast<unsigned long>(flags), attr};
 }

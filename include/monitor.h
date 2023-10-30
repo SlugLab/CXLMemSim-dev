@@ -61,7 +61,7 @@ public:
 
     void stop();
     void run();
-    void clear_time(struct timespec *);
+    static void clear_time(struct timespec *);
 };
 
 #endif // SLUGALLOCATOR_MONITOR_H

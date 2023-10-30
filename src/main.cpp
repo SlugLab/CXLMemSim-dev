@@ -13,21 +13,13 @@
 #include <cstdlib>
 #include <ctime>
 #include <cxxopts.hpp>
-#include <ranges>
 #include <sys/poll.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
 
 #define SOCKET_PATH "/tmp/cxl_mem_simulator.sock"
-/** Barry's work*/
-struct Enumerate : std::ranges::range_adaptor_closure<Enumerate> {
-    template <std::ranges::viewable_range R> constexpr auto operator()(R &&r) const {
-        return std::views::zip(std::views::iota(0), (R &&)r);
-    }
-};
 
-inline constexpr Enumerate enumerate;
 int main(int argc, char *argv[]) {
 
     cxxopts::Options options("CXL-MEM-Simulator",
@@ -64,7 +56,8 @@ int main(int argc, char *argv[]) {
     auto cpuset = result["cpuset"].as<std::vector<int>>();
     auto pebsperiod = result["pebsperiod"].as<int>();
     auto latency = result["latency"].as<std::vector<int>>();
-    auto weight = result["weight"].as<double>();
+    auto weight =
+        result["weight"].as<std::vector<double>>(); // input as an array for [400, 800, 1200, 1600, 2000,2400,]
     auto bandwidth = result["bandwidth"].as<std::vector<int>>();
     auto frequency = result["frequency"].as<double>();
     auto topology = result["topology"].as<std::string>();
@@ -73,7 +66,7 @@ int main(int argc, char *argv[]) {
     auto mode = result["mode"].as<std::string>() == "p";
     auto source = result["source"].as<bool>();
     Helper helper{};
-    InterleavePolicy *policy = new InterleavePolicy();
+    auto *policy = new InterleavePolicy();
     CXLController *controller;
     uint64_t use_cpus = 0;
     cpu_set_t use_cpuset;
@@ -215,8 +208,10 @@ int main(int argc, char *argv[]) {
     }
 
     uint32_t diff_nsec = 0;
-    struct timespec start_ts{}, end_ts{};
-    struct timespec sleep_start_ts{}, sleep_end_ts{};
+    struct timespec start_ts {
+    }, end_ts{};
+    struct timespec sleep_start_ts {
+    }, sleep_end_ts{};
 
     // Wait all the target processes until emulation process initialized.
     monitors.run_all(cur_processes);
@@ -318,12 +313,13 @@ int main(int argc, char *argv[]) {
                 uint64_t mastall_ro = 0;
                 // If both target_llchits and target_llcmiss are 0, it means that hit in L2.
                 // Stall by LLC misses is 0.
-                mastall_wb = (double)(target_l2stall / frequency) *
-                             ((double)(weight * llcmiss_wb) / (double)(target_llchits + (weight * target_llcmiss))) *
-                             1000;
-                mastall_ro = (double)(target_l2stall / frequency) *
-                             ((double)(weight * llcmiss_ro) / (double)(target_llchits + (weight * target_llcmiss))) *
-                             1000;
+                // choose by vector
+                // mastall_wb = (double)(target_l2stall / frequency) *
+                //              ((double)(weight * llcmiss_wb) / (double)(target_llchits + (weight * target_llcmiss))) *
+                //              1000;
+                // mastall_ro = (double)(target_l2stall / frequency) *
+                //              ((double)(weight * llcmiss_ro) / (double)(target_llchits + (weight * target_llcmiss))) *
+                //              1000;
                 LOG(DEBUG) << fmt::format(
                     "l2stall={}, mastall_wb={}, mastall_ro={}, target_llchits={}, target_llcmiss={}, weight={}\n",
                     target_l2stall, mastall_wb, mastall_ro, target_llchits, target_llcmiss, weight);
