@@ -19,7 +19,7 @@
 #include <unistd.h>
 
 #define SOCKET_PATH "/tmp/cxl_mem_simulator.sock"
-
+extern struct ModelContext model_ctx[];
 int main(int argc, char *argv[]) {
 
     cxxopts::Options options("CXLMemSim", "For simulation of CXL.mem Type 3 on Sapphire Rapids");
@@ -66,10 +66,14 @@ int main(int argc, char *argv[]) {
     Helper helper{};
     auto *policy = new InterleavePolicy();
     CXLController *controller;
+
+    if (pmu_counter[0]!=0){
+        memcpy(&model_ctx[0].perf_conf,pmu_counter.data(), pmu_counter.size()) ;
+    }
     uint64_t use_cpus = 0;
     cpu_set_t use_cpuset;
     CPU_ZERO(&use_cpuset);
-    for (int i = 0; i < helper.cpu; i++) {
+    for (int i = 0; i < helper.num_of_cpu(); i++) {
         if (!use_cpus || use_cpus & 1UL << i) {
             CPU_SET(i, &use_cpuset);
             LOG(DEBUG) << fmt::format("use cpuid: {}{}\n", i, use_cpus);
@@ -428,6 +432,7 @@ int main(int argc, char *argv[]) {
         if (monitors.check_all_terminated(tnum)) {
             break;
         }
+        LOG(TRACE)<<fmt::format("{}\n", monitors);;
     } // End while-loop for emulation
 
     return 0;

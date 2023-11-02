@@ -44,7 +44,7 @@ public:
             env_log_level = 4;
         }
     };
-    ~LogWriter();
+    ~LogWriter()=default;
     void operator<(const LogStream &stream);
 
 private:

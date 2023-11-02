@@ -9,7 +9,7 @@ Monitors::Monitors(int tnum, cpu_set_t *use_cpuset, Helper h) {
     for (int i = 0; i < tnum; i++) {
         disable(i);
         int cpucnt = 0, cpuid;
-        for (cpuid = 0; cpuid < h.cpu; cpuid++) {
+        for (cpuid = 0; cpuid < h.num_of_cpu(); cpuid++) {
             if (CPU_ISSET(cpuid, use_cpuset)) {
                 if (i == cpucnt) {
                     mon[i].cpu_core = cpuid;
@@ -239,36 +239,7 @@ Monitor::Monitor(Helper h) // which one to hook
       before(nullptr), after(nullptr), total_delay(0), start_exec_ts({0}), end_exec_ts({0}), is_process(false),
       pebs_ctx(nullptr) {
     for (auto &j : this->elem) {
-        j.cpus = std::vector<CPUElem>(h.cpu);
-        j.chas = std::vector<CHAElem>(h.cha);
+        j.cpus = std::vector<CPUElem>(h.num_of_cpu());
+        j.chas = std::vector<CHAElem>(h.num_of_cha());
     }
 }
-
-template <> struct fmt::formatter<Monitors> {
-    fmt::formatter<int> f;
-
-    constexpr auto parse(auto &ctx) { return f.parse(ctx); }
-
-    auto format(Monitors const &p, auto &ctx) const {
-        auto out = fmt::format_to(ctx.out(), "(x=");
-        ctx.advance_to(out);
-        //        out = f.format(p., ctx);
-        //        out = fmt::format_to(out, ", y=");
-        //        ctx.advance_to(out);
-        //        out = f.format(p.y, ctx);
-        for (auto &i : p.mon) {
-            for (auto &j : i.elem) {
-                // j.cpus = std::vector<CPUElem>(h.cpu);// This pid's core
-                // j.chas = std::vector<CHAElem>(h.cha);// This pid's core
-                for (auto &k : j.cpus) {
-                    out = fmt::format_to(out, "");
-                }
-                for (auto &k : j.chas) {
-                    out = fmt::format_to(out, "");
-                }
-            } // visitor mode write to the file
-            *out++ = ')';
-            return out;
-        }
-    }
-};

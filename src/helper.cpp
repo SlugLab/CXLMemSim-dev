@@ -4,7 +4,7 @@
 #include "helper.h"
 #include "logging.h"
 
-__thread struct ModelContext model_ctx[] = {{CPU_MDL_SPR,
+struct ModelContext model_ctx[] = {{CPU_MDL_SPR,
                                              {"/sys/bus/event_source/devices/uncore_cha_%u/type",
                                               /*
                                                * cha_llc_write_back_config:
@@ -52,11 +52,10 @@ __thread struct ModelContext model_ctx[] = {{CPU_MDL_SPR,
 
 int Helper::num_of_cpu() {
     int ncpu;
-    ncpu = sysconf(_SC_NPROCESSORS_ONLN);
+    ncpu = 24;
     if (ncpu < 0) {
         LOG(ERROR) << "sysconf";
     }
-    LOG(DEBUG) << fmt::format("num_of_cpu={}\n", ncpu);
     return ncpu;
 }
 
@@ -79,11 +78,11 @@ double Helper::cpu_frequency() {
     double max_cpu_mhz = 0.0;
     std::ifstream fp("/proc/cpuinfo");
 
-    for (std::string line; c != this->cpu - 1; std::getline(fp, line)) {
+    for (std::string line; c != this-> num_of_cpu() - 1; std::getline(fp, line)) {
         // LOG(DEBUG) << fmt::format("line: {}\n", line);
         i = std::sscanf(line.c_str(), "cpu MHz : %lf", &cpu_mhz);
         max_cpu_mhz = i == 1 ? std::max(max_cpu_mhz, cpu_mhz) : max_cpu_mhz;
-        std::sscanf(line.c_str(), "processor : %d", &cpu);
+        std::sscanf(line.c_str(), "processor : %d",&c);
     }
     LOG(DEBUG) << fmt::format("cpu MHz: {}\n", cpu_mhz);
 
@@ -103,9 +102,6 @@ PerfConfig Helper::detect_model(uint32_t model) {
     throw;
 }
 Helper::Helper() : perf_conf({}) {
-    cpu = num_of_cpu();
-    cha = num_of_cha();
-    cpu_freq = cpu_frequency();
 }
 void Helper::noop_handler(int sig) { ; }
 void Helper::detach_children() {
@@ -138,7 +134,8 @@ PMUInfo::PMUInfo(pid_t pid, Helper *helper, struct PerfConfig *perf_config) : he
     for (i = 0; i < n; i++) {
         this->chas.emplace_back(i, perf_config);
     }
-
+//    Uncore *incore = new Uncore(0, perf_config);
+//    incore->perf[0].start();
     // unfreeze counters
     r = this->unfreeze_counters_cha_all();
     if (r < 0) {
@@ -176,7 +173,7 @@ int PMUInfo::unfreeze_counters_cha_all() {
 
     for (i = 0; i < helper->num_of_cha(); i++) {
         for (int j : {0, 1, 2, 3}) {
-            r = this->chas[i].perf[j].start();
+            r = this->chas[i].perf[j]->start();
             if (r < 0) {
                 LOG(ERROR) << fmt::format("perf_start failed. cha:{}\n", i);
                 return r;
@@ -190,7 +187,7 @@ int PMUInfo::freeze_counters_cha_all() {
 
     for (i = 0; i < helper->num_of_cha(); i++) {
         for (int j : {0, 1, 2, 3}) {
-            r = this->chas[i].perf[j].stop();
+            r = this->chas[i].perf[j]->stop();
             if (r < 0) {
                 LOG(ERROR) << fmt::format("perf_stop failed. cha:{}\n", i);
                 return r;

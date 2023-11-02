@@ -39,6 +39,6 @@ public:
     int stop();
 };
 
-PerfInfo init_incore_perf(pid_t pid, int cpu, uint64_t conf, uint64_t conf1);
-PerfInfo init_uncore_perf(pid_t pid, int cpu, uint64_t conf, uint64_t conf1, const char *path1);
+PerfInfo *init_incore_perf(const pid_t pid, const int cpu, uint64_t conf, uint64_t conf1);
+PerfInfo *init_uncore_perf(const pid_t pid, const int cpu, uint64_t conf, uint64_t conf1, int value);
 #endif // CXL_MEM_SIMULATOR_PERF_H

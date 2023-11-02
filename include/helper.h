@@ -109,8 +109,6 @@ struct PerfConfig {
     uint64_t cpu_llc_writeback_config;
     uint64_t cpu_bandwidth_read_config;
     uint64_t cpu_bandwidth_write_config;
-    std::optional<uint64_t> cpu_cxl_traffic_read_config; // use this to initialize the cxl traffic
-    std::optional<uint64_t> cpu_cxl_traffic_write_config; // use this to initialize the cxl traffic
 };
 
 struct ModelContext {
@@ -120,9 +118,6 @@ struct ModelContext {
 
 class Helper {
 public:
-    int cpu;
-    int cha;
-    double cpu_freq;
     PerfConfig perf_conf;
     Helper();
     int num_of_cpu();

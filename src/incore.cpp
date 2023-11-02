@@ -15,7 +15,7 @@ int Incore::start() {
     int i, r = -1;
 
     for (i = 0; i < 4; i++) {
-        r = this->perf[i].start();
+        r = this->perf[i]->start();
         if (r < 0) {
             LOG(ERROR) << fmt::format("perf_start failed. i:{}\n", i);
             return r;
@@ -27,7 +27,7 @@ int Incore::stop() {
     int i, r = -1;
 
     for (i = 0; i < 4; i++) {
-        r = this->perf[i].stop();
+        r = this->perf[i]->stop();
         if (r < 0) {
             LOG(ERROR) << fmt::format("perf_stop failed. i:{}\n", i);
             return r;
@@ -39,27 +39,27 @@ int Incore::stop() {
 ssize_t Incore::read_cpu_elems(struct CPUElem *elem) {
     ssize_t r;
 
-    r = this->perf[0].read_pmu(&elem->cpu_l2stall_t);
+    r = this->perf[0]->read_pmu(&elem->cpu_l2stall_t);
     if (r < 0) {
         LOG(ERROR) << fmt::format("read cpu_l2stall_t failled.\n");
         return r;
     }
     LOG(DEBUG) << fmt::format("read cpu_l2stall_t:{}\n", elem->cpu_l2stall_t);
     LOG(TRACE) << elem->cpu_l2stall_t;
-    r = this->perf[1].read_pmu(&elem->cpu_llcl_hits);
+    r = this->perf[1]->read_pmu(&elem->cpu_llcl_hits);
     if (r < 0) {
         LOG(ERROR) << fmt::format("read cpu_llcl_hits failed.\n");
         return r;
     }
     LOG(DEBUG) << fmt::format("read cpu_llcl_hits:{}\n", elem->cpu_llcl_hits);
 
-    r = this->perf[2].read_pmu(&elem->cpu_llcl_miss);
+    r = this->perf[2]->read_pmu(&elem->cpu_llcl_miss);
     if (r < 0) {
         LOG(ERROR) << fmt::format("read cpu_llcl_miss failed.\n");
         return r;
     }
     LOG(DEBUG) << fmt::format("read cpu_llcl_miss:{}\n", elem->cpu_llcl_miss);
-    r = this->perf[3].read_pmu(&elem->cpu_bandwidth);
+    r = this->perf[3]->read_pmu(&elem->cpu_bandwidth);
     if (r < 0) {
         LOG(ERROR) << fmt::format("read cpu_bandwidth failed.\n");
         return r;

@@ -64,4 +64,29 @@ public:
     static void clear_time(struct timespec *);
 };
 
+template <> struct fmt::formatter<Monitors> {
+    fmt::formatter<int> f;
+
+    constexpr auto parse(auto &ctx) { return f.parse(ctx); }
+
+    auto format(Monitors const &p, auto &ctx) const {
+        auto out = fmt::format_to(ctx.out(), "(x=");
+        ctx.advance_to(out);
+        for (auto &i : p.mon) {
+            for (auto &j : i.elem) {
+                // j.cpus = std::vector<CPUElem>(h.cpu);// This pid's core
+                // j.chas = std::vector<CHAElem>(h.cha);// This pid's core
+                for (auto &k : j.cpus) {
+                    out = fmt::format_to(out, "");
+                }
+                for (auto &k : j.chas) {
+                    out = fmt::format_to(out, "");
+                }
+            } // visitor mode write to the file
+            *out++ = ')';
+            return out;
+        }
+    }
+};
+
 #endif // SLUGALLOCATOR_MONITOR_H

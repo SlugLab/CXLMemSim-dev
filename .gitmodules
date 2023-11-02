@@ -4,3 +4,6 @@
 [submodule "workloads/memcached"]
 	path = workloads/memcached
 	url = https://github.com/memcached/memcached
+[submodule "workloads/gapbs"]
+	path = workloads/gapbs
+	url = https://github.com/victoryang00/gapbs

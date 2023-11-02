@@ -49,7 +49,7 @@ int PerfInfo::stop() {
     return 0;
 }
 
-PerfInfo init_incore_perf(const pid_t pid, const int cpu, uint64_t conf, uint64_t conf1) {
+PerfInfo *init_incore_perf(const pid_t pid, const int cpu, uint64_t conf, uint64_t conf1) {
     int n_pid, n_cpu, group_fd, flags;
     struct perf_event_attr attr {
         .type = PERF_TYPE_RAW, .size = sizeof(attr), .config = conf, .disabled = 1, .inherit = 1, .config1 = conf1,
@@ -61,38 +61,12 @@ PerfInfo init_incore_perf(const pid_t pid, const int cpu, uint64_t conf, uint64_
     group_fd = -1;
     flags = 0x08;
 
-    return {group_fd, n_cpu, n_pid, static_cast<unsigned long>(flags), attr};
+    return new PerfInfo{group_fd, n_cpu, n_pid, static_cast<unsigned long>(flags), attr};
 }
 
-PerfInfo init_uncore_perf(const pid_t pid, const int cpu, uint64_t conf, uint64_t conf1, const char *path1) {
-    int ret, fd;
+PerfInfo *init_uncore_perf(const pid_t pid, const int cpu, uint64_t conf, uint64_t conf1, int value) {
+    int ret;
     ssize_t r;
-    unsigned long value;
-    char path[64], buf[32];
-
-    memset(path, 0, sizeof(path));
-    snprintf(path, sizeof(path) - 1, path1, cpu);
-
-    fd = open(path, O_RDONLY);
-    if (fd < 0) {
-        LOG(ERROR) << fmt::format("open {} failed", path);
-        throw std::runtime_error("open");
-    }
-
-    memset(buf, 0, sizeof(buf));
-    r = read(fd, buf, sizeof(buf) - 1);
-    if (r < 0) {
-        LOG(ERROR) << fmt::format("read {} failed", path);
-        close(fd);
-        throw std::runtime_error("read");
-    }
-    close(fd);
-
-    value = strtoul(buf, nullptr, 10);
-    if (value == ULONG_MAX) {
-        LOG(ERROR) << fmt::format("strtoul {} failed", path);
-        throw std::runtime_error("strtoul");
-    }
 
     int group_fd = -1;
     auto attr = perf_event_attr{
@@ -105,5 +79,5 @@ PerfInfo init_uncore_perf(const pid_t pid, const int cpu, uint64_t conf, uint64_
         .config1 = conf1,
     };
 
-    return {group_fd, cpu, pid, 0, attr};
+    return new PerfInfo{group_fd, cpu, pid, 0, attr};
 }

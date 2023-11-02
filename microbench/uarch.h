@@ -253,7 +253,7 @@ uint32_t *lfs_random_array;
 
 #define SIZEBTNT_MACRO SIZEBTNT_512_AVX512
 #define SIZEBTST_MACRO SIZEBTST_512_AVX512
-#define SIZEBTLD_MACRO SIZEBTLD_512_AVX512
+#define SIZEBTLD_MACRO SIZEBT_LOAD_64
 #define SIZEBTSTFLUSH_MACRO SIZEBTSTFLUSH_512_AVX512
 
 // #define SIZEBTST_FENCE	"mfence \n"
@@ -264,17 +264,31 @@ uint32_t *lfs_random_array;
 #define CACHEFENCE_FENCE "sfence \n"
 // #define CACHEFENCE_FENCE	"mfence \n"
 
-#define RandLFSR64                                                                                                     \
-    "mov    (%[random]), %%r9 \n"                                                                                      \
-    "mov    %%r9, %%r12 \n"                                                                                            \
-    "shr    %%r9 \n"                                                                                                   \
-    "and    $0x1, %%r12d \n"                                                                                           \
-    "neg    %%r12 \n"                                                                                                  \
-    "and    %%rcx, %%r12 \n"                                                                                           \
-    "xor    %%r9, %%r12 \n"                                                                                            \
-    "mov    %%r12, (%[random]) \n"                                                                                     \
-    "mov    %%r12, %%r8 \n"                                                                                            \
-    "and    %[accessmask], %%r8 \n"
+#define RandLFSR64_NEW(rand, accessmask, addr)				\
+  "mov    (%[" #rand "]), %%r9 \n"					\
+  "mov    %%r9, %%r12 \n"						\
+  "shr    %%r9 \n"							\
+  "and    $0x1, %%r12d \n"						\
+  "neg    %%r12 \n"							\
+  "and    %%rcx, %%r12 \n"						\
+  "xor    %%r9, %%r12 \n"						\
+  "mov    %%r12, (%[" #rand "]) \n"					\
+  "mov    %%r12, %%r8 \n"						\
+  "and    %[" #accessmask "], %%r8 \n"					\
+  "lea (%[" #addr "], %%r8), %%r9 \n"					
+
+#define RandLFSR64							\
+  "mov    (%[random]), %%r9 \n"						\
+  "mov    %%r9, %%r12 \n"						\
+  "shr    %%r9 \n"							\
+  "and    $0x1, %%r12d \n"						\
+  "neg    %%r12 \n"							\
+  "and    %%rcx, %%r12 \n"						\
+  "xor    %%r9, %%r12 \n"						\
+  "mov    %%r12, (%[random]) \n"					\
+  "mov    %%r12, %%r8 \n"						\
+  "and    %[accessmask], %%r8 \n"
+
 
 void sizebw_load(char *start_addr, long size, long count, long *rand_seed, long access_mask) {
     KERNEL_BEGIN
@@ -317,6 +331,61 @@ void sizebw_load(char *start_addr, long size, long count, long *rand_seed, long 
                  : "%rcx", "%r12", "%r11", "%r10", "%r9", "%r8");
     KERNEL_END
 }
+
+void sizebw_load_new(char *start_addr, long count, long *rand_seed, uint64_t access_mask) {
+    KERNEL_BEGIN
+    asm volatile("movabs $0xd800000000000000, %%rcx \n" /* rcx: bitmask used in LFSR */
+                 "xor %%r8, %%r8 \n" /* r8: access offset */
+                 "xor %%r11, %%r11 \n" /* r11: access counter */
+                 // 1
+                 "LD_LOOP_NEW: \n" 
+                 RandLFSR64 /* LFSR: uses r9, r12 (reusable), rcx (above), fill r8 */
+                 "lea (%[start_addr], %%r8), %%r9 \n"
+		 "mov 0x0(%%r9), %%r13 \n"
+                 "add $1, %%r11 \n"
+                 "cmp %[count], %%r11\n"
+                 "jl LD_LOOP_NEW \n"
+                 : [random] "=r"(rand_seed)
+                 : [start_addr] "r"(start_addr), [count] "r"(count),
+		 "0"(rand_seed), [accessmask] "r"(access_mask)
+		 : "%rcx", "%r13", "%r12", "%r11", "%r10", "%r9", "%r8");
+    KERNEL_END
+}
+
+
+#define OPERATION
+
+
+#define RANDOM_OPER(rand, mask, buf)		\
+  RandLFSR64_NEW(rand, mask, buf)		\
+    OPERATION							
+
+
+#define UNROLL_4(rand, mask, buf)			\
+  RANDOM_OPER(rand, mask, buf)				\
+    RANDOM_OPER(rand, mask, buf)			\
+    RANDOM_OPER(rand, mask, buf)			\
+    RANDOM_OPER(rand, mask, buf)
+
+#define UNROLL_16(rand, mask, buf)		\
+  UNROLL_4(rand, mask, buf)			\
+    UNROLL_4(rand, mask, buf)			\
+    UNROLL_4(rand, mask, buf)			\
+    UNROLL_4(rand, mask, buf)			
+
+
+#define LOAD_NEW(start_addr, rand_seed, access_mask)			\
+  do {									\
+    /*r8: rand number, r9: computed addr, r13: dest, r12: temp in lfsr, */ \
+    /*rcx: bitmask for lfsr */						\
+    asm volatile("movabs $0xd800000000000000, %%rcx \n" /*  bitmask for LFSR */ \
+		 "xor %%r8, %%r8 \n" /* r8: access offset */		\
+		 UNROLL_16(random, accessmask, buf)			\
+		 : [random] "=r"(rand_seed)				\
+		 : [buf] "r"(start_addr), "0"(rand_seed), [accessmask] "r"(access_mask) \
+		 : "%rcx", "%r13", "%r12", "%r9", "%r8"); \
+  } while(0);
+    
 
 void sizebw_nt(char *start_addr, long size, long count, long *rand_seed, long access_mask) {
     KERNEL_BEGIN
@@ -891,6 +960,47 @@ unsigned long c_store_start;
 unsigned long c_ntload_start, c_ntload_end;
 long pages, diff;
 
+		 
+#define BEFORE(buf, size, name)						\
+  asm volatile("xor %%r8, %%r8 \n" /* r8: counter */			\
+	       "FLUSH_LOOP" #name ": \n"				\
+	       "lea (%[buf], %%r8), %%r9 \n"				\
+  	       "clflush (%%r9) \n"					\
+	       "add $1, %%r8 \n"					\
+	       "cmp %[size], %%r8 \n"					\
+	       "jl FLUSH_LOOP" #name " \n"				\
+	       "mfence \n"						\
+	       :: [buf] "r" (buf), [size] "r"(size)			\
+	       : "%r8", "%r9");						\
+  clock_gettime(CLOCK_MONOTONIC_RAW, &tstart);				\
+  asm volatile("mfence \n\t"						\
+	       "rdtscp \n\t"						\
+	       "mfence \n\t"						\
+	       "mov %%edx, %[hi]\n\t"					\
+	       "mov %%eax, %[lo]\n\t"					\
+	       : [hi] "=r"(c_store_start_hi), [lo] "=r"(c_store_start_lo) \
+	       :							\
+	       : "rdx", "rax", "rcx");
+
+
+#define AFTER								\
+  asm volatile("mfence \n\t"						\
+	       "rdtscp \n\t"						\
+	       "mfence \n\t"						\
+	       "mov %%edx, %[hi]\n\t"					\
+	       "mov %%eax, %[lo]\n\t"					\
+	       : [hi] "=r"(c_ntload_end_hi), [lo] "=r"(c_ntload_end_lo)	\
+	       :							\
+	       : "rdx", "rax", "rcx");					\
+  if (clock_gettime(CLOCK_MONOTONIC_RAW, &tend) == 0) {			\
+    diff = (tend.tv_sec - tstart.tv_sec) * 1e9 + tend.tv_nsec - tstart.tv_nsec; \
+  }									\
+  c_store_start = (((unsigned long)c_store_start_hi) << 32) | c_store_start_lo; \
+  c_ntload_start = (((unsigned long)c_ntload_start_hi) << 32) | c_ntload_start_lo; \
+  c_ntload_end = (((unsigned long)c_ntload_end_hi) << 32) | c_ntload_end_lo;
+
+
+
 #define LFS_PERMRAND_ENTRIES 0x1000
 #define RAW_BEFORE_WRITE                                                                                               \
     clock_gettime(CLOCK_MONOTONIC_RAW, &tstart);                                                                       \
@@ -909,17 +1019,18 @@ long pages, diff;
                  : [hi] "=r"(c_ntload_start_hi), [lo] "=r"(c_ntload_start_lo)                                          \
                  :                                                                                                     \
                  : "rdx", "rax", "rcx");
-#define RAW_FINAL(job_name)                                                                                            \
-    asm volatile("rdtscp \n\t"                                                                                         \
-                 "lfence \n\t"                                                                                         \
-                 "mov %%edx, %[hi]\n\t"                                                                                \
-                 "mov %%eax, %[lo]\n\t"                                                                                \
-                 : [hi] "=r"(c_ntload_end_hi), [lo] "=r"(c_ntload_end_lo)                                              \
-                 :                                                                                                     \
-                 : "rdx", "rax", "rcx");                                                                               \
-    if (clock_gettime(CLOCK_MONOTONIC_RAW, &tend) == 0) {                                                              \
-        diff = (tend.tv_sec - tstart.tv_sec) * 1e9 + tend.tv_nsec - tstart.tv_nsec;                                    \
-    }                                                                                                                  \
-    c_store_start = (((unsigned long)c_store_start_hi) << 32) | c_store_start_lo;                                      \
-    c_ntload_start = (((unsigned long)c_ntload_start_hi) << 32) | c_ntload_start_lo;                                   \
-    c_ntload_end = (((unsigned long)c_ntload_end_hi) << 32) | c_ntload_end_lo;
+#define RAW_FINAL(job_name)						\
+  asm volatile("lfence \n\t"						\
+	       "rdtscp \n\t"						\
+	       "lfence \n\t"						\
+	       "mov %%edx, %[hi]\n\t"					\
+	       "mov %%eax, %[lo]\n\t"					\
+	       : [hi] "=r"(c_ntload_end_hi), [lo] "=r"(c_ntload_end_lo)	\
+	       :							\
+	       : "rdx", "rax", "rcx");					\
+  if (clock_gettime(CLOCK_MONOTONIC_RAW, &tend) == 0) {			\
+    diff = (tend.tv_sec - tstart.tv_sec) * 1e9 + tend.tv_nsec - tstart.tv_nsec; \
+  }									\
+  c_store_start = (((unsigned long)c_store_start_hi) << 32) | c_store_start_lo; \
+  c_ntload_start = (((unsigned long)c_ntload_start_hi) << 32) | c_ntload_start_lo; \
+  c_ntload_end = (((unsigned long)c_ntload_end_hi) << 32) | c_ntload_end_lo;
