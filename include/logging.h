@@ -29,7 +29,7 @@ struct Enumerate : std::ranges::range_adaptor_closure<Enumerate> {
 
 inline constexpr Enumerate enumerate;
 
-enum LogLevel { DEBUG = 0, INFO, WARNING, ERROR };
+enum LogLevel { DEBUG = 0, INFO, WARNING, ERROR, TRACE };
 
 class LogStream;
 class LogWriter;
@@ -44,11 +44,12 @@ public:
             env_log_level = 4;
         }
     };
-
+    ~LogWriter();
     void operator<(const LogStream &stream);
 
 private:
     void output_log(const std::ostringstream &g);
+    std::fstream file_;
     std::source_location location_;
     LogLevel log_level_;
     int env_log_level;
@@ -76,6 +77,7 @@ fmt::color level2color(LogLevel level);
 #define LOG_IF(level) LogWriter(std::source_location::current(), level) < LogStream()
 #define LOG(level) LOG_##level
 #define LOG_DEBUG LOG_IF(DEBUG)
+#define LOG_TRACE LOG_IF(TRACE)
 #define LOG_INFO LOG_IF(INFO)
 #define LOG_WARNING LOG_IF(WARNING)
 #define LOG_ERROR LOG_IF(ERROR)

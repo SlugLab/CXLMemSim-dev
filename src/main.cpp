@@ -22,11 +22,10 @@
 
 int main(int argc, char *argv[]) {
 
-    cxxopts::Options options("CXL-MEM-Simulator",
-                             "For simulation of CXL.mem Type 3 on Broadwell, Skylake, Alderlake and Sapphire Rapids");
+    cxxopts::Options options("CXLMemSim", "For simulation of CXL.mem Type 3 on Sapphire Rapids");
     options.add_options()("t,target", "The script file to execute",
-                          cxxopts::value<std::string>()->default_value("./microbench/many_calloc"))(
-        "h,help", "The value for epoch value", cxxopts::value<bool>()->default_value("false"))(
+                          cxxopts::value<std::string>()->default_value("./microbench/ld"))(
+        "h,help", "Help for CXLMemSim", cxxopts::value<bool>()->default_value("false"))(
         "i,interval", "The value for epoch value", cxxopts::value<int>()->default_value("5"))(
         "s,source", "Collection Phase or Validation Phase", cxxopts::value<bool>()->default_value("false"))(
         "c,cpuset", "The CPUSET for CPU to set affinity on and only run the target process on those CPUs",
@@ -42,7 +41,8 @@ int main(int argc, char *argv[]) {
         "l,latency", "The simulated latency by epoch based calculation for injected latency",
         cxxopts::value<std::vector<int>>()->default_value("100,150,100,150,100,150"))(
         "b,bandwidth", "The simulated bandwidth by linear regression",
-        cxxopts::value<std::vector<int>>()->default_value("50,50,50,50,50,50"));
+        cxxopts::value<std::vector<int>>()->default_value("50,50,50,50,50,50"))(
+        "n,pmu", "The input for Collected PMU", cxxopts::value<std::vector<int>>()->default_value("0,0,0,0"));
 
     auto result = options.parse(argc, argv);
     if (result["help"].as<bool>()) {
@@ -54,15 +54,15 @@ int main(int argc, char *argv[]) {
     auto cpuset = result["cpuset"].as<std::vector<int>>();
     auto pebsperiod = result["pebsperiod"].as<int>();
     auto latency = result["latency"].as<std::vector<int>>();
-//    auto weight =
-//        result["weight"].as<std::vector<double>>(); // input as an array for [400, 800, 1200, 1600, 2000,2400,3000]
     auto bandwidth = result["bandwidth"].as<std::vector<int>>();
     auto frequency = result["frequency"].as<double>();
     auto topology = result["topology"].as<std::string>();
     auto capacity = result["capacity"].as<std::vector<int>>();
     auto dramlatency = result["dramlatency"].as<double>();
+    auto pmu_counter = result["pmu"].as<std::vector<int>>();
     auto mode = result["mode"].as<std::string>() == "p";
     auto source = result["source"].as<bool>();
+
     Helper helper{};
     auto *policy = new InterleavePolicy();
     CXLController *controller;
@@ -77,14 +77,16 @@ int main(int argc, char *argv[]) {
     }
     auto tnum = CPU_COUNT(&use_cpuset);
     auto cur_processes = 0;
-    auto ncpu = helper.cpu;
-    auto ncbo = helper.cha;
+    auto ncpu = helper.num_of_cpu();
+    auto ncha = helper.num_of_cha();
     LOG(DEBUG) << fmt::format("tnum:{}, intrval:{}\n", tnum, interval);
+    /** Hardcoded weights for different latency */
     std::vector<int> weight_vec = {400, 800, 1200, 1600, 2000, 2400, 3000};
-    std::vector<double> weight = {88,88,88,88,88,88,88};
+    std::vector<double> weight = {88, 88, 88, 88, 88, 88, 88};
     for (auto const &[idx, value] : weight | enumerate) {
         LOG(DEBUG) << fmt::format("weight[{}]:{}\n", weight_vec[idx], value);
     }
+
     for (auto const &[idx, value] : capacity | enumerate) {
         if (idx == 0) {
             LOG(DEBUG) << fmt::format("local_memory_region capacity:{}\n", value);
@@ -115,7 +117,7 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
     LOG(DEBUG) << fmt::format("cpu_freq:{}\n", frequency);
-    LOG(DEBUG) << fmt::format("num_of_cha:{}\n", ncbo);
+    LOG(DEBUG) << fmt::format("num_of_cha:{}\n", ncha);
     LOG(DEBUG) << fmt::format("num_of_cpu:{}\n", ncpu);
     Monitors monitors{tnum, &use_cpuset, helper};
 
@@ -261,7 +263,7 @@ int main(int argc, char *argv[]) {
                 mon.stop();
                 /* read CHA values */
                 uint64_t wb_cnt = 0;
-                for (int j = 0; j < ncbo; j++) {
+                for (int j = 0; j < ncha; j++) {
                     pmu.chas[j].read_cha_elems(&mon.after->chas[j]);
                     wb_cnt += mon.after->chas[j].cpu_llc_wb - mon.before->chas[j].cpu_llc_wb;
                 }
@@ -323,8 +325,8 @@ int main(int argc, char *argv[]) {
                 //              ((double)(weight * llcmiss_ro) / (double)(target_llchits + (weight * target_llcmiss))) *
                 //              1000;
                 LOG(DEBUG) << fmt::format(
-                    "l2stall={}, mastall_wb={}, mastall_ro={}, target_llchits={}, target_llcmiss={}\n",
-                    target_l2stall, mastall_wb, mastall_ro, target_llchits, target_llcmiss);
+                    "l2stall={}, mastall_wb={}, mastall_ro={}, target_llchits={}, target_llcmiss={}\n", target_l2stall,
+                    mastall_wb, mastall_ro, target_llchits, target_llcmiss);
 
                 auto ma_wb = (double)mastall_wb / dramlatency;
                 auto ma_ro = (double)mastall_ro / dramlatency;
@@ -348,8 +350,8 @@ int main(int argc, char *argv[]) {
                     .write_config = read_config,
                 };
                 emul_delay += std::lround(controller->calculate_latency(lat_pass));
-//                emul_delay += controller->calculate_bandwidth(bw_pass);
-//                emul_delay += std::get<0>(controller->calculate_congestion());
+                //                emul_delay += controller->calculate_bandwidth(bw_pass);
+                //                emul_delay += std::get<0>(controller->calculate_congestion());
 
                 mon.before->pebs.total = mon.after->pebs.total;
 

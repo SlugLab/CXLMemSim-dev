@@ -32,18 +32,18 @@ public:
     Monitors(int tnum, cpu_set_t *use_cpuset, Helper h);
     ~Monitors() = default;
 
-    void stop_all(const int);
-    void run_all(const int);
-    int enable(const uint32_t, const uint32_t, bool, uint64_t, const int32_t, bool is_page);
-    void disable(const uint32_t target);
-    int terminate(const uint32_t, const uint32_t, const int32_t);
-    bool check_all_terminated(const uint32_t);
-    bool check_continue(const uint32_t, const struct timespec);
+    void stop_all(int);
+    void run_all(int);
+    int enable(uint32_t, uint32_t, bool, uint64_t, int32_t, bool is_page);
+    void disable(uint32_t target);
+    int terminate( uint32_t,  uint32_t,  int32_t);
+    bool check_all_terminated( uint32_t);
+    bool check_continue( uint32_t,  struct timespec);
 };
 
 class Monitor {
 public:
-    pid_t tgid;
+    pid_t tgid; // process id
     pid_t tid;
     uint32_t cpu_core;
     char status;
@@ -57,7 +57,7 @@ public:
     bool is_process;
     struct PEBS *pebs_ctx;
 
-    Monitor(Helper h);
+    explicit Monitor(Helper h);
 
     void stop();
     void run();

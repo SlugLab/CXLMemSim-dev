@@ -125,11 +125,11 @@ public:
     double cpu_freq;
     PerfConfig perf_conf;
     Helper();
-    static int num_of_cpu();
-    static int num_of_cha();
+    int num_of_cpu();
+    int num_of_cha();
     static void detach_children();
     static void noop_handler(int signum);
-    double cpu_frequency() const;
+    double cpu_frequency();
     PerfConfig detect_model(uint32_t);
 };
 

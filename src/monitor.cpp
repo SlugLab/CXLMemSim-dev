@@ -5,11 +5,10 @@
 #include "monitor.h"
 Monitors::Monitors(int tnum, cpu_set_t *use_cpuset, Helper h) {
     mon = std::vector<Monitor>(tnum, Monitor(h));
-    /* init mon */
+    /** Init mon */
     for (int i = 0; i < tnum; i++) {
         disable(i);
-        int cpucnt = 0;
-        int cpuid = 0;
+        int cpucnt = 0, cpuid;
         for (cpuid = 0; cpuid < h.cpu; cpuid++) {
             if (CPU_ISSET(cpuid, use_cpuset)) {
                 if (i == cpucnt) {
@@ -84,7 +83,7 @@ int Monitors::enable(const uint32_t tgid, const uint32_t tid, bool is_process, u
         /* pebs start */
         mon[target].pebs_ctx = new PEBS(tgid, pebs_sample_period, is_page);
         LOG(DEBUG) << fmt::format("{}Process [tgid={}, tid={}]: enable to pebs.\n", target, mon[target].tgid,
-                                  mon[target].tid);
+                                  mon[target].tid); // multiple tid multiple pid
     }
 
     LOG(INFO) << fmt::format("pid {}[tgid={}, tid={}] monitoring start\n", target, mon[target].tgid, mon[target].tid);
@@ -210,6 +209,7 @@ void Monitor::stop() {
         LOG(DEBUG) << fmt::format("Process [{}:{}] is stopped.\n", this->tgid, this->tid);
     }
 }
+
 void Monitor::run() {
     LOG(DEBUG) << fmt::format("Send SIGCONT to tid={}(tgid={})\n", this->tid, this->tgid);
     if (syscall(SYS_tgkill, this->tgid, this->tid, SIGCONT) == -1) {
@@ -228,11 +228,13 @@ void Monitor::run() {
         LOG(DEBUG) << fmt::format("Process [{}:{}] is running.\n", this->tgid, this->tid);
     }
 }
+
 void Monitor::clear_time(struct timespec *time) {
     time->tv_sec = 0;
     time->tv_nsec = 0;
 }
-Monitor::Monitor(Helper h)
+
+Monitor::Monitor(Helper h) // which one to hook
     : tgid(0), tid(0), cpu_core(0), status(0), injected_delay({0}), wasted_delay({0}), squabble_delay({0}),
       before(nullptr), after(nullptr), total_delay(0), start_exec_ts({0}), end_exec_ts({0}), is_process(false),
       pebs_ctx(nullptr) {
@@ -241,3 +243,32 @@ Monitor::Monitor(Helper h)
         j.chas = std::vector<CHAElem>(h.cha);
     }
 }
+
+template <> struct fmt::formatter<Monitors> {
+    fmt::formatter<int> f;
+
+    constexpr auto parse(auto &ctx) { return f.parse(ctx); }
+
+    auto format(Monitors const &p, auto &ctx) const {
+        auto out = fmt::format_to(ctx.out(), "(x=");
+        ctx.advance_to(out);
+        //        out = f.format(p., ctx);
+        //        out = fmt::format_to(out, ", y=");
+        //        ctx.advance_to(out);
+        //        out = f.format(p.y, ctx);
+        for (auto &i : p.mon) {
+            for (auto &j : i.elem) {
+                // j.cpus = std::vector<CPUElem>(h.cpu);// This pid's core
+                // j.chas = std::vector<CHAElem>(h.cha);// This pid's core
+                for (auto &k : j.cpus) {
+                    out = fmt::format_to(out, "");
+                }
+                for (auto &k : j.chas) {
+                    out = fmt::format_to(out, "");
+                }
+            } // visitor mode write to the file
+            *out++ = ')';
+            return out;
+        }
+    }
+};

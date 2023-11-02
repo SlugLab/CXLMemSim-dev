@@ -4,51 +4,51 @@
 #include "helper.h"
 #include "logging.h"
 
-const struct ModelContext model_ctx[] = {{CPU_MDL_SPR,
-                                          {"/sys/bus/event_source/devices/uncore_cha_%u/type",
-                                           /*
-                                            * cha_llc_write_back_config:
-                                            *   UNC_CHA_LLC_VICTIMS
-                                            *   umask=0x10,event=b0
-                                            */
-                                           0x10b0, 0x1,
-                                           /*
-                                            * all_dram_rds_config:
-                                            *   OCR.ALL_READS.L3_MISS.SNOOP_NONE => L3_MISS.SNOOP_MISS_OR_NO_FWD
-                                            *   cpu/umask=0x1,event=0xb7,offcore_rsp=0x63FC00491/
-                                            */
-                                           0x01b7, 0x63FC00491,
-                                           /*
-                                            * cpu_l2stall_config:
-                                            *   cycle_activity.stalls_l2_miss
-                                            *   cpu/umask=0x5,cmask=0x5,event=0xa3/
-                                            */
-                                           0x50005a3,
-                                           /*
-                                            * cpu_llcl_hits_config:
-                                            *   mem_load_l3_hit_retired.xsnp_none
-                                            *   cpu/umask=0x8,event=0xd2/
-                                            */
-                                           0x08d2,
-                                           /*
-                                            * cpu_llcl_miss_config:
-                                            *   mem_load_l3_miss_retired.local_dram
-                                            *   cpu/umask=0x1,event=0xd3/
-                                            */
-                                           0x01d3,
-                                           /*
-                                            * cha_bandwidth_config:
-                                            *   UNC_M_CAS_COUNT.ALL * 64
-                                            *   cpu/umask=0xcf,event=0x05/
-                                            */
-                                           0xff05,
-                                           /*
-                                            * cha_bandwidth_write_config:
-                                            *   UNC_M_CAS_COUNT.WR * 64
-                                            *   cpu/umask=0xf0,event=0x05/
-                                            */
-                                           0xf005}},
-                                         {CPU_MDL_END, {0}}};
+__thread struct ModelContext model_ctx[] = {{CPU_MDL_SPR,
+                                             {"/sys/bus/event_source/devices/uncore_cha_%u/type",
+                                              /*
+                                               * cha_llc_write_back_config:
+                                               *   UNC_CHA_LLC_VICTIMS
+                                               *   umask=0x10,event=b0
+                                               */
+                                              0x10b0, 0x1,
+                                              /*
+                                               * all_dram_rds_config:
+                                               *   OCR.ALL_READS.L3_MISS.SNOOP_NONE => L3_MISS.SNOOP_MISS_OR_NO_FWD
+                                               *   cpu/umask=0x1,event=0xb7,offcore_rsp=0x63FC00491/
+                                               */
+                                              0x01b7, 0x63FC00491,
+                                              /*
+                                               * cpu_l2stall_config:
+                                               *   cycle_activity.stalls_l2_miss
+                                               *   cpu/umask=0x5,cmask=0x5,event=0xa3/
+                                               */
+                                              0x50005a3,
+                                              /*
+                                               * cpu_llcl_hits_config:
+                                               *   mem_load_l3_hit_retired.xsnp_none
+                                               *   cpu/umask=0x8,event=0xd2/
+                                               */
+                                              0x08d2,
+                                              /*
+                                               * cpu_llcl_miss_config:
+                                               *   mem_load_l3_miss_retired.local_dram
+                                               *   cpu/umask=0x1,event=0xd3/
+                                               */
+                                              0x01d3,
+                                              /*
+                                               * cha_bandwidth_config:
+                                               *   UNC_M_CAS_COUNT.ALL * 64
+                                               *   cpu/umask=0xcf,event=0x05/
+                                               */
+                                              0xff05,
+                                              /*
+                                               * cha_bandwidth_write_config:
+                                               *   UNC_M_CAS_COUNT.WR * 64
+                                               *   cpu/umask=0xf0,event=0x05/
+                                               */
+                                              0xf005}},
+                                            {CPU_MDL_END, {nullptr}}};
 
 int Helper::num_of_cpu() {
     int ncpu;
@@ -73,7 +73,7 @@ int Helper::num_of_cha() {
     return ncha;
 }
 
-double Helper::cpu_frequency() const {
+double Helper::cpu_frequency() {
     int i, c = 0;
     double cpu_mhz = 0.0;
     double max_cpu_mhz = 0.0;
@@ -104,7 +104,6 @@ PerfConfig Helper::detect_model(uint32_t model) {
 }
 Helper::Helper() : perf_conf({}) {
     cpu = num_of_cpu();
-    LOG(DEBUG) << cpu;
     cha = num_of_cha();
     cpu_freq = cpu_frequency();
 }

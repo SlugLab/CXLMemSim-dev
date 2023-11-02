@@ -45,7 +45,7 @@ ssize_t Incore::read_cpu_elems(struct CPUElem *elem) {
         return r;
     }
     LOG(DEBUG) << fmt::format("read cpu_l2stall_t:{}\n", elem->cpu_l2stall_t);
-
+    LOG(TRACE) << elem->cpu_l2stall_t;
     r = this->perf[1].read_pmu(&elem->cpu_llcl_hits);
     if (r < 0) {
         LOG(ERROR) << fmt::format("read cpu_llcl_hits failed.\n");
@@ -67,6 +67,7 @@ ssize_t Incore::read_cpu_elems(struct CPUElem *elem) {
     LOG(DEBUG) << fmt::format("read cpu_bandwidth:{}\n", elem->cpu_bandwidth);
     return 0;
 }
+
 Incore::Incore(const pid_t pid, const int cpu, struct PerfConfig *perf_config) : perf_config(perf_config) {
     /* reset all pmc values */
     this->perf[0] = init_incore_perf(pid, cpu, perf_config->cpu_ldm_stalling_config, 0);
@@ -80,8 +81,8 @@ bool get_cpu_info(struct CPUInfo *cpu_info) {
     union {
         char cbuf[16];
         int ibuf[16 / sizeof(int)];
-    } buf;
-    CPUID_INFO cpuinfo;
+    } buf{};
+    CPUID_INFO cpuinfo{};
 
     pcm_cpuid(0, &cpuinfo);
 
