@@ -1,119 +1,93 @@
 #include "uarch.h"
-
+#include <unistd.h>
 int main() {
     int i;
-    long long aggregated = 0, aggregated2 = 0;
+    
     long seed = 0xdeadbeef1245678;
-    uint64_t a = 0xfc0;
-    int access_size = 64;
-    int stride_size = 64;
-    int delay = 64;
-    int count = 32;
-    uint64_t *cindex;
-    uint64_t csize;
+    long *seedptr = &seed;
+
+    // should be based upon the size, no?
+    int access_size = 4;
+    long size  = 4096 * 64;
+
+    uint64_t access_mask = size - 1;
+    access_mask = access_mask - (access_mask % access_size);
+
+    int trials = 100;
     int ret;
 
-    //    for (i = 0; i < 100000; i++) {
-    //        char *buf = malloc(4096 * 1024);
-    //        buf = buf + 64 - (((long)buf) % 64);
-    //        // Separate RaW job
-    //        RAW_BEFORE_WRITE
-    //        stride_storeclwb(buf, access_size, stride_size, delay, count);
-    //        asm volatile("mfence \n" :::);
-    //        RAW_BEFORE_READ
-    //        stride_nt(buf, access_size, stride_size, delay, count);
-    //        asm volatile("mfence \n" :::);
-    //        RAW_FINAL("raw-separate")
-    //
-    //        aggregated += diff;
-    //        aggregated2 += c_ntload_end - c_store_start;
-    //    }
-    //
-    //    printf("Separate RaW job %lld %lld\n", aggregated / 100000 / count, aggregated2 / 100000 / count);
-    aggregated = 0;
-    aggregated2 = 0;
-    for (i = 0; i < 100000; i++) {
-        char *buf = static_cast<char *>(malloc(4096 * 1024));
-        buf = buf + 64 - (((long)buf) % 64);
-        // Naive RaW job
-        RAW_BEFORE_WRITE
-        RAW_BEFORE_READ
-        stride_read_after_write(buf, access_size, stride_size, delay, count);
-        asm volatile("mfence \n" :::);
-        RAW_FINAL("raw-combined")
-        aggregated += diff;
-        aggregated2 += c_ntload_end - c_store_start;
-    }
-    printf("Naive RaW job %lld %lld\n", aggregated / 100000 / count, aggregated2 / 100000 / count);
-    aggregated = 0;
-    aggregated2 = 0;
+    long long base_rdtscp = 0, base_nanos = 0;    
+    long long par_rdtscp = 0, par_nanos = 0;
+    long long seq_rdtscp = 0, seq_nanos = 0;
 
-    //    for (i = 0; i < 100000; i++) {
-    //        char *buf = malloc(4096 * 1024);
-    //        buf = buf + 64 - (((long)buf) % 64);
-    //        RAW_BEFORE_WRITE
-    //        sizebw_storeclwb(buf, access_size, count, &seed, a);
-    //        asm volatile("mfence \n" :::);
-    //        RAW_FINAL("sizebw_storeclwb")
-    //        aggregated += diff;
-    //        aggregated2 += c_ntload_end - c_store_start;
-    //    }
-    //    printf("sizebw_storeclwb %lld %lld\n", aggregated / 100000 / count, aggregated2 / 100000 / count);
-    //
-    //    aggregated = 0;
-    //    aggregated2 = 0;
-    //    for (i = 0; i < 100000; i++) {
-    //        char *buf = malloc(4096 * 1024);
-    //        buf = buf + 64 - (((long)buf) % 64);
-    //        char *virt_addr = malloc(4096 * 1024);
-    //        virt_addr = virt_addr + 64 - (((long)virt_addr) % 64);
-    //        // Pointer chasing RaW job
-    //        // No need to fill report fs page table, init_chasing_index will do that
-    //        csize = access_size / CACHELINE_SIZE;
-    //        cindex = (uint64_t *)(virt_addr);
-    //        ret = init_chasing_index(cindex, csize);
-    //
-    //        RAW_BEFORE_WRITE
-    //        chasing_storeclwb(buf, access_size, stride_size, count, cindex);
-    //        asm volatile("mfence \n" :::);
-    //        RAW_BEFORE_READ
-    //        chasing_loadnt(buf, access_size, stride_size, count, cindex);
-    //        asm volatile("mfence \n" :::);
-    //        RAW_FINAL("raw-chasing")
-    //
-    //        aggregated += diff;
-    //        aggregated2 += c_ntload_end - c_store_start;
-    //    }
-    //    printf("pointer chasing 2 hop %lld %lld\n", aggregated / 100000 / count, aggregated2 / 100000 / count);
-    //
-    //    aggregated = 0;
-    //    aggregated2 = 0;
-    //    for (i = 0; i < 100000; i++) {
-    //        char *buf = malloc(4096 * 1024);
-    //        buf = buf + 64 - (((long)buf) % 64);
-    //        char *virt_addr = malloc(4096 * 1024);
-    //        virt_addr = virt_addr + 64 - (((long)virt_addr) % 64);
-    //        // Pointer chasing RaW job
-    //        // No need to fill report fs page table, init_chasing_index will do that
-    //        csize = access_size / CACHELINE_SIZE;
-    //        cindex = (uint64_t *)(virt_addr);
-    //        ret = init_chasing_index(cindex, csize);
-    //
-    //        RAW_BEFORE_WRITE
-    //        chasing_storeclwb(buf, access_size, stride_size, count, cindex);
-    //        asm volatile("mfence \n" :::);
-    //        RAW_BEFORE_READ
-    //        chasing_loadnt(buf, access_size, stride_size, count, cindex);
-    //        asm volatile("mfence \n" :::);
-    //        chasing_storeclwb(buf, access_size, stride_size, count, cindex);
-    //        asm volatile("mfence \n" :::);
-    //        chasing_loadnt(buf, access_size, stride_size, count, cindex);
-    //        asm volatile("mfence \n" :::);
-    //        RAW_FINAL("raw-chasing")
-    //
-    //        aggregated += diff;
-    //        aggregated2 += c_ntload_end - c_store_start;
-    //    }
-    //    printf("pointer chasing 4 hop %lld %lld\n", aggregated / 100000 / count, aggregated2 / 100000 / count);
+
+
+    seed = 0xdeadbeef1245678;
+    for (i = 0; i < trials; i++) {
+      char *buf = static_cast<char *>(malloc(size));
+      buf = buf + access_size - (((long)buf) % access_size);  
+
+      BEFORE(buf, size, base);
+      LOAD_NEW(buf, seedptr, access_mask);
+      AFTER;
+
+      base_rdtscp += diff;
+      base_nanos += c_ntload_end - c_store_start;
+    }
+    
+
+    
+#ifdef OPERATION
+#undef OPERATION
+#define OPERATION				\
+      "mov 0x0(%%r9), %%r13 \n"\
+	"clflush (%%r9) \n"
+#endif
+    
+    for (i = 0; i < trials; i++) {
+      char *buf = static_cast<char *>(malloc(size));
+      buf = buf + access_size - (((long)buf) % access_size);  
+
+      BEFORE(buf, size, par);
+      LOAD_NEW(buf, seedptr, access_mask);
+      AFTER;
+
+      par_rdtscp += diff;
+      par_nanos += c_ntload_end - c_store_start;
+    }
+
+#ifdef OPERATION
+#undef OPERATION
+#define OPERATION				\
+    "mov 0x0(%%r9), %%r13 \n"			\
+      "clflush (%%r9) \n"			\
+      "mfence\n"
+#endif
+    
+    for (i = 0; i < trials; i++) {
+      char *buf = static_cast<char *>(malloc(size));
+      buf = buf + access_size - (((long)buf) % access_size);  
+
+      BEFORE(buf, size, seq);
+      LOAD_NEW(buf, seedptr, access_mask);
+      AFTER;
+
+      seq_rdtscp += diff;
+      seq_nanos += c_ntload_end - c_store_start;
+    }
+
+    // subtract overhead and divide
+    par_rdtscp -= base_rdtscp;
+    par_rdtscp /= (trials * 16);
+    par_nanos -= base_nanos;
+    par_nanos /= (trials * 16);
+    
+    seq_rdtscp -= base_rdtscp;
+    seq_rdtscp /= (trials * 16);
+    seq_nanos -= base_nanos;
+    seq_nanos /= (trials * 16);
+    
+    printf("%d trials, 16 par , rdtscp:%7lld, nanos:%7lld\n", trials, par_rdtscp, par_nanos);
+    printf("%d trials, 16 seq , rdtscp:%7lld, nanos:%7lld\n", trials, seq_rdtscp, seq_nanos);
     return 0;
 }

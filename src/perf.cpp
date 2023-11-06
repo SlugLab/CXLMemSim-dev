@@ -65,9 +65,6 @@ PerfInfo *init_incore_perf(const pid_t pid, const int cpu, uint64_t conf, uint64
 }
 
 PerfInfo *init_uncore_perf(const pid_t pid, const int cpu, uint64_t conf, uint64_t conf1, int value) {
-    int ret;
-    ssize_t r;
-
     int group_fd = -1;
     auto attr = perf_event_attr{
         .type = (uint32_t)value,

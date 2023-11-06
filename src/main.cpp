@@ -42,7 +42,9 @@ int main(int argc, char *argv[]) {
         cxxopts::value<std::vector<int>>()->default_value("100,150,100,150,100,150"))(
         "b,bandwidth", "The simulated bandwidth by linear regression",
         cxxopts::value<std::vector<int>>()->default_value("50,50,50,50,50,50"))(
-        "n,pmu", "The input for Collected PMU", cxxopts::value<std::vector<int>>()->default_value("0,0,0,0"));
+        "x,pmu_name", "The input for Collected PMU", cxxopts::value<std::vector<std::string>>()->default_value("llc_write_back,all_dram_rds,c,d"))(
+        "y,pmu_config1", "The config0 for Collected PMU", cxxopts::value<std::vector<int>>()->default_value("0,0,0,0,0,0,0,0"))(
+        "z,pmu_config2", "The config1 for Collected PMU", cxxopts::value<std::vector<int>>()->default_value("0,0,0,0,0,0,0,0"));
 
     auto result = options.parse(argc, argv);
     if (result["help"].as<bool>()) {
@@ -59,7 +61,9 @@ int main(int argc, char *argv[]) {
     auto topology = result["topology"].as<std::string>();
     auto capacity = result["capacity"].as<std::vector<int>>();
     auto dramlatency = result["dramlatency"].as<double>();
-    auto pmu_counter = result["pmu"].as<std::vector<int>>();
+    auto pmu_name = result["pmu_name"].as<std::vector<std::string>>();
+    auto pmu_config1 = result["pmu_config1"].as<std::vector<int>>();
+    auto pmu_config2 = result["pmu_config2"].as<std::vector<int>>();
     auto mode = result["mode"].as<std::string>() == "p";
     auto source = result["source"].as<bool>();
 
@@ -67,8 +71,9 @@ int main(int argc, char *argv[]) {
     auto *policy = new InterleavePolicy();
     CXLController *controller;
 
-    if (pmu_counter[0]!=0){
-        memcpy(&model_ctx[0].perf_conf,pmu_counter.data(), pmu_counter.size()) ;
+    if (pmu_config1[0]!=0){
+
+//        memcpy(&model_ctx[0].perf_conf,pmu_counter.data(), pmu_counter.size()) ;
     }
     uint64_t use_cpus = 0;
     cpu_set_t use_cpuset;
@@ -266,34 +271,36 @@ int main(int argc, char *argv[]) {
                                           start_ts.tv_nsec);
                 mon.stop();
                 /* read CHA values */
-                uint64_t wb_cnt = 0;
-                for (int j = 0; j < ncha; j++) {
-                    pmu.chas[j].read_cha_elems(&mon.after->chas[j]);
-                    wb_cnt += mon.after->chas[j].cpu_llc_wb - mon.before->chas[j].cpu_llc_wb;
-                }
-                LOG(INFO) << fmt::format("[{}:{}:{}] LLC_WB = {}\n", i, mon.tgid, mon.tid, wb_cnt);
+               //{
+                   uint64_t wb_cnt = 0;
+               //    for (int j = 0; j < ncha; j++) {
+               //        pmu.chas[j].read_cha_elems(&mon.after->chas[j]);
+               //        wb_cnt += mon.after->chas[j].cpu_llc_wb - mon.before->chas[j].cpu_llc_wb;
+               //    }
+               //    LOG(INFO) << fmt::format("[{}:{}:{}] LLC_WB = {}\n", i, mon.tgid, mon.tid, wb_cnt);
+               //}
 
-                /* read CPU params */
+                ///* read CPU params */
                 uint64_t read_config = 0;
                 uint64_t target_l2stall = 0, target_llcmiss = 0, target_llchits = 0;
-                for (int j = 0; j < ncpu; ++j) {
-                    pmu.cpus[j].read_cpu_elems(&mon.after->cpus[j]);
-                    read_config += mon.after->cpus[j].cpu_bandwidth - mon.before->cpus[j].cpu_bandwidth;
-                }
+                //for (int j = 0; j < ncpu; ++j) {
+                //    pmu.cpus[j].read_cpu_elems(&mon.after->cpus[j]);
+                //    read_config += mon.after->cpus[j].cpu_bandwidth - mon.before->cpus[j].cpu_bandwidth;
+                //}
                 /* read PEBS sample */
                 if (mon.pebs_ctx->read(controller, &mon.after->pebs) < 0) {
                     LOG(ERROR) << fmt::format("[{}:{}:{}] Warning: Failed PEBS read\n", i, mon.tgid, mon.tid);
                 }
-                target_llcmiss = mon.after->pebs.total - mon.before->pebs.total;
+                // target_llcmiss = mon.after->pebs.total - mon.before->pebs.total;
 
-                // target_l2stall =
-                //     mon.after->cpus[mon.cpu_core].cpu_l2stall_t - mon.before->cpus[mon.cpu_core].cpu_l2stall_t;
-                // target_llchits =
-                //     mon.after->cpus[mon.cpu_core].cpu_llcl_hits - mon.before->cpus[mon.cpu_core].cpu_llcl_hits;
-                for (auto const &[idx, value] : pmu.cpus | enumerate) {
-                    target_l2stall += mon.after->cpus[idx].cpu_l2stall_t - mon.before->cpus[idx].cpu_l2stall_t;
-                    target_llchits += mon.after->cpus[idx].cpu_llcl_hits - mon.before->cpus[idx].cpu_llcl_hits;
-                }
+                // // target_l2stall =
+                // //     mon.after->cpus[mon.cpu_core].cpu_l2stall_t - mon.before->cpus[mon.cpu_core].cpu_l2stall_t;
+                // // target_llchits =
+                // //     mon.after->cpus[mon.cpu_core].cpu_llcl_hits - mon.before->cpus[mon.cpu_core].cpu_llcl_hits;
+                // for (auto const &[idx, value] : pmu.cpus | enumerate) {
+                //     target_l2stall += mon.after->cpus[idx].cpu_l2stall_t - mon.before->cpus[idx].cpu_l2stall_t;
+                //     target_llchits += mon.after->cpus[idx].cpu_llcl_hits - mon.before->cpus[idx].cpu_llcl_hits;
+                // }
 
                 uint64_t llcmiss_wb = 0;
                 // To estimate the number of the writeback-involving LLC
@@ -303,19 +310,19 @@ int main(int argc, char *argv[]) {
                 // the LLC misses of the CPU core (target_llcmiss) to that
                 // of the LLC misses of all the CPU cores and the
                 // prefetchers (cpus_dram_rds).
-                llcmiss_wb = wb_cnt * std::lround(((double)target_llcmiss) / ((double)read_config));
+                // llcmiss_wb = wb_cnt * std::lround(((double)target_llcmiss) / ((double)read_config));
 
                 uint64_t llcmiss_ro = 0;
-                if (target_llcmiss < llcmiss_wb) {
-                    LOG(ERROR) << fmt::format("[{}:{}:{}] cpus_dram_rds {}, llcmiss_wb {}, target_llcmiss {}\n", i,
-                                              mon.tgid, mon.tid, read_config, llcmiss_wb, target_llcmiss);
-                    llcmiss_wb = target_llcmiss;
-                    llcmiss_ro = 0;
-                } else {
-                    llcmiss_ro = target_llcmiss - llcmiss_wb;
-                }
-                LOG(DEBUG) << fmt::format("[{}:{}:{}]llcmiss_wb={}, llcmiss_ro={}\n", i, mon.tgid, mon.tid, llcmiss_wb,
-                                          llcmiss_ro);
+                //if (target_llcmiss < llcmiss_wb) {
+                //    LOG(ERROR) << fmt::format("[{}:{}:{}] cpus_dram_rds {}, llcmiss_wb {}, target_llcmiss {}\n", i,
+                //                              mon.tgid, mon.tid, read_config, llcmiss_wb, target_llcmiss);
+                //    llcmiss_wb = target_llcmiss;
+                //    llcmiss_ro = 0;
+                //} else {
+                //    llcmiss_ro = target_llcmiss - llcmiss_wb;
+                //}
+                //LOG(DEBUG) << fmt::format("[{}:{}:{}]llcmiss_wb={}, llcmiss_ro={}\n", i, mon.tgid, mon.tid, llcmiss_wb,
+                //                          llcmiss_ro);
 
                 uint64_t mastall_wb = 0;
                 uint64_t mastall_ro = 0;
@@ -328,9 +335,9 @@ int main(int argc, char *argv[]) {
                 // mastall_ro = (double)(target_l2stall / frequency) *
                 //              ((double)(weight * llcmiss_ro) / (double)(target_llchits + (weight * target_llcmiss))) *
                 //              1000;
-                LOG(DEBUG) << fmt::format(
-                    "l2stall={}, mastall_wb={}, mastall_ro={}, target_llchits={}, target_llcmiss={}\n", target_l2stall,
-                    mastall_wb, mastall_ro, target_llchits, target_llcmiss);
+                //LOG(DEBUG) << fmt::format(
+                //    "l2stall={}, mastall_wb={}, mastall_ro={}, target_llchits={}, target_llcmiss={}\n", target_l2stall,
+                //    mastall_wb, mastall_ro, target_llchits, target_llcmiss);
 
                 auto ma_wb = (double)mastall_wb / dramlatency;
                 auto ma_ro = (double)mastall_ro / dramlatency;

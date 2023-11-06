@@ -1,6 +1,9 @@
 import csv
 import matplotlib.pyplot as plt
 
+def batch_pmu_run():
+    pass
+
 def draw_graph(x, y):
     plt.plot(x, y, marker='o')
     plt.xlabel('Distance in meters')

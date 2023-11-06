@@ -53,17 +53,19 @@ struct LatencyPass {
 };
 
 struct CHAElem {
-    uint64_t cpu_llc_hits;
-    uint64_t cpu_llc_miss;
-    uint64_t cpu_read_bandwidth;
-    uint64_t cpu_llc_wb;
+    // uint64_t cpu_llc_hits;
+    // uint64_t cpu_llc_miss;
+    // uint64_t cpu_read_bandwidth;
+    // uint64_t cpu_llc_wb;
+    std::vector<uint64_t> cha;
 };
 
 struct CPUElem {
-    uint64_t cpu_l2stall_t;
-    uint64_t cpu_llcl_hits;
-    uint64_t cpu_llcl_miss;
-    uint64_t cpu_bandwidth;
+    // uint64_t cpu_l2stall_t;
+    // uint64_t cpu_llcl_hits;
+    // uint64_t cpu_llcl_miss;
+    // uint64_t cpu_bandwidth;
+    std::vector<uint64_t> cpu;
 };
 
 struct PEBSElem {
@@ -98,23 +100,8 @@ public:
     int unfreeze_counters_cha_all();
 };
 
-struct PerfConfig {
-    const char *path_format_cha_type;
-    uint64_t cha_llc_write_back_config;
-    uint64_t cha_llc_write_back_config1;
-    uint64_t all_dram_rds_config;
-    uint64_t all_dram_rds_config1;
-    uint64_t cpu_ldm_stalling_config;
-    uint64_t cpu_llcl_hits_config;
-    uint64_t cpu_llc_writeback_config;
-    uint64_t cpu_bandwidth_read_config;
-    uint64_t cpu_bandwidth_write_config;
-};
 
-struct ModelContext {
-    uint32_t model{};
-    struct PerfConfig perf_conf;
-};
+
 
 class Helper {
 public:

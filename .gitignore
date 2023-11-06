@@ -13,3 +13,4 @@ lib
 CMakePresets.json
 .cmake
 CMakeUserPresets.json
+*~

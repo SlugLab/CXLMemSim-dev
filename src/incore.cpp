@@ -39,41 +39,48 @@ int Incore::stop() {
 ssize_t Incore::read_cpu_elems(struct CPUElem *elem) {
     ssize_t r;
 
-    r = this->perf[0]->read_pmu(&elem->cpu_l2stall_t);
-    if (r < 0) {
-        LOG(ERROR) << fmt::format("read cpu_l2stall_t failled.\n");
-        return r;
+    //    r = this->perf[0]->read_pmu(&elem->cpu_l2stall_t);
+    //    if (r < 0) {
+    //        LOG(ERROR) << fmt::format("read cpu_l2stall_t failled.\n");
+    //        return r;
+    //    }
+    //    LOG(DEBUG) << fmt::format("read cpu_l2stall_t:{}\n", elem->cpu_l2stall_t);
+    //    LOG(TRACE) << elem->cpu_l2stall_t;
+    //    r = this->perf[1]->read_pmu(&elem->cpu_llcl_hits);
+    //    if (r < 0) {
+    //        LOG(ERROR) << fmt::format("read cpu_llcl_hits failed.\n");
+    //        return r;
+    //    }
+    //    LOG(DEBUG) << fmt::format("read cpu_llcl_hits:{}\n", elem->cpu_llcl_hits);
+    //
+    //    r = this->perf[2]->read_pmu(&elem->cpu_llcl_miss);
+    //    if (r < 0) {
+    //        LOG(ERROR) << fmt::format("read cpu_llcl_miss failed.\n");
+    //        return r;
+    //    }
+    //    LOG(DEBUG) << fmt::format("read cpu_llcl_miss:{}\n", elem->cpu_llcl_miss);
+    //    r = this->perf[3]->read_pmu(&elem->cpu_bandwidth);
+    //    if (r < 0) {
+    //        LOG(ERROR) << fmt::format("read cpu_bandwidth failed.\n");
+    //        return r;
+    //    }
+    //    LOG(DEBUG) << fmt::format("read cpu_bandwidth:{}\n", elem->cpu_bandwidth);
+    for (auto const &[idx, value] : this->perf | enumerate) {
+        r = value->read_pmu(&elem->cpu[idx]);
+        if (r < 0) {
+            LOG(ERROR) << fmt::format("read cpu_elems[{}] failed.\n", idx);
+            return r;
+        }
     }
-    LOG(DEBUG) << fmt::format("read cpu_l2stall_t:{}\n", elem->cpu_l2stall_t);
-    LOG(TRACE) << elem->cpu_l2stall_t;
-    r = this->perf[1]->read_pmu(&elem->cpu_llcl_hits);
-    if (r < 0) {
-        LOG(ERROR) << fmt::format("read cpu_llcl_hits failed.\n");
-        return r;
-    }
-    LOG(DEBUG) << fmt::format("read cpu_llcl_hits:{}\n", elem->cpu_llcl_hits);
-
-    r = this->perf[2]->read_pmu(&elem->cpu_llcl_miss);
-    if (r < 0) {
-        LOG(ERROR) << fmt::format("read cpu_llcl_miss failed.\n");
-        return r;
-    }
-    LOG(DEBUG) << fmt::format("read cpu_llcl_miss:{}\n", elem->cpu_llcl_miss);
-    r = this->perf[3]->read_pmu(&elem->cpu_bandwidth);
-    if (r < 0) {
-        LOG(ERROR) << fmt::format("read cpu_bandwidth failed.\n");
-        return r;
-    }
-    LOG(DEBUG) << fmt::format("read cpu_bandwidth:{}\n", elem->cpu_bandwidth);
     return 0;
 }
 
 Incore::Incore(const pid_t pid, const int cpu, struct PerfConfig *perf_config) : perf_config(perf_config) {
     /* reset all pmc values */
-    this->perf[0] = init_incore_perf(pid, cpu, perf_config->cpu_ldm_stalling_config, 0);
-    this->perf[1] = init_incore_perf(pid, cpu, perf_config->cpu_llc_writeback_config, 0);
-    this->perf[2] = init_incore_perf(pid, cpu, perf_config->all_dram_rds_config, perf_config->all_dram_rds_config1);
-    this->perf[3] = init_incore_perf(pid, cpu, perf_config->cpu_llcl_hits_config, 0);
+    this->perf[0] = init_incore_perf(pid, cpu, std::get<1>(perf_config->cpu[1]), std::get<2>(perf_config->cpu[1]));
+    this->perf[1] = init_incore_perf(pid, cpu, std::get<1>(perf_config->cpu[2]), std::get<2>(perf_config->cpu[2]));
+    this->perf[2] = init_incore_perf(pid, cpu, std::get<1>(perf_config->cpu[3]), std::get<2>(perf_config->cpu[3]));
+    this->perf[3] = init_incore_perf(pid, cpu, std::get<1>(perf_config->cpu[4]), std::get<2>(perf_config->cpu[4]));
 }
 
 bool get_cpu_info(struct CPUInfo *cpu_info) {
