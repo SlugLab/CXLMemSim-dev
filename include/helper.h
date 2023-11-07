@@ -29,6 +29,16 @@ class Incore;
 class Uncore;
 class Helper;
 
+struct PerfConfig{
+    char *path_format_cha_type;
+    std::array<std::tuple<std::string,uint64_t, uint64_t>,4> cha;
+    std::array<std::tuple<std::string,uint64_t, uint64_t>,4> cpu;
+};
+struct ModelContext {
+    uint32_t model{};
+    struct PerfConfig perf_conf;
+};
+
 struct EmuCXLLatency {
     double read;
     double write;
@@ -99,9 +109,6 @@ public:
     int freeze_counters_cha_all();
     int unfreeze_counters_cha_all();
 };
-
-
-
 
 class Helper {
 public:
