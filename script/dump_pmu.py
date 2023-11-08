@@ -1,6 +1,8 @@
 import csv
 import matplotlib.pyplot as plt
-
+# TODO Load from perf
+def get_perfmon(path):
+    pass
 def batch_pmu_run():
     pass
 

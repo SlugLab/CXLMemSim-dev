@@ -4,63 +4,10 @@
 #include "helper.h"
 #include "logging.h"
 #include <string>
+#include <vector>
 
-struct ModelContext model_ctx = {CPU_MDL_SPR, {"/sys/bus/event_source/devices/uncore_cha_%u/type",
-                                                     /*
-                                                                        * cha_llc_write_back_config:
-                                                                        *   UNC_CHA_LLC_VICTIMS
-                                                                        *   umask=0x10,event=b0
-                                                      */
-                                                     //{
-                                                     //    {"llc_write_back", 0x10b0, 0x1},
-                                                     //    /*
-                                                     //                       * all_dram_rds_config:
-                                                     //                       *   OCR.ALL_READS.L3_MISS.SNOOP_NONE => L3_MISS.SNOOP_MISS_OR_NO_FWD
-                                                     //                       *   cpu/umask=0x1,event=0xb7,offcore_rsp=0x63FC00491/
-                                                     //     */
-                                                     //    {"all_dram_rds", 0x01b7, 0x63FC00491},
-                                                     //    /*
-                                                     //                       * cpu_l2stall_config:
-                                                     //                       *   cycle_activity.stalls_l2_miss
-                                                     //                       *   cpu/umask=0x5,cmask=0x5,event=0xa3/
-                                                     //     */
-                                                     //    {"l2stall", 0x50005a3, 0},
-                                                     //    /*
-                                                     //                       * cpu_l2stall_config:
-                                                     //                       *   cycle_activity.stalls_l2_miss
-                                                     //                       *   cpu/umask=0x5,cmask=0x5,event=0xa3/
-                                                     //     */
-                                                     //    {"l2stall", 0x50005a3, 0},
-                                                     //},
-                                                     //{    /*
-                                                     //                          * cpu_llcl_hits_config:
-                                                     //                          *   mem_load_l3_hit_retired.xsnp_none
-                                                     //                          *   cpu/umask=0x8,event=0xd2/
-                                                     //      */
-                                                     //     {"llcl_hits", 0x08d2, 0},
-                                                     //     /*
-                                                     //                        * cpu_llcl_miss_config:
-                                                     //                        *   mem_load_l3_miss_retired.local_dram
-                                                     //                        *   cpu/umask=0x1,event=0xd3/
-                                                     //      */
-                                                     //     {"llcl_miss", 0x01d3, 0},
-                                                     //     /*
-                                                     //                        * cha_bandwidth_config:
-                                                     //                        *   UNC_M_CAS_COUNT.ALL * 64
-                                                     //                        *   cpu/umask=0xcf,event=0x05/
-                                                     //      */
-                                                     //     {"bandwidth_all", 0xff05, 0},
-                                                     //     /*
-                                                     //                        * cha_bandwidth_write_config:
-                                                     //                        *   UNC_M_CAS_COUNT.WR * 64
-                                                     //                        *   cpu/umask=0xf0,event=0x05/
-                                                     //      */
-                                                     //     {"bandwidth_write", 0xf005, 0}
-                                                     // }
-
-                                                    }
-                                                  };
-                                   //{CPU_MDL_END, {nullptr}}};
+struct ModelContext model_ctx[] = {CPU_MDL_SPR, {"/sys/bus/event_source/devices/uncore_cha_%u/type",}
+                                   ,{CPU_MDL_END, {nullptr}}};
 
 int Helper::num_of_cpu() {
     int ncpu = sysconf(_SC_NPROCESSORS_ONLN);
@@ -100,17 +47,18 @@ double Helper::cpu_frequency() {
 
     return cpu_mhz;
 }
-PerfConfig Helper::detect_model(uint32_t model) {
-   //int i = 0;
-   //LOG(INFO) << fmt::format("Detecting model...{}\n", model);
-   //while (model_ctx[i].model != CPU_MDL_END) {
-   //    if (model_ctx[i].model == model) {
-   //        this->perf_conf = model_ctx[i].perf_conf;
-   //        return model_ctx[i].perf_conf;
-   //    }
-   //    i++;
-   //}
-   //LOG(ERROR) << "Failed to execute. This CPU model is not supported. Refer to perfmon or pcm to add support\n";
+PerfConfig Helper::detect_model(uint32_t model, std::vector<std::string> perf_name, std::vector<uint64_t> perf_conf1,
+                                std::vector<uint64_t> perf_conf2) {
+   int i = 0;
+   LOG(INFO) << fmt::format("Detecting model...{}\n", model);
+   while (model_ctx[i].model != CPU_MDL_END) {
+       if (model_ctx[i].model == model) {
+           this->perf_conf = model_ctx[i].perf_conf;
+           return model_ctx[i].perf_conf;
+       }
+       i++;
+   }
+   LOG(ERROR) << "Failed to execute. This CPU model is not supported. Refer to perfmon or pcm to add support\n";
     throw;
 }
 Helper::Helper() : perf_conf({}) {}

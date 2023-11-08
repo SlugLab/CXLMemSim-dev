@@ -180,7 +180,7 @@ bool Monitors::check_continue(const uint32_t target, const struct timespec w) {
     return false;
 }
 
-void Monitor::stop() {
+void Monitor::stop() { // thread create and proecess create get the pmu
     int ret = -1;
 
     if (this->is_process) {

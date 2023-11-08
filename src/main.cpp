@@ -8,7 +8,6 @@
 #include "policy.h"
 #include <cerrno>
 #include <cmath>
-#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
@@ -24,7 +23,7 @@ int main(int argc, char *argv[]) {
 
     cxxopts::Options options("CXLMemSim", "For simulation of CXL.mem Type 3 on Sapphire Rapids");
     options.add_options()("t,target", "The script file to execute",
-                          cxxopts::value<std::string>()->default_value("./microbench/ld"))(
+                          cxxopts::value<std::string>()->default_value("./microbench/"))(
         "h,help", "Help for CXLMemSim", cxxopts::value<bool>()->default_value("false"))(
         "i,interval", "The value for epoch value", cxxopts::value<int>()->default_value("5"))(
         "s,source", "Collection Phase or Validation Phase", cxxopts::value<bool>()->default_value("false"))(
@@ -42,9 +41,9 @@ int main(int argc, char *argv[]) {
         cxxopts::value<std::vector<int>>()->default_value("100,150,100,150,100,150"))(
         "b,bandwidth", "The simulated bandwidth by linear regression",
         cxxopts::value<std::vector<int>>()->default_value("50,50,50,50,50,50"))(
-        "x,pmu_name", "The input for Collected PMU", cxxopts::value<std::vector<std::string>>()->default_value("llc_write_back,all_dram_rds,c,d"))(
-        "y,pmu_config1", "The config0 for Collected PMU", cxxopts::value<std::vector<int>>()->default_value("0,0,0,0,0,0,0,0"))(
-        "z,pmu_config2", "The config1 for Collected PMU", cxxopts::value<std::vector<int>>()->default_value("0,0,0,0,0,0,0,0"));
+        "x,pmu_name", "The input for Collected PMU", cxxopts::value<std::vector<std::string>>()->default_value("llc_write_back,all_dram_rds,l2stall,l2stall,llcl_hits,llcl_miss,bandwidth_all,bandwidth_write"))(
+        "y,pmu_config1", "The config0 for Collected PMU", cxxopts::value<std::vector<uint64_t>>()->default_value("0x10b0,0x01b7,0x50005a3,0x50005a3,0x08d2,0x01d3,0xff05,0xf005"))(
+        "z,pmu_config2", "The config1 for Collected PMU", cxxopts::value<std::vector<uint64_t>>()->default_value("0x1,0x63FC00491,0,0,0,0,0,0"));
 
     auto result = options.parse(argc, argv);
     if (result["help"].as<bool>()) {
@@ -62,8 +61,8 @@ int main(int argc, char *argv[]) {
     auto capacity = result["capacity"].as<std::vector<int>>();
     auto dramlatency = result["dramlatency"].as<double>();
     auto pmu_name = result["pmu_name"].as<std::vector<std::string>>();
-    auto pmu_config1 = result["pmu_config1"].as<std::vector<int>>();
-    auto pmu_config2 = result["pmu_config2"].as<std::vector<int>>();
+    auto pmu_config1 = result["pmu_config1"].as<std::vector<uint64_t>>();
+    auto pmu_config2 = result["pmu_config2"].as<std::vector<uint64_t>>();
     auto mode = result["mode"].as<std::string>() == "p";
     auto source = result["source"].as<bool>();
 
@@ -71,10 +70,6 @@ int main(int argc, char *argv[]) {
     auto *policy = new InterleavePolicy();
     CXLController *controller;
 
-    if (pmu_config1[0]!=0){
-
-//        memcpy(&model_ctx[0].perf_conf,pmu_counter.data(), pmu_counter.size()) ;
-    }
     uint64_t use_cpus = 0;
     cpu_set_t use_cpuset;
     CPU_ZERO(&use_cpuset);
@@ -198,7 +193,8 @@ int main(int argc, char *argv[]) {
     }
 
     /* check the CPU model */
-    auto perf_config = helper.detect_model(monitors.mon[0].before->cpuinfo.cpu_model);
+    auto perf_config =
+        helper.detect_model(monitors.mon[0].before->cpuinfo.cpu_model, pmu_name, pmu_config1, pmu_config2);
 
     PMUInfo pmu{t_process, &helper, &perf_config};
 
@@ -311,7 +307,7 @@ int main(int argc, char *argv[]) {
                 // of the LLC misses of all the CPU cores and the
                 // prefetchers (cpus_dram_rds).
                 // llcmiss_wb = wb_cnt * std::lround(((double)target_llcmiss) / ((double)read_config));
-
+                // TODO Calculate through the vector
                 uint64_t llcmiss_ro = 0;
                 //if (target_llcmiss < llcmiss_wb) {
                 //    LOG(ERROR) << fmt::format("[{}:{}:{}] cpus_dram_rds {}, llcmiss_wb {}, target_llcmiss {}\n", i,

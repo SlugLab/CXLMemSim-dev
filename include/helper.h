@@ -30,7 +30,7 @@ class Uncore;
 class Helper;
 
 struct PerfConfig{
-    char *path_format_cha_type;
+    char *path_format_cha_type{};
     std::array<std::tuple<std::string,uint64_t, uint64_t>,4> cha;
     std::array<std::tuple<std::string,uint64_t, uint64_t>,4> cpu;
 };
@@ -119,7 +119,8 @@ public:
     static void detach_children();
     static void noop_handler(int signum);
     double cpu_frequency();
-    PerfConfig detect_model(uint32_t);
+    PerfConfig detect_model(uint32_t model, std::vector<std::string> perf_name, std::vector<uint64_t> perf_conf1,
+                            std::vector<uint64_t> perf_conf2);
 };
 
 #endif // CXL_MEM_SIMULATOR_HELPER_H
