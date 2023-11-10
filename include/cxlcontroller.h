@@ -25,7 +25,7 @@ public:
     CXLCounter counter;
     std::map<uint64_t, uint64_t> occupation;
     std::map<uint64_t, uint64_t> va_pa_map;
-    bool is_page;
+    bool is_page; // percentage
     int num_switches = 0;
     CXLController(Policy *policy, int capacity, bool is_page, int epoch);
     void construct_topo(std::string_view newick_tree);

@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
 
     cxxopts::Options options("CXLMemSim", "For simulation of CXL.mem Type 3 on Sapphire Rapids");
     options.add_options()("t,target", "The script file to execute",
-                          cxxopts::value<std::string>()->default_value("./microbench/"))(
+                          cxxopts::value<std::string>()->default_value("./microbench/ld-simple"))(
         "h,help", "Help for CXLMemSim", cxxopts::value<bool>()->default_value("false"))(
         "i,interval", "The value for epoch value", cxxopts::value<int>()->default_value("5"))(
         "s,source", "Collection Phase or Validation Phase", cxxopts::value<bool>()->default_value("false"))(
@@ -112,11 +112,11 @@ int main(int argc, char *argv[]) {
     int sock;
     struct sockaddr_un addr {};
 
-    sock = socket(AF_UNIX, SOCK_DGRAM, 0);
+    sock = socket(AF_UNIX, SOCK_DGRAM, 0);  // been got by socket if it's not main thread and synchro
     addr.sun_family = AF_UNIX;
     strcpy(addr.sun_path, SOCKET_PATH);
     remove(addr.sun_path);
-    if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+    if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) == -1) { // can be blocked for multi thread
         LOG(ERROR) << "Failed to execute. Can't bind to a socket.\n";
         exit(1);
     }
@@ -207,7 +207,7 @@ int main(int argc, char *argv[]) {
     LOG(DEBUG) << fmt::format("set nano sec = {}\n", waittime.tv_nsec);
 
     /* read CHA params */
-    for (auto mon : monitors.mon) {
+    for (const auto& mon : monitors.mon) {
         for (auto const &[idx, value] : pmu.chas | enumerate) {
             pmu.chas[idx].read_cha_elems(&mon.before->chas[idx]);
         }
@@ -231,6 +231,7 @@ int main(int argc, char *argv[]) {
     while (true) {
         /* wait for pre-defined interval */
         clock_gettime(CLOCK_MONOTONIC, &sleep_start_ts);
+
 
         /** Here was a definition for the multi process and thread to enable multiple monitor */
 

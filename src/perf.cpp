@@ -26,8 +26,6 @@ PerfInfo::~PerfInfo() {
  *   This can be avoided by executing nanosleep with 0.
  */
 ssize_t PerfInfo::read_pmu(uint64_t *value) {
-    struct timespec zero = {0};
-    nanosleep(&zero, nullptr);
     ssize_t r = read(this->fd, value, sizeof(*value));
     if (r < 0) {
         LOG(ERROR) << "read";

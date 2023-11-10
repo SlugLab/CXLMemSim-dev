@@ -119,8 +119,8 @@ public:
     static void detach_children();
     static void noop_handler(int signum);
     double cpu_frequency();
-    PerfConfig detect_model(uint32_t model, std::vector<std::string> perf_name, std::vector<uint64_t> perf_conf1,
-                            std::vector<uint64_t> perf_conf2);
+    PerfConfig detect_model(uint32_t model, const std::vector<std::string>& perf_name, const std::vector<uint64_t>& perf_conf1,
+                            const std::vector<uint64_t>& perf_conf2);
 };
 
 #endif // CXL_MEM_SIMULATOR_HELPER_H

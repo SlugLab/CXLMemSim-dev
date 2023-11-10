@@ -70,7 +70,11 @@ int Uncore::read_cha_elems(struct CHAElem *elem) {
     //    LOG(DEBUG) << fmt::format("llc_wb:{}\n", elem->cpu_llc_wb);
     // for loop get out
     for (auto const &[k, v] : this->perf | enumerate) {
-        v->read_pmu(&elem->cha[k]);
+        r = v->read_pmu(&elem->cha[k]);
+        if (r < 0) {
+            LOG(ERROR) << fmt::format("read cpu_elems[{}] failed.\n", idx);
+            return r;
+        }
     }
     return r;
 }

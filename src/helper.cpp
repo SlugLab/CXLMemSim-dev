@@ -47,19 +47,25 @@ double Helper::cpu_frequency() {
 
     return cpu_mhz;
 }
-PerfConfig Helper::detect_model(uint32_t model, std::vector<std::string> perf_name, std::vector<uint64_t> perf_conf1,
-                                std::vector<uint64_t> perf_conf2) {
+PerfConfig Helper::detect_model(uint32_t model, const std::vector<std::string>& perf_name, const std::vector<uint64_t>& perf_conf1,
+                                const std::vector<uint64_t>& perf_conf2) {
    int i = 0;
    LOG(INFO) << fmt::format("Detecting model...{}\n", model);
    while (model_ctx[i].model != CPU_MDL_END) {
        if (model_ctx[i].model == model) {
            this->perf_conf = model_ctx[i].perf_conf;
+           for (int j = 0; j < 4; ++j) {
+               this->perf_conf.cha[j] = std::make_tuple(perf_name[j],perf_conf1[j], perf_conf2[j]);
+           }
+           for (int j = 0; j < 4; ++j) {
+               this->perf_conf.cpu[j] = std::make_tuple(perf_name[j+4],perf_conf1[j+4], perf_conf2[j+4]);
+           }
            return model_ctx[i].perf_conf;
        }
        i++;
    }
    LOG(ERROR) << "Failed to execute. This CPU model is not supported. Refer to perfmon or pcm to add support\n";
-    throw;
+   throw;
 }
 Helper::Helper() : perf_conf({}) {}
 void Helper::noop_handler(int sig) { ; }
