@@ -16,7 +16,7 @@ add_executable(CXLMemSim ${SOURCE_FILES})
 include_directories(CXLMemSim include ${cxxopts_INCLUDE_DIR} ${fmt_INCLUDE_DIR})
 target_link_libraries(CXLMemSim fmt::fmt cxxopts::cxxopts)
 
-add_library(CXLMemSimHook SHARED src/module.cpp)
+add_library(CXLMemSimHook SHARED src/module.cc)
 
 add_subdirectory(microbench)
 add_subdirectory(workloads)

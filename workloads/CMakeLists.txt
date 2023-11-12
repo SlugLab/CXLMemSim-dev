@@ -1,1 +1,1 @@
-include(gapbs)
+add_subdirectory(gapbs)

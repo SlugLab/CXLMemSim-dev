@@ -11,7 +11,7 @@
 #include <tuple>
 #include <vector>
 
-/** TODO: Whether to using the pebs to record the state. add back invalidation */
+/** TODO: Whether to using the pebs to record the state. add back invalidation migrate huge/ page and prefetch*/
 class CXLSwitchEvent {
 public:
     uint64_t load = 0;

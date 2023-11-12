@@ -17,7 +17,6 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#define SOCKET_PATH "/tmp/cxl_mem_simulator.sock"
 extern struct ModelContext model_ctx[];
 int main(int argc, char *argv[]) {
 
@@ -41,9 +40,14 @@ int main(int argc, char *argv[]) {
         cxxopts::value<std::vector<int>>()->default_value("100,150,100,150,100,150"))(
         "b,bandwidth", "The simulated bandwidth by linear regression",
         cxxopts::value<std::vector<int>>()->default_value("50,50,50,50,50,50"))(
-        "x,pmu_name", "The input for Collected PMU", cxxopts::value<std::vector<std::string>>()->default_value("llc_write_back,all_dram_rds,l2stall,l2stall,llcl_hits,llcl_miss,bandwidth_all,bandwidth_write"))(
-        "y,pmu_config1", "The config0 for Collected PMU", cxxopts::value<std::vector<uint64_t>>()->default_value("0x10b0,0x01b7,0x50005a3,0x50005a3,0x08d2,0x01d3,0xff05,0xf005"))(
-        "z,pmu_config2", "The config1 for Collected PMU", cxxopts::value<std::vector<uint64_t>>()->default_value("0x1,0x63FC00491,0,0,0,0,0,0"));
+        "x,pmu_name", "The input for Collected PMU",
+        cxxopts::value<std::vector<std::string>>()->default_value(
+            "llc_write_back,all_dram_rds,l2stall,l2stall,llcl_hits,llcl_miss,bandwidth_all,bandwidth_write"))(
+        "y,pmu_config1", "The config0 for Collected PMU",
+        cxxopts::value<std::vector<uint64_t>>()->default_value(
+            "0x10b0,0x01b7,0x50005a3,0x50005a3,0x08d2,0x01d3,0xff05,0xf005"))(
+        "z,pmu_config2", "The config1 for Collected PMU",
+        cxxopts::value<std::vector<uint64_t>>()->default_value("0x1,0x63FC00491,0,0,0,0,0,0"));
 
     auto result = options.parse(argc, argv);
     if (result["help"].as<bool>()) {
@@ -112,7 +116,7 @@ int main(int argc, char *argv[]) {
     int sock;
     struct sockaddr_un addr {};
 
-    sock = socket(AF_UNIX, SOCK_DGRAM, 0);  // been got by socket if it's not main thread and synchro
+    sock = socket(AF_UNIX, SOCK_DGRAM, 0); // been got by socket if it's not main thread and synchro
     addr.sun_family = AF_UNIX;
     strcpy(addr.sun_path, SOCKET_PATH);
     remove(addr.sun_path);
@@ -207,7 +211,7 @@ int main(int argc, char *argv[]) {
     LOG(DEBUG) << fmt::format("set nano sec = {}\n", waittime.tv_nsec);
 
     /* read CHA params */
-    for (const auto& mon : monitors.mon) {
+    for (const auto &mon : monitors.mon) {
         for (auto const &[idx, value] : pmu.chas | enumerate) {
             pmu.chas[idx].read_cha_elems(&mon.before->chas[idx]);
         }
@@ -231,7 +235,6 @@ int main(int argc, char *argv[]) {
     while (true) {
         /* wait for pre-defined interval */
         clock_gettime(CLOCK_MONOTONIC, &sleep_start_ts);
-
 
         /** Here was a definition for the multi process and thread to enable multiple monitor */
 
@@ -268,22 +271,27 @@ int main(int argc, char *argv[]) {
                                           start_ts.tv_nsec);
                 mon.stop();
                 /* read CHA values */
-               //{
-                   uint64_t wb_cnt = 0;
-               //    for (int j = 0; j < ncha; j++) {
-               //        pmu.chas[j].read_cha_elems(&mon.after->chas[j]);
-               //        wb_cnt += mon.after->chas[j].cpu_llc_wb - mon.before->chas[j].cpu_llc_wb;
-               //    }
-               //    LOG(INFO) << fmt::format("[{}:{}:{}] LLC_WB = {}\n", i, mon.tgid, mon.tid, wb_cnt);
-               //}
-
-                ///* read CPU params */
+                //{
+                uint64_t wb_cnt = 0;
+                //    for (int j = 0; j < ncha; j++) {
+                //        pmu.chas[j].read_cha_elems(&mon.after->chas[j]);
+                //        wb_cnt += mon.after->chas[j].cpu_llc_wb - mon.before->chas[j].cpu_llc_wb;
+                //    }
+                //    LOG(INFO) << fmt::format("[{}:{}:{}] LLC_WB = {}\n", i, mon.tgid, mon.tid, wb_cnt);
+                //}
+                for (int j = 0; j < ncha; j++) {
+                    for (auto const &[idx, value] : pmu.chas | enumerate) {
+                        value.read_cha_elems(&mon.after->chas[j]);
+                           wb_cnt += mon.after->chas[j].cpu_llc_wb - mon.before->chas[j].cpu_llc_wb;
+                    }
+                }
+                /*** read CPU params */
                 uint64_t read_config = 0;
                 uint64_t target_l2stall = 0, target_llcmiss = 0, target_llchits = 0;
-                //for (int j = 0; j < ncpu; ++j) {
-                //    pmu.cpus[j].read_cpu_elems(&mon.after->cpus[j]);
-                //    read_config += mon.after->cpus[j].cpu_bandwidth - mon.before->cpus[j].cpu_bandwidth;
-                //}
+                // for (int j = 0; j < ncpu; ++j) {
+                //     pmu.cpus[j].read_cpu_elems(&mon.after->cpus[j]);
+                //     read_config += mon.after->cpus[j].cpu_bandwidth - mon.before->cpus[j].cpu_bandwidth;
+                // }
                 /* read PEBS sample */
                 if (mon.pebs_ctx->read(controller, &mon.after->pebs) < 0) {
                     LOG(ERROR) << fmt::format("[{}:{}:{}] Warning: Failed PEBS read\n", i, mon.tgid, mon.tid);
@@ -310,16 +318,17 @@ int main(int argc, char *argv[]) {
                 // llcmiss_wb = wb_cnt * std::lround(((double)target_llcmiss) / ((double)read_config));
                 // TODO Calculate through the vector
                 uint64_t llcmiss_ro = 0;
-                //if (target_llcmiss < llcmiss_wb) {
-                //    LOG(ERROR) << fmt::format("[{}:{}:{}] cpus_dram_rds {}, llcmiss_wb {}, target_llcmiss {}\n", i,
-                //                              mon.tgid, mon.tid, read_config, llcmiss_wb, target_llcmiss);
-                //    llcmiss_wb = target_llcmiss;
-                //    llcmiss_ro = 0;
-                //} else {
-                //    llcmiss_ro = target_llcmiss - llcmiss_wb;
-                //}
-                //LOG(DEBUG) << fmt::format("[{}:{}:{}]llcmiss_wb={}, llcmiss_ro={}\n", i, mon.tgid, mon.tid, llcmiss_wb,
-                //                          llcmiss_ro);
+                // if (target_llcmiss < llcmiss_wb) {
+                //     LOG(ERROR) << fmt::format("[{}:{}:{}] cpus_dram_rds {}, llcmiss_wb {}, target_llcmiss {}\n", i,
+                //                               mon.tgid, mon.tid, read_config, llcmiss_wb, target_llcmiss);
+                //     llcmiss_wb = target_llcmiss;
+                //     llcmiss_ro = 0;
+                // } else {
+                //     llcmiss_ro = target_llcmiss - llcmiss_wb;
+                // }
+                // LOG(DEBUG) << fmt::format("[{}:{}:{}]llcmiss_wb={}, llcmiss_ro={}\n", i, mon.tgid, mon.tid,
+                // llcmiss_wb,
+                //                           llcmiss_ro);
 
                 uint64_t mastall_wb = 0;
                 uint64_t mastall_ro = 0;
@@ -332,9 +341,9 @@ int main(int argc, char *argv[]) {
                 // mastall_ro = (double)(target_l2stall / frequency) *
                 //              ((double)(weight * llcmiss_ro) / (double)(target_llchits + (weight * target_llcmiss))) *
                 //              1000;
-                //LOG(DEBUG) << fmt::format(
-                //    "l2stall={}, mastall_wb={}, mastall_ro={}, target_llchits={}, target_llcmiss={}\n", target_l2stall,
-                //    mastall_wb, mastall_ro, target_llchits, target_llcmiss);
+                // LOG(DEBUG) << fmt::format(
+                //    "l2stall={}, mastall_wb={}, mastall_ro={}, target_llchits={}, target_llcmiss={}\n",
+                //    target_l2stall, mastall_wb, mastall_ro, target_llchits, target_llcmiss);
 
                 auto ma_wb = (double)mastall_wb / dramlatency;
                 auto ma_ro = (double)mastall_ro / dramlatency;
@@ -436,7 +445,7 @@ int main(int argc, char *argv[]) {
         if (monitors.check_all_terminated(tnum)) {
             break;
         }
-        LOG(TRACE)<<fmt::format("{}\n", monitors);;
+        LOG(TRACE) << fmt::format("{}\n", monitors);
     } // End while-loop for emulation
 
     return 0;

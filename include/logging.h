@@ -20,6 +20,8 @@
 #include <sstream>
 #include <string>
 
+#define SOCKET_PATH "/tmp/cxl_mem_simulator.sock"
+
 /** Barry's work*/
 struct Enumerate : std::ranges::range_adaptor_closure<Enumerate> {
     template <std::ranges::viewable_range R> constexpr auto operator()(R &&r) const {
