@@ -7,7 +7,6 @@
 
 #include "cxlcontroller.h"
 #include "helper.h"
-#include "logging.h"
 #include <asm/unistd.h>
 #include <cerrno>
 #include <csignal>

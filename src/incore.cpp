@@ -4,7 +4,7 @@
 
 #include "incore.h"
 #include "helper.h"
-
+extern ModelContext model_ctx[];
 void pcm_cpuid(const unsigned leaf, CPUID_INFO *info) {
     __asm__ __volatile__("cpuid"
                          : "=a"(info->reg.eax), "=b"(info->reg.ebx), "=c"(info->reg.ecx), "=d"(info->reg.edx)
@@ -68,7 +68,7 @@ ssize_t Incore::read_cpu_elems(struct CPUElem *elem) {
     for (auto const &[idx, value] : this->perf | enumerate) {
         r = value->read_pmu(&elem->cpu[idx]);
         if (r < 0) {
-            LOG(ERROR) << fmt::format("read cpu_elems[{}] failed.\n", idx);
+            LOG(ERROR) << fmt::format("read cpu_elems[{}] failed.\n", model_ctx[0].perf_conf.cha[idx]);
             return r;
         }
     }

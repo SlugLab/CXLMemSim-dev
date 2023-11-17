@@ -3,7 +3,6 @@
 //
 #include "cxlendpoint.h"
 #include "helper.h"
-#include "logging.h"
 #include "monitor.h"
 #include "policy.h"
 #include <cerrno>
@@ -282,7 +281,7 @@ int main(int argc, char *argv[]) {
                 for (int j = 0; j < ncha; j++) {
                     for (auto const &[idx, value] : pmu.chas | enumerate) {
                         value.read_cha_elems(&mon.after->chas[j]);
-                           wb_cnt += mon.after->chas[j].cpu_llc_wb - mon.before->chas[j].cpu_llc_wb;
+                           wb_cnt +=std::get<0>(mon.after->chas[j]) - std::get<0>(mon.before->chas[j]);
                     }
                 }
                 /*** read CPU params */

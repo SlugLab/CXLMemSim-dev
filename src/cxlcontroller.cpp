@@ -42,6 +42,7 @@ CXLController::CXLController(Policy *p, int capacity, bool is_page, int epoch)
     }
     // TODO get LRU wb
     // TODO BW type series
+    
     // deferentiate R/W for multireader multi writer
 }
 

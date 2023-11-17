@@ -9,7 +9,7 @@ Policy::Policy() = default;
 InterleavePolicy::InterleavePolicy() = default;
 // If the number is -1 for local, else it is the index of the remote server
 int InterleavePolicy::compute_once(CXLController *controller) {
-    auto per_size = controller->is_page ? 4096 : 64;
+    auto per_size = 64 ^ controller->page_type_ ;
     if (controller->occupation.size() * per_size / 1024 / 1024 < controller->capacity * 0.9) {
         return -1;
     } else {

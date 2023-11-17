@@ -1,8 +1,8 @@
 //
 // Created by victoryang00 on 1/12/23.
 //
-
 #include "uncore.h"
+extern ModelContext model_ctx[];
 Uncore::Uncore(const uint32_t unc_idx, PerfConfig *perf_config) {
     unsigned long value;
     int r;
@@ -72,7 +72,7 @@ int Uncore::read_cha_elems(struct CHAElem *elem) {
     for (auto const &[k, v] : this->perf | enumerate) {
         r = v->read_pmu(&elem->cha[k]);
         if (r < 0) {
-            LOG(ERROR) << fmt::format("read cpu_elems[{}] failed.\n", std::get<0>(perf_config->cha[k]));
+            LOG(ERROR) << fmt::format("read cpu_elems[{}] failed.\n", std::get<0>(model_ctx[0].perf_conf.cha[k]));
             return r;
         }
     }

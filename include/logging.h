@@ -25,7 +25,7 @@
 /** Barry's work*/
 struct Enumerate : std::ranges::range_adaptor_closure<Enumerate> {
     template <std::ranges::viewable_range R> constexpr auto operator()(R &&r) const {
-        return std::views::zip(std::views::iota(0), (R &&)r);
+        return std::views::zip(std::views::iota(0), (R &&) r);
     }
 };
 
@@ -46,7 +46,7 @@ public:
             env_log_level = 4;
         }
     };
-    ~LogWriter()=default;
+    ~LogWriter() = default;
     void operator<(const LogStream &stream);
 
 private:

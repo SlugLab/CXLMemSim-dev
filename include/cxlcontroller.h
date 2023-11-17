@@ -12,6 +12,8 @@
 #include <unordered_map>
 #include <vector>
 
+enum page_type {CACHELINE, PAGE, HUGEPAGE_2M, HUGEPAGE_1G};
+
 class CXLController;
 class Policy {
 public:
@@ -26,7 +28,7 @@ public:
     CXLCounter counter;
     std::map<uint64_t, uint64_t> occupation;
     std::map<uint64_t, uint64_t> va_pa_map;
-    bool is_page; // percentage
+    enum page_type page_type_; // percentage
     int num_switches = 0;
     /** LRU Cache for wb and timeseries map */
     std::list<uint64_t> lru_list;
