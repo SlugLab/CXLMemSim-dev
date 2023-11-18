@@ -16,12 +16,12 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-extern struct ModelContext model_ctx[];
+Helper helper{};
 int main(int argc, char *argv[]) {
 
     cxxopts::Options options("CXLMemSim", "For simulation of CXL.mem Type 3 on Sapphire Rapids");
     options.add_options()("t,target", "The script file to execute",
-                          cxxopts::value<std::string>()->default_value("./microbench/ld-simple"))(
+                          cxxopts::value<std::string>()->default_value("./microbench/ld_simple"))(
         "h,help", "Help for CXLMemSim", cxxopts::value<bool>()->default_value("false"))(
         "i,interval", "The value for epoch value", cxxopts::value<int>()->default_value("5"))(
         "s,source", "Collection Phase or Validation Phase", cxxopts::value<bool>()->default_value("false"))(
@@ -46,7 +46,11 @@ int main(int argc, char *argv[]) {
         cxxopts::value<std::vector<uint64_t>>()->default_value(
             "0x10b0,0x01b7,0x50005a3,0x50005a3,0x08d2,0x01d3,0xff05,0xf005"))(
         "z,pmu_config2", "The config1 for Collected PMU",
-        cxxopts::value<std::vector<uint64_t>>()->default_value("0x1,0x63FC00491,0,0,0,0,0,0"));
+        cxxopts::value<std::vector<uint64_t>>()->default_value("0x1,0x63FC00491,0,0,0,0,0,0"))(
+        "w,weight", "The weight for Linear Regression",
+        cxxopts::value<std::vector<double>>()->default_value("88, 88, 88, 88, 88, 88, 88"))(
+        "v,weight_vec", "The weight vector for Linear Regression",
+        cxxopts::value<std::vector<double>>()->default_value("400, 800, 1200, 1600, 2000, 2400, 3000"));
 
     auto result = options.parse(argc, argv);
     if (result["help"].as<bool>()) {
@@ -66,17 +70,27 @@ int main(int argc, char *argv[]) {
     auto pmu_name = result["pmu_name"].as<std::vector<std::string>>();
     auto pmu_config1 = result["pmu_config1"].as<std::vector<uint64_t>>();
     auto pmu_config2 = result["pmu_config2"].as<std::vector<uint64_t>>();
-    auto mode = result["mode"].as<std::string>() == "p";
+    auto weight = result["weight"].as<std::vector<double>>();
+    auto weight_vec = result["weight_vec"].as<std::vector<double>>();
     auto source = result["source"].as<bool>();
+    enum page_type mode;
+    if (result["mode"].as<std::string>() == "hugepage_2M") {
+        mode = page_type::HUGEPAGE_2M;
+    } else if (result["mode"].as<std::string>() == "hugepage_1G") {
+        mode = page_type::HUGEPAGE_1G;
+    } else if (result["mode"].as<std::string>() == "cacheline") {
+        mode = page_type::CACHELINE;
+    } else {
+        mode = page_type::PAGE;
+    }
 
-    Helper helper{};
     auto *policy = new InterleavePolicy();
     CXLController *controller;
 
     uint64_t use_cpus = 0;
     cpu_set_t use_cpuset;
     CPU_ZERO(&use_cpuset);
-    for (int i = 0; i < helper.num_of_cpu(); i++) {
+    for (int i = 0; i < helper.cha; i++) {
         if (!use_cpus || use_cpus & 1UL << i) {
             CPU_SET(i, &use_cpuset);
             LOG(DEBUG) << fmt::format("use cpuid: {}{}\n", i, use_cpus);
@@ -87,9 +101,6 @@ int main(int argc, char *argv[]) {
     auto ncpu = helper.num_of_cpu();
     auto ncha = helper.num_of_cha();
     LOG(DEBUG) << fmt::format("tnum:{}, intrval:{}\n", tnum, interval);
-    /** Hardcoded weights for different latency */
-    std::vector<int> weight_vec = {400, 800, 1200, 1600, 2000, 2400, 3000};
-    std::vector<double> weight = {88, 88, 88, 88, 88, 88, 88};
     for (auto const &[idx, value] : weight | enumerate) {
         LOG(DEBUG) << fmt::format("weight[{}]:{}\n", weight_vec[idx], value);
     }
@@ -115,7 +126,8 @@ int main(int argc, char *argv[]) {
     int sock;
     struct sockaddr_un addr {};
 
-    sock = socket(AF_UNIX, SOCK_DGRAM, 0); // been got by socket if it's not main thread and synchro
+    /** Hove been got by socket if it's not main thread and synchro */
+    sock = socket(AF_UNIX, SOCK_DGRAM, 0);
     addr.sun_family = AF_UNIX;
     strcpy(addr.sun_path, SOCKET_PATH);
     remove(addr.sun_path);
@@ -128,53 +140,40 @@ int main(int argc, char *argv[]) {
     LOG(DEBUG) << fmt::format("num_of_cpu:{}\n", ncpu);
     Monitors monitors{tnum, &use_cpuset, helper};
 
-    // https://stackoverflow.com/questions/24796266/tokenizing-a-string-to-pass-as-char-into-execve
+    /** Reinterpret the input for the argv argc */
     char cmd_buf[1024] = {0};
     strncpy(cmd_buf, target.c_str(), sizeof(cmd_buf));
-
-    /* This strtok_r() call puts '\0' after the first token in the buffer,
-     * It saves the state to the strtok_state and subsequent calls resume from that point. */
     char *strtok_state = nullptr;
     char *filename = strtok_r(cmd_buf, " ", &strtok_state);
-
-    /* Allocate an array of pointers.
-     * We will make them point to certain locations inside the cmd_buf. */
     char *args[32] = {nullptr};
     args[0] = filename;
-    /* loop the strtok_r() call while there are tokens and free space in the array */
     size_t current_arg_idx;
     for (current_arg_idx = 1; current_arg_idx < 32; ++current_arg_idx) {
-        /* Note that the first argument to strtok_r() is nullptr.
-         * That means resume from a point saved in the strtok_state. */
         char *current_arg = strtok_r(nullptr, " ", &strtok_state);
         if (current_arg == nullptr) {
             break;
         }
-
         args[current_arg_idx] = current_arg;
         LOG(INFO) << fmt::format("args[{}] = {}\n", current_arg_idx, args[current_arg_idx]);
     }
 
-    /* zombie avoid */
+    /** Create target process */
     Helper::detach_children();
-    /* create target process */
     auto t_process = fork();
     if (t_process < 0) {
         LOG(ERROR) << "Fork: failed to create target process";
         exit(1);
     } else if (t_process == 0) {
         execv(filename, args);
-        /* We do not need to check the return value */
         LOG(ERROR) << "Exec: failed to create target process\n";
         exit(1);
     }
-    // In case of process, use SIGSTOP.
+    /** In case of process, use SIGSTOP. */
     auto res = monitors.enable(t_process, t_process, true, pebsperiod, tnum, mode);
     if (res == -1) {
         LOG(ERROR) << fmt::format("Failed to enable monitor\n");
         exit(0);
     } else if (res < 0) {
-        // pid not found. might be already terminated.
         LOG(DEBUG) << fmt::format("pid({}) not found. might be already terminated.\n", t_process);
     }
     cur_processes++;
@@ -187,27 +186,26 @@ int main(int argc, char *argv[]) {
         exit(0);
     }
 
-    // Wait all the target processes until emulation process initialized.
+    /** Wait all the target processes until emulation process initialized. */
     monitors.stop_all(cur_processes);
 
-    /* get CPU information */
+    /** Get CPU information */
     if (!get_cpu_info(&monitors.mon[0].before->cpuinfo)) {
         LOG(DEBUG) << "Failed to obtain CPU information.\n";
     }
-
-    /* check the CPU model */
     auto perf_config =
         helper.detect_model(monitors.mon[0].before->cpuinfo.cpu_model, pmu_name, pmu_config1, pmu_config2);
-
     PMUInfo pmu{t_process, &helper, &perf_config};
 
-    /* Caculate epoch time */
+    /*% Caculate epoch time */
     struct timespec waittime {};
     waittime.tv_sec = interval / 1000;
     waittime.tv_nsec = (interval % 1000) * 1000000;
 
     LOG(DEBUG) << "The target process starts running.\n";
     LOG(DEBUG) << fmt::format("set nano sec = {}\n", waittime.tv_nsec);
+    LOG(TRACE) << fmt::format("{}\n", monitors);
+    monitors.print_flag = false;
 
     /* read CHA params */
     for (const auto &mon : monitors.mon) {
@@ -225,7 +223,7 @@ int main(int argc, char *argv[]) {
     struct timespec sleep_start_ts {
     }, sleep_end_ts{};
 
-    // Wait all the target processes until emulation process initialized.
+    /** Wait all the target processes until emulation process initialized. */
     monitors.run_all(cur_processes);
     for (int i = 0; i < cur_processes; i++) {
         clock_gettime(CLOCK_MONOTONIC, &monitors.mon[i].start_exec_ts);
@@ -259,7 +257,7 @@ int main(int argc, char *argv[]) {
             }
         }
         clock_gettime(CLOCK_MONOTONIC, &sleep_end_ts);
-
+        LOG(TRACE) << fmt::format("{}\n", monitors);
         for (auto const &[i, mon] : monitors.mon | enumerate) {
             if (mon.status == MONITOR_DISABLE) {
                 continue;
@@ -272,6 +270,7 @@ int main(int argc, char *argv[]) {
                 /* read CHA values */
                 //{
                 uint64_t wb_cnt = 0;
+                std::vector<uint64_t> cha_vec{};
                 //    for (int j = 0; j < ncha; j++) {
                 //        pmu.chas[j].read_cha_elems(&mon.after->chas[j]);
                 //        wb_cnt += mon.after->chas[j].cpu_llc_wb - mon.before->chas[j].cpu_llc_wb;
@@ -281,7 +280,8 @@ int main(int argc, char *argv[]) {
                 for (int j = 0; j < ncha; j++) {
                     for (auto const &[idx, value] : pmu.chas | enumerate) {
                         value.read_cha_elems(&mon.after->chas[j]);
-                           wb_cnt +=std::get<0>(mon.after->chas[j]) - std::get<0>(mon.before->chas[j]);
+                        wb_cnt = mon.after->chas[j].cha[idx] - mon.before->chas[j].cha[idx];
+                        cha_vec.emplace_back(mon.after->chas[j].cha[idx] - mon.before->chas[j].cha[idx]);
                     }
                 }
                 /*** read CPU params */
@@ -317,17 +317,16 @@ int main(int argc, char *argv[]) {
                 // llcmiss_wb = wb_cnt * std::lround(((double)target_llcmiss) / ((double)read_config));
                 // TODO Calculate through the vector
                 uint64_t llcmiss_ro = 0;
-                // if (target_llcmiss < llcmiss_wb) {
-                //     LOG(ERROR) << fmt::format("[{}:{}:{}] cpus_dram_rds {}, llcmiss_wb {}, target_llcmiss {}\n", i,
-                //                               mon.tgid, mon.tid, read_config, llcmiss_wb, target_llcmiss);
-                //     llcmiss_wb = target_llcmiss;
-                //     llcmiss_ro = 0;
-                // } else {
-                //     llcmiss_ro = target_llcmiss - llcmiss_wb;
-                // }
-                // LOG(DEBUG) << fmt::format("[{}:{}:{}]llcmiss_wb={}, llcmiss_ro={}\n", i, mon.tgid, mon.tid,
-                // llcmiss_wb,
-                //                           llcmiss_ro);
+                if (target_llcmiss < llcmiss_wb) { // tunning
+                    LOG(ERROR) << fmt::format("[{}:{}:{}] cpus_dram_rds {}, llcmiss_wb {}, target_llcmiss {}\n", i,
+                                              mon.tgid, mon.tid, read_config, llcmiss_wb, target_llcmiss);
+                    llcmiss_wb = target_llcmiss;
+                    llcmiss_ro = 0;
+                } else {
+                    llcmiss_ro = target_llcmiss - llcmiss_wb;
+                }
+                LOG(DEBUG) << fmt::format("[{}:{}:{}]llcmiss_wb={}, llcmiss_ro={}\n", i, mon.tgid, mon.tid, llcmiss_wb,
+                                          llcmiss_ro);
 
                 uint64_t mastall_wb = 0;
                 uint64_t mastall_ro = 0;
@@ -444,7 +443,6 @@ int main(int argc, char *argv[]) {
         if (monitors.check_all_terminated(tnum)) {
             break;
         }
-        LOG(TRACE) << fmt::format("{}\n", monitors);
     } // End while-loop for emulation
 
     return 0;

@@ -98,7 +98,7 @@ int PEBS::read(CXLController *controller, struct PEBSElem *elem) {
                                               data->value, data->timestamp);
                     controller->insert(data->timestamp, data->phys_addr, data->addr, 0);
                     elem->total++;
-                    elem->llcmiss = data->value;
+                    elem->llcmiss = data->value; // this is the number of llc miss
                 }
                 break;
             case PERF_RECORD_THROTTLE:

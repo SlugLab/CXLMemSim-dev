@@ -3,7 +3,7 @@
 //
 
 #include "monitor.h"
-Monitors::Monitors(int tnum, cpu_set_t *use_cpuset, Helper h) {
+Monitors::Monitors(int tnum, cpu_set_t *use_cpuset, Helper h) : print_flag(true) {
     mon = std::vector<Monitor>(tnum, Monitor(h));
     /** Init mon */
     for (int i = 0; i < tnum; i++) {
@@ -239,8 +239,9 @@ Monitor::Monitor(Helper h) // which one to hook
     : tgid(0), tid(0), cpu_core(0), status(0), injected_delay({0}), wasted_delay({0}), squabble_delay({0}),
       before(nullptr), after(nullptr), total_delay(0), start_exec_ts({0}), end_exec_ts({0}), is_process(false),
       pebs_ctx(nullptr) {
+
     for (auto &j : this->elem) {
         j.cpus = std::vector<CPUElem>(h.num_of_cpu());
-        j.chas = std::vector<CHAElem>(h.num_of_cha());
+        j.chas = std::vector<CHAElem>(h.num_of_cpu());
     }
 }

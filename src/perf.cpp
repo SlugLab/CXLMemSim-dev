@@ -28,20 +28,20 @@ PerfInfo::~PerfInfo() {
 ssize_t PerfInfo::read_pmu(uint64_t *value) {
     ssize_t r = read(this->fd, value, sizeof(*value));
     if (r < 0) {
-        LOG(ERROR) << "read";
+        LOG(ERROR) << "read\n";
     }
     return r;
 }
 int PerfInfo::start() {
     if (ioctl(this->fd, PERF_EVENT_IOC_ENABLE, 0) < 0) {
-        LOG(ERROR) << "ioctl";
+        LOG(ERROR) << "ioctl\n";
         return -1;
     }
     return 0;
 }
 int PerfInfo::stop() {
     if (ioctl(this->fd, PERF_EVENT_IOC_DISABLE, 0) < 0) {
-        LOG(ERROR) << "ioctl";
+        LOG(ERROR) << "ioctl\n";
         return -1;
     }
     return 0;

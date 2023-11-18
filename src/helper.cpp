@@ -5,12 +5,26 @@
 #include <string>
 #include <vector>
 
-struct ModelContext model_ctx[] = {CPU_MDL_SPR, {"/sys/bus/event_source/devices/uncore_cha_%u/type",}
-                                   ,{CPU_MDL_END, {nullptr}}};
+struct ModelContext model_ctx[] = {CPU_MDL_BDX,
+                                   {
+                                       "/sys/bus/event_source/devices/uncore_cbo_%u/type",
+                                   },
+                                   CPU_MDL_SKX,
+                                   {
+                                       "/sys/bus/event_source/devices/uncore_cha_%u/type",
+                                   },
+                                   CPU_MDL_SPR,
+                                   {
+                                       "/sys/bus/event_source/devices/uncore_cha_%u/type",
+                                   },
+                                   CPU_MDL_ADL,
+                                   {
+                                       "/sys/bus/event_source/devices/uncore_cbo_%u/type",
+                                   },
+                                   {CPU_MDL_END, {""}}};
 
 int Helper::num_of_cpu() {
     int ncpu = sysconf(_SC_NPROCESSORS_ONLN);
-    ncpu = 24;
     if (ncpu < 0) {
         LOG(ERROR) << "sysconf";
     }
@@ -19,14 +33,13 @@ int Helper::num_of_cpu() {
 
 int Helper::num_of_cha() {
     int ncha = 0;
-    for (; ncha < 24; ++ncha) {
+    for (; ncha < cpu; ++ncha) {
         std::string path = fmt::format("/sys/bus/event_source/devices/uncore_cha_{}/type", ncha);
         //         LOG(DEBUG) << path;
         if (!std::filesystem::exists(path)) {
             break;
         }
     }
-    LOG(DEBUG) << fmt::format("num_of_cha={}\n", ncha);
     return ncha;
 }
 
@@ -46,27 +59,30 @@ double Helper::cpu_frequency() {
 
     return cpu_mhz;
 }
-PerfConfig Helper::detect_model(uint32_t model, const std::vector<std::string>& perf_name, const std::vector<uint64_t>& perf_conf1,
-                                const std::vector<uint64_t>& perf_conf2) {
-   int i = 0;
-   LOG(INFO) << fmt::format("Detecting model...{}\n", model);
-   while (model_ctx[i].model != CPU_MDL_END) {
-       if (model_ctx[i].model == model) {
-           this->perf_conf = model_ctx[i].perf_conf;
-           for (int j = 0; j < 4; ++j) {
-               this->perf_conf.cha[j] = std::make_tuple(perf_name[j],perf_conf1[j], perf_conf2[j]);
-           }
-           for (int j = 0; j < 4; ++j) {
-               this->perf_conf.cpu[j] = std::make_tuple(perf_name[j+4],perf_conf1[j+4], perf_conf2[j+4]);
-           }
-           return model_ctx[i].perf_conf;
-       }
-       i++;
-   }
-   LOG(ERROR) << "Failed to execute. This CPU model is not supported. Refer to perfmon or pcm to add support\n";
-   throw;
+PerfConfig Helper::detect_model(uint32_t model, const std::vector<std::string> &perf_name,
+                                const std::vector<uint64_t> &perf_conf1, const std::vector<uint64_t> &perf_conf2) {
+    int i = 0;
+    LOG(INFO) << fmt::format("Detecting model...{}\n", model);
+    while (model_ctx[i].model != CPU_MDL_END) {
+        if (model_ctx[i].model == model) {
+            this->perf_conf = model_ctx[i].perf_conf;
+            for (int j = 0; j < 4; ++j) {
+                this->perf_conf.cha[j] = std::make_tuple(perf_name[j], perf_conf1[j], perf_conf2[j]);
+            }
+            for (int j = 0; j < 4; ++j) {
+                this->perf_conf.cpu[j] = std::make_tuple(perf_name[j + 4], perf_conf1[j + 4], perf_conf2[j + 4]);
+            }
+            return model_ctx[i].perf_conf;
+        }
+        i++;
+    }
+    LOG(ERROR) << "Failed to execute. This CPU model is not supported. Refer to perfmon or pcm to add support\n";
+    throw;
 }
-Helper::Helper() : perf_conf({}) {}
+Helper::Helper() {
+    cpu = num_of_cpu();
+    cha = num_of_cha();
+}
 void Helper::noop_handler(int sig) { ; }
 void Helper::detach_children() {
     struct sigaction sa {};
@@ -81,7 +97,7 @@ void Helper::detach_children() {
 int PMUInfo::start_all_pmcs() {
     /* enable all pmcs to count */
     int i, r;
-    for (i = 0; i < helper->num_of_cpu(); i++) {
+    for (i = 0; i < helper->cpu; i++) {
         r = this->cpus[i].start();
         if (r < 0) {
             LOG(ERROR) << fmt::format("start failed. cpu:{}\n", i);
@@ -98,8 +114,6 @@ PMUInfo::PMUInfo(pid_t pid, Helper *helper, struct PerfConfig *perf_config) : he
     for (i = 0; i < n; i++) {
         this->chas.emplace_back(i, perf_config);
     }
-    //    Uncore *incore = new Uncore(0, perf_config);
-    //    incore->perf[0].start();
     // unfreeze counters
     r = this->unfreeze_counters_cha_all();
     if (r < 0) {

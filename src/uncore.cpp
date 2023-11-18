@@ -2,13 +2,13 @@
 // Created by victoryang00 on 1/12/23.
 //
 #include "uncore.h"
-extern ModelContext model_ctx[];
+extern Helper helper;
 Uncore::Uncore(const uint32_t unc_idx, PerfConfig *perf_config) {
     unsigned long value;
     int r;
     char path[64], buf[32];
     memset(path, 0, sizeof(path));
-    snprintf(path, sizeof(path) - 1, perf_config->path_format_cha_type, unc_idx);
+    snprintf(path, sizeof(path) - 1, perf_config->path_format_cha_type.c_str(), unc_idx);
 
     fd = open(path, O_RDONLY);
     if (fd < 0) {
@@ -72,7 +72,7 @@ int Uncore::read_cha_elems(struct CHAElem *elem) {
     for (auto const &[k, v] : this->perf | enumerate) {
         r = v->read_pmu(&elem->cha[k]);
         if (r < 0) {
-            LOG(ERROR) << fmt::format("read cpu_elems[{}] failed.\n", std::get<0>(model_ctx[0].perf_conf.cha[k]));
+            LOG(ERROR) << fmt::format("read cpu_elems[{}] failed.\n", std::get<0>(helper.perf_conf.cha[k]));
             return r;
         }
     }

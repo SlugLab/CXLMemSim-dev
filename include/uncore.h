@@ -14,7 +14,7 @@ class Uncore {
 public:
     uint32_t unc_idx{};
     int fd{};
-    std::array<PerfInfo*, 4> perf{nullptr, nullptr, nullptr, nullptr};
+    std::array<PerfInfo *, 4> perf{nullptr, nullptr, nullptr, nullptr};
     Uncore(uint32_t unc_idx, PerfConfig *perf_config);
 
     ~Uncore() = default;

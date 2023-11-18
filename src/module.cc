@@ -18,10 +18,10 @@ typedef struct cxlmemsim_param {
 } cxlmemsim_param_t;
 
 cxlmemsim_param_t param;
-
+// TODO: add a socket to communicate with the simulator
 void call_socket_with_int3() {
     const char *message = "Hello, server!";
-    if (sendto(param.sock, message, strlen(message), 0, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+    if (sendto(param.sock, message, strlen(message), 0, (struct sockaddr *)&param.addr, sizeof(&param.addr)) < 0) {
         perror("sendto");
         exit(1);
     }
@@ -35,9 +35,38 @@ void call_socket_with_int3() {
 }
 
 __attribute__((visibility("default"))) int pthread_create(pthread_t *thread, const pthread_attr_t *attr,
-                                                          void *(*start_routine)(void *), void *arg){
-
+                                                          void *(*start_routine)(void *), void *arg) {
+    LOG(INFO) << "pthread_create";
+    return 0;
 };
+
+__attribute__((visibility("default"))) int pthread_join(pthread_t thread, void **retval) {
+    LOG(INFO) << "pthread_join";
+    return 0;
+};
+
+__attribute__((visibility("default"))) int pthread_detach(pthread_t thread) {
+    LOG(INFO) << "pthread_detach";
+    return 0;
+};
+
+__attribute__((visibility("default"))) void *mmap(void *addr, size_t length, int prot, int flags, int fd,
+                                                  off_t offset) {
+    LOG(INFO) << "mmap";
+    return nullptr;
+};
+
+__attribute__((visibility("default"))) int munmap(void *addr, size_t length) {
+    LOG(INFO) << "munmap";
+    return 0;
+};
+
+__attribute__((visibility("default"))) void *malloc(size_t size) {
+    LOG(INFO) << "malloc";
+    return 0;
+};
+
+__attribute__((visibility("default"))) void free(void *ptr) { LOG(INFO) << "free"; };
 
 __attribute__((constructor)) static void cxlmemsim_constructor() {
     LOG(INFO) << "init";
@@ -47,6 +76,7 @@ __attribute__((constructor)) static void cxlmemsim_constructor() {
     memset(&addr, 0, sizeof(struct sockaddr_un));
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path) - 1);
+    // save the original impl of mmap
 }
 
 __attribute__((destructor)) void cxlmemsim_destructor() {

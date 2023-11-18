@@ -11,7 +11,7 @@
 
 // Saturate Local 90% and start interleave accrodingly the remote with topology
 // Say 3 remote, 2 200ns, 1 400ns, will give 40% 40% 20%
-class InterleavePolicy : public Policy {
+class InterleavePolicy : public AllocationPolicy {
 
 public:
     InterleavePolicy();

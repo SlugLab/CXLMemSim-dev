@@ -32,8 +32,8 @@ void CXLController::construct_topo(std::string_view newick_tree) {
     }
 }
 
-CXLController::CXLController(Policy *p, int capacity, bool is_page, int epoch)
-    : CXLSwitch(0), capacity(capacity), policy(p), is_page(is_page) {
+CXLController::CXLController(AllocationPolicy *p, int capacity, enum page_type page_type_, int epoch)
+    : CXLSwitch(0), capacity(capacity), policy(p), page_type_(static_cast<page_type>(page_type_)) {
     for (auto switch_ : this->switches) {
         switch_->set_epoch(epoch);
     }
@@ -42,7 +42,7 @@ CXLController::CXLController(Policy *p, int capacity, bool is_page, int epoch)
     }
     // TODO get LRU wb
     // TODO BW type series
-    
+
     // deferentiate R/W for multireader multi writer
 }
 
@@ -123,3 +123,5 @@ std::tuple<double, std::vector<uint64_t>> CXLController::calculate_congestion() 
     return CXLSwitch::calculate_congestion();
 }
 void CXLController::set_epoch(int epoch) { CXLSwitch::set_epoch(epoch); }
+// TODO: impl me
+MigrationPolicy::MigrationPolicy() {}

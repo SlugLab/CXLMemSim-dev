@@ -21,6 +21,7 @@
 #include <string>
 
 #define SOCKET_PATH "/tmp/cxl_mem_simulator.sock"
+#define OUTPUT_PMU_PATH "./output_pmu.csv"
 
 /** Barry's work*/
 struct Enumerate : std::ranges::range_adaptor_closure<Enumerate> {
@@ -42,6 +43,7 @@ public:
         char *logv = std::getenv("LOGV");
         if (logv) {
             env_log_level = std::stoi(logv);
+            file_ = std::fstream(OUTPUT_PMU_PATH);
         } else {
             env_log_level = 4;
         }

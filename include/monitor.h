@@ -25,10 +25,13 @@ enum MONITOR_STATUS {
     MONITOR_UNKNOWN = 0xff
 };
 
+extern Helper helper;
+
 class Monitor;
 class Monitors {
 public:
     std::vector<Monitor> mon;
+    bool print_flag;
     Monitors(int tnum, cpu_set_t *use_cpuset, Helper h);
     ~Monitors() = default;
 
@@ -36,9 +39,9 @@ public:
     void run_all(int);
     int enable(uint32_t, uint32_t, bool, uint64_t, int32_t, bool is_page);
     void disable(uint32_t target);
-    int terminate( uint32_t,  uint32_t,  int32_t);
-    bool check_all_terminated( uint32_t);
-    bool check_continue( uint32_t,  struct timespec);
+    int terminate(uint32_t, uint32_t, int32_t);
+    bool check_all_terminated(uint32_t);
+    bool check_continue(uint32_t, struct timespec);
 };
 
 class Monitor {
@@ -50,7 +53,7 @@ public:
     struct timespec injected_delay; // recorded time for injected
     struct timespec wasted_delay; // recorded time for calling between continue and calculation
     struct timespec squabble_delay; // inj-was
-    struct Elem elem[2];
+    struct Elem elem[2]; // before & after
     struct Elem *before, *after;
     double total_delay;
     struct timespec start_exec_ts, end_exec_ts;
@@ -70,23 +73,43 @@ template <> struct fmt::formatter<Monitors> {
     constexpr auto parse(auto &ctx) { return f.parse(ctx); }
 
     auto format(Monitors const &p, auto &ctx) const {
-        auto out = fmt::format_to(ctx.out(), "(x=");
-        ctx.advance_to(out);
-        for (auto &i : p.mon) {
-            for (auto &j : i.elem) {
-                // j.cpus = std::vector<CPUElem>(h.cpu);// This pid's core
-                // j.chas = std::vector<CHAElem>(h.cha);// This pid's core
-                for (auto &k : j.cpus) {
-                    out = fmt::format_to(out, "");
+        auto out = fmt::format_to(ctx.out(), "");
+        if (!p.print_flag) {
+            for (auto const &[mon_id, mon] : p.mon | enumerate) {
+                for (int core_idx = 0; core_idx < helper.cha; core_idx++) {
+                    for (int cha_idx = 0; cha_idx < helper.perf_conf.cha.size(); cha_idx++) {
+                        if (cha_idx == helper.cha - 1 && core_idx == helper.perf_conf.cha.size() - 1) {
+                            out = fmt::format_to(out, "{}_{}_{}", std::get<0>(helper.perf_conf.cha[cha_idx]), cha_idx,
+                                                 core_idx);
+                        } else {
+                            out = fmt::format_to(out, "{}_{}_{},", std::get<0>(helper.perf_conf.cha[cha_idx]), cha_idx,
+                                                 core_idx);
+                        }
+                    }
                 }
-                for (auto &k : j.chas) {
-                    out = fmt::format_to(out, "");
+            }
+        } else {
+            for (auto const &[mon_id, mon] : p.mon | enumerate) {
+                for (int core_idx = 0; core_idx < helper.cha; core_idx++) {
+
+                    for (int cha_idx = 0; cha_idx < helper.perf_conf.cha.size(); cha_idx++) {
+                        if (cha_idx == helper.cha - 1 && core_idx == helper.perf_conf.cha.size() - 1) {
+                            out = fmt::format_to(out, "{}",
+                                                 mon.after->chas[core_idx].cha[cha_idx] -
+                                                     mon.before->chas[core_idx].cha[cha_idx]);
+                        } else {
+                            out = fmt::format_to(out, "{},",
+                                                 mon.after->chas[core_idx].cha[cha_idx] -
+                                                     mon.before->chas[core_idx].cha[cha_idx]);
+                        }
+                    }
                 }
             } // visitor mode write to the file
-            *out++ = ')';
-            return out;
         }
-    }
+        *out++ = '\n';
+        ctx.advance_to(out);
+        return out;
+    };
 };
 
 #endif // SLUGALLOCATOR_MONITOR_H

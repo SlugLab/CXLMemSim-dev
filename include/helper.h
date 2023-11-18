@@ -29,10 +29,10 @@ class Incore;
 class Uncore;
 class Helper;
 
-struct PerfConfig{
-    char *path_format_cha_type{};
-    std::array<std::tuple<std::string,uint64_t, uint64_t>,4> cha;
-    std::array<std::tuple<std::string,uint64_t, uint64_t>,4> cpu;
+struct PerfConfig {
+    std::string path_format_cha_type{};
+    std::array<std::tuple<std::string, uint64_t, uint64_t>, 4> cha{};
+    std::array<std::tuple<std::string, uint64_t, uint64_t>, 4> cpu{};
 };
 struct ModelContext {
     uint32_t model{};
@@ -67,7 +67,7 @@ struct CHAElem {
     // uint64_t cpu_llc_miss;
     // uint64_t cpu_read_bandwidth;
     // uint64_t cpu_llc_wb;
-    std::vector<uint64_t> cha;
+    std::array<uint64_t, 4> cha;
 };
 
 struct CPUElem {
@@ -75,7 +75,7 @@ struct CPUElem {
     // uint64_t cpu_llcl_hits;
     // uint64_t cpu_llcl_miss;
     // uint64_t cpu_bandwidth;
-    std::vector<uint64_t> cpu;
+    std::array<uint64_t, 4> cpu;
 };
 
 struct PEBSElem {
@@ -112,15 +112,17 @@ public:
 
 class Helper {
 public:
-    PerfConfig perf_conf;
+    PerfConfig perf_conf{};
     Helper();
+    int cpu;
+    int cha;
     int num_of_cpu();
     int num_of_cha();
     static void detach_children();
     static void noop_handler(int signum);
     double cpu_frequency();
-    PerfConfig detect_model(uint32_t model, const std::vector<std::string>& perf_name, const std::vector<uint64_t>& perf_conf1,
-                            const std::vector<uint64_t>& perf_conf2);
+    PerfConfig detect_model(uint32_t model, const std::vector<std::string> &perf_name,
+                            const std::vector<uint64_t> &perf_conf1, const std::vector<uint64_t> &perf_conf2);
 };
 
 #endif // CXL_MEM_SIMULATOR_HELPER_H
