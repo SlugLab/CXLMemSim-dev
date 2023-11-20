@@ -18,16 +18,15 @@
 
 Helper helper{};
 int main(int argc, char *argv[]) {
-
     cxxopts::Options options("CXLMemSim", "For simulation of CXL.mem Type 3 on Sapphire Rapids");
     options.add_options()("t,target", "The script file to execute",
                           cxxopts::value<std::string>()->default_value("./microbench/ld_simple"))(
         "h,help", "Help for CXLMemSim", cxxopts::value<bool>()->default_value("false"))(
-        "i,interval", "The value for epoch value", cxxopts::value<int>()->default_value("5"))(
+        "i,interval", "The value for epoch value", cxxopts::value<int>()->default_value("1000"))(
         "s,source", "Collection Phase or Validation Phase", cxxopts::value<bool>()->default_value("false"))(
         "c,cpuset", "The CPUSET for CPU to set affinity on and only run the target process on those CPUs",
-        cxxopts::value<std::vector<int>>()->default_value("0,1,2,3,4,5,6,7"))(
-        "d,dramlatency", "The current platform's dram latency", cxxopts::value<double>()->default_value("110"))(
+        cxxopts::value<std::vector<int>>()->default_value("0"))("d,dramlatency", "The current platform's dram latency",
+                                                                cxxopts::value<double>()->default_value("110"))(
         "p,pebsperiod", "The pebs sample period", cxxopts::value<int>()->default_value("100"))(
         "m,mode", "Page mode or cacheline mode", cxxopts::value<std::string>()->default_value("p"))(
         "o,topology", "The newick tree input for the CXL memory expander topology",
@@ -41,12 +40,11 @@ int main(int argc, char *argv[]) {
         cxxopts::value<std::vector<int>>()->default_value("50,50,50,50,50,50"))(
         "x,pmu_name", "The input for Collected PMU",
         cxxopts::value<std::vector<std::string>>()->default_value(
-            "llc_write_back,all_dram_rds,l2stall,l2stall,llcl_hits,llcl_miss,bandwidth_all,bandwidth_write"))(
+            "tatal_stall,all_dram_rds,l2stall,snoop_fw_wb,llcl_hits,llcl_miss,null,null"))(
         "y,pmu_config1", "The config0 for Collected PMU",
-        cxxopts::value<std::vector<uint64_t>>()->default_value(
-            "0x10b0,0x01b7,0x50005a3,0x50005a3,0x08d2,0x01d3,0xff05,0xf005"))(
+        cxxopts::value<std::vector<uint64_t>>()->default_value("0x04004a3,0x01b7,0x05005a3,0x205c,0x08d2,0x01d3,0,0"))(
         "z,pmu_config2", "The config1 for Collected PMU",
-        cxxopts::value<std::vector<uint64_t>>()->default_value("0x1,0x63FC00491,0,0,0,0,0,0"))(
+        cxxopts::value<std::vector<uint64_t>>()->default_value("0,0x63FC00491,0,0,0,0,0,0"))(
         "w,weight", "The weight for Linear Regression",
         cxxopts::value<std::vector<double>>()->default_value("88, 88, 88, 88, 88, 88, 88"))(
         "v,weight_vec", "The weight vector for Linear Regression",
@@ -90,12 +88,13 @@ int main(int argc, char *argv[]) {
     uint64_t use_cpus = 0;
     cpu_set_t use_cpuset;
     CPU_ZERO(&use_cpuset);
-    for (int i = 0; i < helper.cha; i++) {
+    for (auto i : cpuset) {
         if (!use_cpus || use_cpus & 1UL << i) {
             CPU_SET(i, &use_cpuset);
             LOG(DEBUG) << fmt::format("use cpuid: {}{}\n", i, use_cpus);
         }
     }
+
     auto tnum = CPU_COUNT(&use_cpuset);
     auto cur_processes = 0;
     auto ncpu = helper.num_of_cpu();
@@ -138,7 +137,11 @@ int main(int argc, char *argv[]) {
     LOG(DEBUG) << fmt::format("cpu_freq:{}\n", frequency);
     LOG(DEBUG) << fmt::format("num_of_cha:{}\n", ncha);
     LOG(DEBUG) << fmt::format("num_of_cpu:{}\n", ncpu);
-    Monitors monitors{tnum, &use_cpuset, helper};
+    for (auto j : cpuset) {
+        helper.used_cpu.push_back(cpuset[j]);
+        helper.used_cha.push_back(cpuset[j]);
+    }
+    Monitors monitors{tnum, &use_cpuset};
 
     /** Reinterpret the input for the argv argc */
     char cmd_buf[1024] = {0};
@@ -164,7 +167,7 @@ int main(int argc, char *argv[]) {
         LOG(ERROR) << "Fork: failed to create target process";
         exit(1);
     } else if (t_process == 0) {
-        execv(filename, args);
+        execv(filename, args); // taskset in lpace
         LOG(ERROR) << "Exec: failed to create target process\n";
         exit(1);
     }
@@ -256,9 +259,10 @@ int main(int argc, char *argv[]) {
                 }
             }
         }
-        clock_gettime(CLOCK_MONOTONIC, &sleep_end_ts);
-        LOG(TRACE) << fmt::format("{}\n", monitors);
+
+        uint64_t calibrated_delay;
         for (auto const &[i, mon] : monitors.mon | enumerate) {
+            // check other process
             if (mon.status == MONITOR_DISABLE) {
                 continue;
             }
@@ -277,10 +281,10 @@ int main(int argc, char *argv[]) {
                 //    }
                 //    LOG(INFO) << fmt::format("[{}:{}:{}] LLC_WB = {}\n", i, mon.tgid, mon.tid, wb_cnt);
                 //}
-                for (int j = 0; j < ncha; j++) {
+                for (int j = 0; j < helper.used_cha.size(); j++) {
                     for (auto const &[idx, value] : pmu.chas | enumerate) {
                         value.read_cha_elems(&mon.after->chas[j]);
-                        wb_cnt = mon.after->chas[j].cha[idx] - mon.before->chas[j].cha[idx];
+//                        wb_cnt = mon.after->chas[j].cha[idx] - mon.before->chas[j].cha[idx];
                         cha_vec.emplace_back(mon.after->chas[j].cha[idx] - mon.before->chas[j].cha[idx]);
                     }
                 }
@@ -377,7 +381,7 @@ int main(int argc, char *argv[]) {
                 diff_nsec += (end_ts.tv_sec - start_ts.tv_sec) * 1000000000 + (end_ts.tv_nsec - start_ts.tv_nsec);
                 LOG(DEBUG) << fmt::format("dif:{}\n", diff_nsec);
 
-                uint64_t calibrated_delay = (diff_nsec > emul_delay) ? 0 : emul_delay - diff_nsec;
+                calibrated_delay = (diff_nsec > emul_delay) ? 0 : emul_delay - diff_nsec;
                 // uint64_t calibrated_delay = emul_delay;
                 mon.total_delay += (double)calibrated_delay / 1000000000;
                 diff_nsec = 0;
@@ -387,18 +391,7 @@ int main(int argc, char *argv[]) {
                 mon.injected_delay.tv_nsec += std::lround(calibrated_delay % 1000000000);
                 LOG(DEBUG) << fmt::format("[{}:{}:{}]delay:{} , total delay:{}\n", i, mon.tgid, mon.tid,
                                           calibrated_delay, mon.total_delay);
-                auto swap = mon.before;
-                mon.before = mon.after;
-                mon.after = swap;
 
-                /* continue suspended processes: send SIGCONT */
-                // unfreeze_counters_cha_all(fds.msr[0]);
-                // start_pmc(&fds, i);
-                if (calibrated_delay == 0) {
-                    Monitor::clear_time(&mon.wasted_delay);
-                    Monitor::clear_time(&mon.injected_delay);
-                    mon.run();
-                }
             } else if (mon.status == MONITOR_OFF) {
                 // Wasted epoch time
                 clock_gettime(CLOCK_MONOTONIC, &start_ts);
@@ -440,6 +433,22 @@ int main(int argc, char *argv[]) {
                 }
             }
         } // End for-loop for all target processes
+        LOG(TRACE) << fmt::format("{}\n", monitors);
+        for (auto mon: monitors.mon){
+            if (mon.status == MONITOR_ON) {
+            auto swap = mon.before;
+            mon.before = mon.after;
+            mon.after = swap;
+
+            /* continue suspended processes: send SIGCONT */
+              // mon.unfreeze_counters_cha_all(fds.msr[0]);
+            // start_pmc(&fds, i);
+            if (calibrated_delay == 0) {
+                Monitor::clear_time(&mon.wasted_delay);
+                Monitor::clear_time(&mon.injected_delay);
+                mon.run();
+            }
+        }}
         if (monitors.check_all_terminated(tnum)) {
             break;
         }

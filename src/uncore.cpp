@@ -33,7 +33,7 @@ Uncore::Uncore(const uint32_t unc_idx, PerfConfig *perf_config) {
     //    this->perf[0] = init_uncore_perf(-1, unc_idx, std::get<1>(perf_config->cpu_1),
     //    std::get<2>(perf_config->cpu_1), value);
     for (auto const &[k, v] : this->perf | enumerate) {
-        v = init_uncore_perf(-1, unc_idx, std::get<1>(perf_config->cpu[k]), std::get<2>(perf_config->cpu[k]), value);
+        v = init_uncore_perf(-1, (int)unc_idx, std::get<1>(perf_config->cha[k]), std::get<2>(perf_config->cha[k]), value);
     }
     //    this->perf[1] = init_uncore_perf(-1, unc_idx, std::get<1>(perf_config->cpu_2),
     //    std::get<2>(perf_config->cpu_2), value); this->perf[2] = init_uncore_perf(-1, unc_idx,
@@ -42,39 +42,15 @@ Uncore::Uncore(const uint32_t unc_idx, PerfConfig *perf_config) {
 }
 
 int Uncore::read_cha_elems(struct CHAElem *elem) {
-    int r;
-
-    //    r = this->perf[0]->read_pmu(&elem->cpu_llc_hits);
-    //    if (r < 0) {
-    //        LOG(ERROR) << fmt::format("perf_read_pmu failed.\n");
-    //    }
-    //
-    //    LOG(DEBUG) << fmt::format("llc_hits:{}\n", elem->cpu_llc_hits);
-    //    r = this->perf[1]->read_pmu(&elem->cpu_llc_miss);
-    //    if (r < 0) {
-    //        LOG(ERROR) << fmt::format("perf_read_pmu failed.\n");
-    //    }
-    //
-    //    LOG(DEBUG) << fmt::format("llc_miss:{}\n", elem->cpu_llc_miss);
-    //    r = this->perf[2]->read_pmu(&elem->cpu_read_bandwidth);
-    //    if (r < 0) {
-    //        LOG(ERROR) << fmt::format("perf_read_pmu failed.\n");
-    //    }
-    //
-    //    LOG(DEBUG) << fmt::format("read_bandwidth:{}\n", elem->cpu_read_bandwidth);
-    //    r = this->perf[3]->read_pmu(&elem->cpu_llc_wb);
-    //    if (r < 0) {
-    //        LOG(ERROR) << fmt::format("perf_read_pmu failed.\n");
-    //    }
-    //
-    //    LOG(DEBUG) << fmt::format("llc_wb:{}\n", elem->cpu_llc_wb);
-    // for loop get out
-    for (auto const &[k, v] : this->perf | enumerate) {
-        r = v->read_pmu(&elem->cha[k]);
+    ssize_t r;
+    for (auto const &[idx, value] : this->perf | enumerate) {
+        r = value->read_pmu(&elem->cha[idx]);
         if (r < 0) {
-            LOG(ERROR) << fmt::format("read cpu_elems[{}] failed.\n", std::get<0>(helper.perf_conf.cha[k]));
+            LOG(ERROR) << fmt::format("read cha_elems[{}] failed.\n", std::get<0>(helper.perf_conf.cha[idx]));
             return r;
         }
+        LOG(DEBUG) << fmt::format("read cha_elems[{}]:{}\n", std::get<0>(helper.perf_conf.cha[idx]), elem->cha[idx]);
     }
-    return r;
+
+    return 0;
 }

@@ -24,7 +24,7 @@ struct perf_sample {
 long perf_event_open(struct perf_event_attr *event_attr, pid_t pid, int cpu, int group_fd, unsigned long flags) {
     return syscall(__NR_perf_event_open, event_attr, pid, cpu, group_fd, flags);
 }
-PEBS::PEBS(pid_t pid, uint64_t sample_period, bool is_page) : pid(pid), sample_period(sample_period), is_page(is_page) {
+PEBS::PEBS(pid_t pid, uint64_t sample_period) : pid(pid), sample_period(sample_period) {
     // Configure perf_event_attr struct
     struct perf_event_attr pe = {
         .type = PERF_TYPE_RAW,

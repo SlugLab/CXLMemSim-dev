@@ -62,7 +62,7 @@ main(int argc, const char *argv[])
     // Number of 1-byte elements in the array.
     const size_t kArraySize = 1024 * 1024 * 1024;
     // Number of iterations in the main loop.
-    const int kIterations = 1e9;
+    const int kIterations = 1e4;
     // The main vector/array used for emulating pointer chasing.
     unsigned char *buffer = new unsigned char[kArraySize];
     memset(buffer, kStride, kArraySize);

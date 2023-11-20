@@ -43,7 +43,7 @@ public:
         char *logv = std::getenv("LOGV");
         if (logv) {
             env_log_level = std::stoi(logv);
-            file_ = std::fstream(OUTPUT_PMU_PATH);
+            file_ = std::fstream(OUTPUT_PMU_PATH,std::ios::out|std::ios::app);
         } else {
             env_log_level = 4;
         }

@@ -116,6 +116,8 @@ public:
     Helper();
     int cpu;
     int cha;
+    std::vector<int> used_cpu;
+    std::vector<int> used_cha;
     int num_of_cpu();
     int num_of_cha();
     static void detach_children();

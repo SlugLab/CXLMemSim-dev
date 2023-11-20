@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import os
 
 
-# TODO Load from perf
+# TODO Load from perf concat file
 def get_perfmon(path: str) -> dict:
     with open(path, 'r') as f:
         reader = csv.reader(f)

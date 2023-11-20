@@ -3,14 +3,14 @@
 //
 
 #include "monitor.h"
-Monitors::Monitors(int tnum, cpu_set_t *use_cpuset, Helper h) : print_flag(true) {
-    mon = std::vector<Monitor>(tnum, Monitor(h));
+Monitors::Monitors(int tnum, cpu_set_t *use_cpuset) : print_flag(true) {
+    mon = std::vector<Monitor>(tnum, Monitor());
     /** Init mon */
     for (int i = 0; i < tnum; i++) {
         disable(i);
         int cpucnt = 0, cpuid;
-        for (cpuid = 0; cpuid < h.num_of_cpu(); cpuid++) {
-            if (CPU_ISSET(cpuid, use_cpuset)) {
+        for (cpuid = 0; cpuid < helper.num_of_cpu(); cpuid++) {
+            if (!CPU_ISSET(cpuid, use_cpuset)) {
                 if (i == cpucnt) {
                     mon[i].cpu_core = cpuid;
                     break;
@@ -81,7 +81,7 @@ int Monitors::enable(const uint32_t tgid, const uint32_t tid, bool is_process, u
 
     if (pebs_sample_period) {
         /* pebs start */
-        mon[target].pebs_ctx = new PEBS(tgid, pebs_sample_period, is_page);
+        mon[target].pebs_ctx = new PEBS(tgid, pebs_sample_period);
         LOG(DEBUG) << fmt::format("{}Process [tgid={}, tid={}]: enable to pebs.\n", target, mon[target].tgid,
                                   mon[target].tid); // multiple tid multiple pid
     }
@@ -235,13 +235,13 @@ void Monitor::clear_time(struct timespec *time) {
     time->tv_nsec = 0;
 }
 
-Monitor::Monitor(Helper h) // which one to hook
+Monitor::Monitor() // which one to hook
     : tgid(0), tid(0), cpu_core(0), status(0), injected_delay({0}), wasted_delay({0}), squabble_delay({0}),
       before(nullptr), after(nullptr), total_delay(0), start_exec_ts({0}), end_exec_ts({0}), is_process(false),
       pebs_ctx(nullptr) {
 
     for (auto &j : this->elem) {
-        j.cpus = std::vector<CPUElem>(h.num_of_cpu());
-        j.chas = std::vector<CHAElem>(h.num_of_cpu());
+        j.cpus = std::vector<CPUElem>(helper.used_cpu.size());
+        j.chas = std::vector<CHAElem>(helper.used_cha.size());
     }
 }

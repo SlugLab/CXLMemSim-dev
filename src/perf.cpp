@@ -53,7 +53,7 @@ PerfInfo *init_incore_perf(const pid_t pid, const int cpu, uint64_t conf, uint64
         .type = PERF_TYPE_RAW, .size = sizeof(attr), .config = conf, .disabled = 1, .inherit = 1, .config1 = conf1,
         .clockid = 0
     };
-    n_pid = pid;
+    n_pid = -1;
     n_cpu = cpu;
 
     group_fd = -1;
