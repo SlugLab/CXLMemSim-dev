@@ -31,6 +31,7 @@ def main():
     args = parser.parse_args()
 
     df = pd.read_csv(args.file_name)
+    print (df)
     means, error = get_mean_and_ebars(df, ["size"], "time")
 
 

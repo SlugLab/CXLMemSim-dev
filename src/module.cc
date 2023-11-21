@@ -12,17 +12,17 @@
 #include <unistd.h>
 
 #define CXLMEMSIM_EXPORT __attribute__((visibility("default")))
-#define CXLMEMSIM_CONSTRUCTOR(n) __attribute__((constructor ((n))))
+#define CXLMEMSIM_CONSTRUCTOR(n) __attribute__((constructor((n))))
 #define CXLMEMSIM_CONSTRUCTOR_PRIORITY 102
 #define SOCKET_PATH "/tmp/cxlmemsim.sock"
 
 typedef void *(*mmap_ptr_t)(void *, size_t, int, int, int, off_t);
 typedef int (*munmap_ptr_t)(void *, size_t);
-typedef void* (*malloc_ptr_t)(size_t);
-typedef int (*calloc_ptr_t)(void*, size_t);
-typedef void *(*realloc_ptr_t)(void*, size_t);
+typedef void *(*malloc_ptr_t)(size_t);
+typedef int (*calloc_ptr_t)(void *, size_t);
+typedef void *(*realloc_ptr_t)(void *, size_t);
 typedef int (*posix_memalign_ptr_t)(void **, size_t, size_t);
-typedef void* (*aligned_alloc_ptr_t)(size_t, size_t);
+typedef void *(*aligned_alloc_ptr_t)(size_t, size_t);
 typedef int (*free_ptr_t)(void *);
 typedef int (*pthread_create_ptr_t)(pthread_t *, const pthread_attr_t *, void *(*)(void *), void *);
 typedef int (*pthread_join_ptr_t)(pthread_t, void **);
@@ -45,17 +45,15 @@ typedef struct cxlmemsim_param {
     malloc_usable_size_ptr_t malloc_usable_size;
 } cxlmemsim_param_t;
 
-cxlmemsim_param_t param ={
-    .sock =0,
-    .addr ={},
-    .mmap = nullptr,
-    .munmap = nullptr,
-    .malloc = nullptr,
-    .free = nullptr,
-    .pthread_create = nullptr,
-    .pthread_join = nullptr,
-    .pthread_detach = nullptr
-};
+cxlmemsim_param_t param = {.sock = 0,
+                           .addr = {},
+                           .mmap = nullptr,
+                           .munmap = nullptr,
+                           .malloc = nullptr,
+                           .free = nullptr,
+                           .pthread_create = nullptr,
+                           .pthread_join = nullptr,
+                           .pthread_detach = nullptr};
 
 inline void call_socket_with_int3() {
     const char *message = "hello";
@@ -67,17 +65,17 @@ inline void call_socket_with_int3() {
     strcpy(param.addr.sun_path, SOCKET_PATH);
     remove(param.addr.sun_path);
     if (bind(param.sock, (struct sockaddr *)&param.addr, sizeof(param.addr)) == -1) { // can be blocked for multi thread
-        fprintf(stderr,"Failed to execute. Can't bind to a socket.\n");
+        fprintf(stderr, "Failed to execute. Can't bind to a socket.\n");
         exit(1);
     }
     __asm__("int $0x3");
 }
 
-inline int init_mmap_ptr(void){
+inline int init_mmap_ptr(void) {
     if (param.mmap == nullptr) {
         param.mmap = (mmap_ptr_t)dlsym(RTLD_NEXT, "mmap64");
         if (!param.mmap) {
-            fprintf(stderr,"Error in dlsym(RTLD_NEXT,\"mmap\")\n");
+            fprintf(stderr, "Error in dlsym(RTLD_NEXT,\"mmap\")\n");
             return -1;
         }
     }
@@ -87,9 +85,9 @@ inline int init_mmap_ptr(void){
 CXLMEMSIM_EXPORT
 void *malloc(size_t size) {
     call_socket_with_int3();
-    fprintf(stderr, "malloc%d\n",size);
+    fprintf(stderr, "malloc%d\n", size);
     call_socket_with_int3();
-    return param.malloc( size);
+    return param.malloc(size);
 }
 
 CXLMEMSIM_EXPORT
@@ -99,7 +97,7 @@ void *calloc(size_t num, size_t size) {
         return (void *)param.calloc;
     }
 
-    return param.malloc( num * size);
+    return param.malloc(num * size);
 }
 
 CXLMEMSIM_EXPORT
@@ -111,13 +109,13 @@ void *realloc(void *ptr, size_t size) {
 CXLMEMSIM_EXPORT
 int posix_memalign(void **memptr, size_t alignment, size_t size) {
     call_socket_with_int3();
-    return param.posix_memalign( memptr, alignment, size);
+    return param.posix_memalign(memptr, alignment, size);
 }
 
 CXLMEMSIM_EXPORT
 void *aligned_alloc(size_t alignment, size_t size) {
     call_socket_with_int3();
-    return param.aligned_alloc( alignment, size);
+    return param.aligned_alloc(alignment, size);
 }
 
 CXLMEMSIM_EXPORT
@@ -140,8 +138,7 @@ void *mmap(void *start, size_t len, int prot, int flags, int fd, off_t off) {
         fprintf(stderr, "init_mmap_ptr() failed\n");
         return ret;
     }
-        ret = param.mmap(start, len, prot, flags, fd, off);
-
+    ret = param.mmap(start, len, prot, flags, fd, off);
 
     return ret;
 }
@@ -153,11 +150,10 @@ void *mmap64(void *start, size_t len, int prot, int flags, int fd, off_t off) {
 }
 
 CXLMEMSIM_EXPORT
-size_t malloc_usable_size (void *ptr) { /* added for redis */
-call_socket_with_int3();
-    return param.malloc_usable_size( ptr);
+size_t malloc_usable_size(void *ptr) { /* added for redis */
+    call_socket_with_int3();
+    return param.malloc_usable_size(ptr);
 }
-
 
 CXLMEMSIM_CONSTRUCTOR(CXLMEMSIM_CONSTRUCTOR_PRIORITY) static void cxlmemsim_constructor() {
     // save the original impl of mmap
@@ -165,17 +161,17 @@ CXLMEMSIM_CONSTRUCTOR(CXLMEMSIM_CONSTRUCTOR_PRIORITY) static void cxlmemsim_cons
     init_mmap_ptr();
     param.munmap = (munmap_ptr_t)dlsym(RTLD_NEXT, "munmap");
     if (!param.munmap) {
-        fprintf(stderr,"Error in dlsym(RTLD_NEXT,\"munmap\")\n");
+        fprintf(stderr, "Error in dlsym(RTLD_NEXT,\"munmap\")\n");
         exit(-1);
     }
     param.malloc = (malloc_ptr_t)dlsym(RTLD_NEXT, "malloc");
     if (!param.malloc) {
-       fprintf(stderr, "Error in dlsym(RTLD_NEXT,\"malloc\")\n");
+        fprintf(stderr, "Error in dlsym(RTLD_NEXT,\"malloc\")\n");
         exit(-1);
     }
     param.free = (free_ptr_t)dlsym(RTLD_NEXT, "free");
     if (!param.free) {
-       fprintf(stderr, "Error in dlsym(RTLD_NEXT,\"free\")\n");
+        fprintf(stderr, "Error in dlsym(RTLD_NEXT,\"free\")\n");
         exit(-1);
     }
     param.calloc = (calloc_ptr_t)dlsym(RTLD_NEXT, "calloc");
@@ -190,30 +186,28 @@ CXLMEMSIM_CONSTRUCTOR(CXLMEMSIM_CONSTRUCTOR_PRIORITY) static void cxlmemsim_cons
     }
     param.pthread_create = (pthread_create_ptr_t)dlsym(RTLD_NEXT, "pthread_create");
     if (!param.pthread_create) {
-       fprintf(stderr, "Error in dlsym(RTLD_NEXT,\"pthread_create\")\n");
+        fprintf(stderr, "Error in dlsym(RTLD_NEXT,\"pthread_create\")\n");
         exit(-1);
     }
 
     param.pthread_detach = (pthread_detach_ptr_t)dlsym(RTLD_NEXT, "pthread_detach");
     if (!param.pthread_detach) {
-       fprintf(stderr, "Error in dlsym(RTLD_NEXT,\"pthread_detach\")\n");
+        fprintf(stderr, "Error in dlsym(RTLD_NEXT,\"pthread_detach\")\n");
         exit(-1);
     }
 
     param.pthread_join = (pthread_join_ptr_t)dlsym(RTLD_NEXT, "pthread_join");
     if (!param.pthread_join) {
-       fprintf(stderr, "Error in dlsym(RTLD_NEXT,\"pthread_join\")\n");
+        fprintf(stderr, "Error in dlsym(RTLD_NEXT,\"pthread_join\")\n");
         exit(-1);
     }
     param.sock = socket(AF_UNIX, SOCK_DGRAM, 0);
     /** register the original impl */
-    struct sockaddr_un addr{};
+    struct sockaddr_un addr {};
     memset(&addr, 0, sizeof(struct sockaddr_un));
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path) - 1);
     fprintf(stderr, "start\n");
 }
 
-__attribute__((destructor)) static void cxlmemsim_destructor() {
-   fprintf(stderr, "fini");
-}
+__attribute__((destructor)) static void cxlmemsim_destructor() { fprintf(stderr, "fini"); }

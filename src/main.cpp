@@ -274,7 +274,7 @@ int main(int argc, char *argv[]) {
                 /* read CHA values */
                 //{
                 uint64_t wb_cnt = 0;
-                std::vector<uint64_t> cha_vec{};
+                std::vector<uint64_t> cha_vec,cpu_vec{};
                 //    for (int j = 0; j < ncha; j++) {
                 //        pmu.chas[j].read_cha_elems(&mon.after->chas[j]);
                 //        wb_cnt += mon.after->chas[j].cpu_llc_wb - mon.before->chas[j].cpu_llc_wb;
@@ -301,15 +301,21 @@ int main(int argc, char *argv[]) {
                 }
                 // target_llcmiss = mon.after->pebs.total - mon.before->pebs.total;
 
-                // // target_l2stall =
-                // //     mon.after->cpus[mon.cpu_core].cpu_l2stall_t - mon.before->cpus[mon.cpu_core].cpu_l2stall_t;
-                // // target_llchits =
-                // //     mon.after->cpus[mon.cpu_core].cpu_llcl_hits - mon.before->cpus[mon.cpu_core].cpu_llcl_hits;
-                // for (auto const &[idx, value] : pmu.cpus | enumerate) {
-                //     target_l2stall += mon.after->cpus[idx].cpu_l2stall_t - mon.before->cpus[idx].cpu_l2stall_t;
-                //     target_llchits += mon.after->cpus[idx].cpu_llcl_hits - mon.before->cpus[idx].cpu_llcl_hits;
-                // }
-
+                 // target_l2stall =
+                 //     mon.after->cpus[mon.cpu_core].cpu_l2stall_t - mon.before->cpus[mon.cpu_core].cpu_l2stall_t;
+                 // target_llchits =
+                 //     mon.after->cpus[mon.cpu_core].cpu_llcl_hits - mon.before->cpus[mon.cpu_core].cpu_llcl_hits;
+//                 for (auto const &[idx, value] : pmu.cpus | enumerate) {
+//                     target_l2stall += mon.after->cpus[idx].cpu_l2stall_t - mon.before->cpus[idx].cpu_l2stall_t;
+//                     target_llchits += mon.after->cpus[idx].cpu_llcl_hits - mon.before->cpus[idx].cpu_llcl_hits;
+//                 }
+                for (int j = 0; j < helper.used_cpu.size(); j++) {
+                    for (auto const &[idx, value] : pmu.cpus | enumerate) {
+                        value.read_cpu_elems(&mon.after->cpus[j]);
+                        //                        wb_cnt = mon.after->cpus[j].cpu[idx] - mon.before->cpus[j].cpu[idx];
+                        cpu_vec.emplace_back(mon.after->cpus[j].cpu[idx] - mon.before->cpus[j].cpu[idx]);
+                    }
+                }
                 uint64_t llcmiss_wb = 0;
                 // To estimate the number of the writeback-involving LLC
                 // misses of the CPU core (llcmiss_wb), the total number of
@@ -337,15 +343,15 @@ int main(int argc, char *argv[]) {
                 // If both target_llchits and target_llcmiss are 0, it means that hit in L2.
                 // Stall by LLC misses is 0.
                 // choose by vector
-                // mastall_wb = (double)(target_l2stall / frequency) *
-                //              ((double)(weight * llcmiss_wb) / (double)(target_llchits + (weight * target_llcmiss))) *
-                //              1000;
-                // mastall_ro = (double)(target_l2stall / frequency) *
-                //              ((double)(weight * llcmiss_ro) / (double)(target_llchits + (weight * target_llcmiss))) *
-                //              1000;
-                // LOG(DEBUG) << fmt::format(
-                //    "l2stall={}, mastall_wb={}, mastall_ro={}, target_llchits={}, target_llcmiss={}\n",
-                //    target_l2stall, mastall_wb, mastall_ro, target_llchits, target_llcmiss);
+                 mastall_wb = (double)(target_l2stall / frequency) *
+                              ((double)(weight * llcmiss_wb) / (double)(target_llchits + (weight * target_llcmiss))) *
+                              1000;
+                 mastall_ro = (double)(target_l2stall / frequency) *
+                              ((double)(weight * llcmiss_ro) / (double)(target_llchits + (weight * target_llcmiss))) *
+                              1000;
+                 LOG(DEBUG) << fmt::format(
+                    "l2stall={}, mastall_wb={}, mastall_ro={}, target_llchits={}, target_llcmiss={}\n",
+                    target_l2stall, mastall_wb, mastall_ro, target_llchits, target_llcmiss);
 
                 auto ma_wb = (double)mastall_wb / dramlatency;
                 auto ma_ro = (double)mastall_ro / dramlatency;
