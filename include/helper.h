@@ -58,23 +58,15 @@ struct BandwidthPass {
 struct LatencyPass {
     std::tuple<int, int> all_access;
     double dramlatency;
-    double ma_ro;
-    double ma_wb;
+    uint64_t readonly;
+    uint64_t writeback;
 };
 
 struct CHAElem {
-    // uint64_t cpu_llc_hits;
-    // uint64_t cpu_llc_miss;
-    // uint64_t cpu_read_bandwidth;
-    // uint64_t cpu_llc_wb;
     std::array<uint64_t, 4> cha;
 };
 
 struct CPUElem {
-    // uint64_t cpu_l2stall_t;
-    // uint64_t cpu_llcl_hits;
-    // uint64_t cpu_llcl_miss;
-    // uint64_t cpu_bandwidth;
     std::array<uint64_t, 4> cpu;
 };
 

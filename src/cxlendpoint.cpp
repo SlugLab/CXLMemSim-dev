@@ -14,8 +14,8 @@ CXLMemExpander::CXLMemExpander(int read_bw, int write_bw, int read_lat, int writ
 double CXLMemExpander::calculate_latency(LatencyPass lat) {
     auto all_access = lat.all_access;
     auto dramlatency = lat.dramlatency;
-    auto ma_ro = lat.ma_ro;
-    auto ma_wb = lat.ma_wb;
+    auto ma_ro = lat.readonly;
+    auto ma_wb = lat.writeback;
     auto all_read = std::get<0>(all_access);
     auto all_write = std::get<1>(all_access);
     double read_sample = 0.;
@@ -26,6 +26,23 @@ double CXLMemExpander::calculate_latency(LatencyPass lat) {
     if (all_write != 0) {
         write_sample = ((double)last_write / all_write);
     }
+    //                uint64_t mastall_wb = 0; // synthetical
+    //                uint64_t mastall_ro = 0; // synthetical
+    // If both target_llchits and target_llcmiss are 0, it means that hit in L2.
+    // Stall by LLC misses is 0.
+    // choose by vector
+    //                 mastall_wb = (double)(target_l2stall / frequency) *
+    //                              ((double)(weight * llcmiss_wb) / (double)(target_llchits + (weight * target_llcmiss))) *
+    //                              1000; // weight is a delay specific value
+    //                 mastall_ro = (double)(target_l2stall / frequency) *
+    //                              ((double)(weight * llcmiss_ro) / (double)(target_llchits + (weight * target_llcmiss))) *
+    //                              1000; // weight is a delay specific value
+    //                 LOG(DEBUG) << fmt::format(
+    //                    "l2stall={}, mastall_wb={}, mastall_ro={}, target_llchits={}, target_llcmiss={}\n",
+    //                    target_l2stall, mastall_wb, mastall_ro, target_llchits, target_llcmiss);
+    //
+    //                auto writeback = (double)mastall_wb / dramlatency;
+    //                auto readonly = (double)mastall_ro / dramlatency;
     this->last_latency =
         ma_ro * read_sample * (latency.read - dramlatency) + ma_wb * write_sample * (latency.write - dramlatency);
     return this->last_latency;
@@ -89,7 +106,7 @@ void CXLMemExpander::delete_entry(uint64_t addr, uint64_t length) {
 }
 
 int CXLMemExpander::insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr, int index) {
-
+    // time series
     if (index == this->id) {
         last_timestamp = last_timestamp > timestamp ? last_timestamp : timestamp; // Update the last timestamp
         // Check if the address is already in the map)
@@ -186,6 +203,7 @@ double CXLSwitch::calculate_bandwidth(BandwidthPass elem) {
     for (auto &switch_ : this->switches) {
         bw += switch_->calculate_bandwidth(elem);
     }
+    // time series
     return bw;
 }
 int CXLSwitch::insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr, int index) {

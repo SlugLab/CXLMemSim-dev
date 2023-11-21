@@ -338,24 +338,6 @@ int main(int argc, char *argv[]) {
                 LOG(DEBUG) << fmt::format("[{}:{}:{}]llcmiss_wb={}, llcmiss_ro={}\n", i, mon.tgid, mon.tid, llcmiss_wb,
                                           llcmiss_ro);
 
-                uint64_t mastall_wb = 0; // synthetical
-                uint64_t mastall_ro = 0; // synthetical
-                // If both target_llchits and target_llcmiss are 0, it means that hit in L2.
-                // Stall by LLC misses is 0.
-                // choose by vector
-                 mastall_wb = (double)(target_l2stall / frequency) *
-                              ((double)(weight * llcmiss_wb) / (double)(target_llchits + (weight * target_llcmiss))) *
-                              1000;
-                 mastall_ro = (double)(target_l2stall / frequency) *
-                              ((double)(weight * llcmiss_ro) / (double)(target_llchits + (weight * target_llcmiss))) *
-                              1000;
-                 LOG(DEBUG) << fmt::format(
-                    "l2stall={}, mastall_wb={}, mastall_ro={}, target_llchits={}, target_llcmiss={}\n",
-                    target_l2stall, mastall_wb, mastall_ro, target_llchits, target_llcmiss);
-
-                auto ma_wb = (double)mastall_wb / dramlatency;
-                auto ma_ro = (double)mastall_ro / dramlatency;
-
                 uint64_t emul_delay = 0;
 
                 LOG(DEBUG) << fmt::format("[{}:{}:{}] pebs: total={}, \n", i, mon.tgid, mon.tid, mon.after->pebs.total);
@@ -366,8 +348,8 @@ int main(int argc, char *argv[]) {
                 LatencyPass lat_pass = {
                     .all_access = all_access,
                     .dramlatency = dramlatency,
-                    .ma_ro = ma_ro,
-                    .ma_wb = ma_wb,
+                    .readonly = llcmiss_ro,
+                    .writeback = llcmiss_wb,
                 };
                 BandwidthPass bw_pass = {
                     .all_access = all_access,
@@ -375,12 +357,12 @@ int main(int argc, char *argv[]) {
                     .write_config = read_config,
                 };
                 emul_delay += std::lround(controller->calculate_latency(lat_pass));
-                //                emul_delay += controller->calculate_bandwidth(bw_pass);
-                //                emul_delay += std::get<0>(controller->calculate_congestion());
+                emul_delay += controller->calculate_bandwidth(bw_pass);
+                emul_delay += std::get<0>(controller->calculate_congestion());
 
                 mon.before->pebs.total = mon.after->pebs.total;
 
-                LOG(DEBUG) << fmt::format("ma_wb={}, ma_ro={}, delay={}\n", ma_wb, ma_ro, emul_delay);
+                LOG(DEBUG) << fmt::format("writeback={}, readonly={}, delay={}\n", ma_wb, ma_ro, emul_delay);
 
                 /* compensation of delay END(1) */
                 clock_gettime(CLOCK_MONOTONIC, &end_ts);

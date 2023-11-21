@@ -55,7 +55,9 @@ public:
     int id = -1;
     int epoch = 0;
     uint64_t last_timestamp = 0;
+    // get the approximate congestion and target done time
     std::unordered_map<uint64_t, uint64_t> timeseries_map;
+
     double congestion_latency = 0.02;
     explicit CXLSwitch(int id);
     std::tuple<int, int> get_all_access() override;
