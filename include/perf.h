@@ -2,8 +2,8 @@
 // Created by victoryang00 on 1/14/23.
 //
 
-#ifndef CXL_MEM_SIMULATOR_PERF_H
-#define CXL_MEM_SIMULATOR_PERF_H
+#ifndef CXLMEMSIM_PERF_H
+#define CXLMEMSIM_PERF_H
 
 #include <bpf/bpf.h>
 #include <cstdint>
@@ -41,4 +41,4 @@ public:
 
 PerfInfo *init_incore_perf(const pid_t pid, const int cpu, uint64_t conf, uint64_t conf1);
 PerfInfo *init_uncore_perf(const pid_t pid, const int cpu, uint64_t conf, uint64_t conf1, int value);
-#endif // CXL_MEM_SIMULATOR_PERF_H
+#endif // CXLMEMSIM_PERF_H

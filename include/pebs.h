@@ -2,8 +2,8 @@
 // Created by victoryang00 on 1/13/23.
 //
 
-#ifndef CXL_MEM_SIMULATOR_PEBS_H
-#define CXL_MEM_SIMULATOR_PEBS_H
+#ifndef CXLMEMSIM_PEBS_H
+#define CXLMEMSIM_PEBS_H
 
 #include "cxlcontroller.h"
 #include "helper.h"
@@ -41,4 +41,4 @@ public:
     int stop();
 };
 
-#endif // CXL_MEM_SIMULATOR_PEBS_H
+#endif // CXLMEMSIM_PEBS_H

@@ -2,6 +2,7 @@
 // Created by victoryang00 on 11/9/23.
 //
 /** for thread creation and memory monitor */
+#include "sock.h"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -14,7 +15,6 @@
 #define CXLMEMSIM_EXPORT __attribute__((visibility("default")))
 #define CXLMEMSIM_CONSTRUCTOR(n) __attribute__((constructor((n))))
 #define CXLMEMSIM_CONSTRUCTOR_PRIORITY 102
-#define SOCKET_PATH "/tmp/cxlmemsim.sock"
 
 typedef void *(*mmap_ptr_t)(void *, size_t, int, int, int, off_t);
 typedef int (*munmap_ptr_t)(void *, size_t);

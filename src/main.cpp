@@ -5,6 +5,7 @@
 #include "helper.h"
 #include "monitor.h"
 #include "policy.h"
+#include "sock.h"
 #include <cerrno>
 #include <cmath>
 #include <cstdio>
@@ -134,6 +135,10 @@ int main(int argc, char *argv[]) {
         LOG(ERROR) << "Failed to execute. Can't bind to a socket.\n";
         exit(1);
     }
+
+    size_t sock_buf_size = sizeof(op_data) + 1;
+    char *sock_buf = (char *)malloc(sock_buf_size);
+
     LOG(DEBUG) << fmt::format("cpu_freq:{}\n", frequency);
     LOG(DEBUG) << fmt::format("num_of_cha:{}\n", ncha);
     LOG(DEBUG) << fmt::format("num_of_cpu:{}\n", ncpu);
@@ -244,56 +249,47 @@ int main(int argc, char *argv[]) {
                     // no data
                     break;
                 } else {
-                    handle_error("Failed to recv");
+                    LOG(ERROR) << "Failed to recv";
+                    exit(-1);
                 }
-            } else if (n >= sizeof(struct op_data) && n <= sock_data_size) {
-                struct op_data *opd = (struct op_data *)sock_buf;
-                DEBUG_PRINT("received data: size=%d, tgid=%u, tid=%u, opcode=%u, num_of_region=%u\n",
-                            n, opd->tgid, opd->tid, opd->opcode, opd->num_of_region);
+            } else if (n >= sizeof(struct op_data) && n <= sock_buf_size - 1) {
+                auto *opd = (struct op_data *)sock_buf;
+                LOG(ERROR)<<fmt::format("received data: size={}, tgid={}, tid=[], opcode={}\n", n, opd->tgid,
+                            opd->tid, opd->opcode);
 
-                if (opd->opcode == MES_THREAD_CREATE || opd->opcode == MES_PROCESS_CREATE) {
+                if (opd->opcode == CXLMEMSIM_THREAD_CREATE || opd->opcode == CXLMEMSIM_PROCESS_CREATE) {
                     int target;
-                    bool is_process = (opd->opcode == MES_PROCESS_CREATE) ? true : false;
-                    uint64_t period = (opd->num_of_region >= 2) ? pebs_sample_period : 0 ; // is hybrid
+                    bool is_process = (opd->opcode == CXLMEMSIM_PROCESS_CREATE) ? true : false;
                     // register to monitor
-                    target = enable_mon(opd->tgid, opd->tid, is_process, period, tnum, mons);
-                    if (target == -1) {
-                        exit_with_message("Failed to enable monitor\n");
-                    } else if (target < 0) {
-                        // tid not found. might be already terminated.
-                        continue;
-                    }
-                    mon = &mons[target];
-                    if (opd->num_of_region >= 2) { // Ignored if num_of_region is 1 or less
-                        // pebs sampling
-                        if ((n - sizeof(struct op_data)) != (sizeof(struct __region_info) * opd->num_of_region)) {
-                            exit_with_message("Received data is invalid.\n");
-                        }
-                        struct __region_info *ri = (struct __region_info *)(sock_buf + sizeof(struct op_data));
-                        if (set_region_info_mon(mon, opd->num_of_region, ri) < 0) {
-                            exit_with_message("Received data is invalid.\n");
-                        }
-                    }
-                    // Wait the target processes until emulation process initialized.
-                    stop_mon(mon);
-                    /* read CBo params */
-                    for (j = 0; j < ncbo; j++) {
-                        read_cbo_elems(&pmu.cbos[j], &mon->before->cbos[j]);
-                    }
-                    for (j = 0; j < ncpu; j++) {
-                        read_cpu_elems(&pmu.cpus[j], &mon->before->cpus[j]);
-                    }
+                //     target = enable_mon(opd->tgid, opd->tid, is_process, pebsperiod, tnum, moniters->mon);
+                //     if (target == -1) {
+                //         LOG(ERROR)<<"Failed to enable monitor\n";
+                //     } else if (target < 0) {
+                //         // tid not found. might be already terminated.
+                //         continue;
+                //     }
+                //     auto mon = &moniters->mon[target];
+                //     // Wait the target processes until emulation process initialized.
+                //     mon.stop();
+                //     /* read CBo params */
+                //    for (int j = 0; j < helper.used_cpu.size(); j++) {
+                //         read_cbo_elems(&pmu.cbos[j], &mon->before->cbos[j]);
+                //         value.read_cpu_elems(&mon.after->cpus[j]);
+                //     }
+                //     for (j = 0; j < ncpu; j++) {
+                //         read_cpu_elems(&pmu.cpus[j], &mon->before->cpus[j]);
+                //     }
                     // Run the target processes.
-                    run_mon(mon);
-                    clock_gettime(CLOCK_MONOTONIC, &mon->start_exec_ts);
-                } else if (opd->opcode == MES_THREAD_EXIT) {
+                    // mon.run();
+                    // clock_gettime(CLOCK_MONOTONIC, &mon->start_exec_ts);
+                } else if (opd->opcode == CXLMEMSIM_THREAD_EXIT) {
                     // unregister from monitor, and display results.
-                    if (terminate_mon(opd->tgid, opd->tid, tnum, mons) < 0) {
-                        DEBUG_PRINT("It might be already terminated.\n");
-                    }
+                    // if (terminate_mon(opd->tgid, opd->tid, tnum, moniters->mon) < 0) {
+                    //     LOG(DEBUG)<<("It might be already terminated.\n");
+                    // }
                 }
             } else {
-                exit_with_message("received data is invalid size: size=%d\n", n);
+                 LOG(ERROR)<<fmt::format("received data is invalid size: size={}", n);
             }
         } while (n > 0); // check the next message.
 
@@ -336,13 +332,13 @@ int main(int argc, char *argv[]) {
                 mon.stop();
                 /** Read CHA values */
                 uint64_t wb_cnt = 0;
-                std::vector<uint64_t> cha_vec,cpu_vec{};
-                //for (int j = 0; j < ncha; j++) {
-                //    pmu.chas[j].read_cha_elems(&mon.after->chas[j]);
-                //    wb_cnt += mon.after->chas[j].cpu_llc_wb - mon.before->chas[j].cpu_llc_wb;
-                //}
-                //LOG(INFO) << fmt::format("[{}:{}:{}] LLC_WB = {}\n", i, mon.tgid, mon.tid, wb_cnt);
-                //}
+                std::vector<uint64_t> cha_vec, cpu_vec{};
+                // for (int j = 0; j < ncha; j++) {
+                //     pmu.chas[j].read_cha_elems(&mon.after->chas[j]);
+                //     wb_cnt += mon.after->chas[j].cpu_llc_wb - mon.before->chas[j].cpu_llc_wb;
+                // }
+                // LOG(INFO) << fmt::format("[{}:{}:{}] LLC_WB = {}\n", i, mon.tgid, mon.tid, wb_cnt);
+                // }
                 for (int j = 0; j < helper.used_cha.size(); j++) {
                     for (auto const &[idx, value] : pmu.chas | enumerate) {
                         value.read_cha_elems(&mon.after->chas[j]);
@@ -362,14 +358,14 @@ int main(int argc, char *argv[]) {
                 }
                 // target_llcmiss = mon.after->pebs.total - mon.before->pebs.total;
 
-                 // target_l2stall =
-                 //     mon.after->cpus[mon.cpu_core].cpu_l2stall_t - mon.before->cpus[mon.cpu_core].cpu_l2stall_t;
-                 // target_llchits =
-                 //     mon.after->cpus[mon.cpu_core].cpu_llcl_hits - mon.before->cpus[mon.cpu_core].cpu_llcl_hits;
-                 //  for (auto const &[idx, value] : pmu.cpus | enumerate) {
-                 //      target_l2stall += mon.after->cpus[idx].cpu_l2stall_t - mon.before->cpus[idx].cpu_l2stall_t;
-                 //      target_llchits += mon.after->cpus[idx].cpu_llcl_hits - mon.before->cpus[idx].cpu_llcl_hits;
-                 //  }
+                // target_l2stall =
+                //     mon.after->cpus[mon.cpu_core].cpu_l2stall_t - mon.before->cpus[mon.cpu_core].cpu_l2stall_t;
+                // target_llchits =
+                //     mon.after->cpus[mon.cpu_core].cpu_llcl_hits - mon.before->cpus[mon.cpu_core].cpu_llcl_hits;
+                //  for (auto const &[idx, value] : pmu.cpus | enumerate) {
+                //      target_l2stall += mon.after->cpus[idx].cpu_l2stall_t - mon.before->cpus[idx].cpu_l2stall_t;
+                //      target_llchits += mon.after->cpus[idx].cpu_llcl_hits - mon.before->cpus[idx].cpu_llcl_hits;
+                //  }
                 for (int j = 0; j < helper.used_cpu.size(); j++) {
                     for (auto const &[idx, value] : pmu.cpus | enumerate) {
                         value.read_cpu_elems(&mon.after->cpus[j]);
@@ -482,21 +478,22 @@ int main(int argc, char *argv[]) {
             }
         } // End for-loop for all target processes
         LOG(TRACE) << fmt::format("{}\n", monitors);
-        for (auto mon: monitors.mon){
+        for (auto mon : monitors.mon) {
             if (mon.status == MONITOR_ON) {
-            auto swap = mon.before;
-            mon.before = mon.after;
-            mon.after = swap;
+                auto swap = mon.before;
+                mon.before = mon.after;
+                mon.after = swap;
 
-            /* continue suspended processes: send SIGCONT */
-            // mon.unfreeze_counters_cha_all(fds.msr[0]);
-            // start_pmc(&fds, i);
-            if (calibrated_delay == 0) {
-                Monitor::clear_time(&mon.wasted_delay);
-                Monitor::clear_time(&mon.injected_delay);
-                mon.run();
+                /* continue suspended processes: send SIGCONT */
+                // mon.unfreeze_counters_cha_all(fds.msr[0]);
+                // start_pmc(&fds, i);
+                if (calibrated_delay == 0) {
+                    Monitor::clear_time(&mon.wasted_delay);
+                    Monitor::clear_time(&mon.injected_delay);
+                    mon.run();
+                }
             }
-        }}
+        }
         if (monitors.check_all_terminated(tnum)) {
             break;
         }

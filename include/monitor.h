@@ -2,8 +2,8 @@
 // Created by victoryang00 on 1/11/23.
 //
 
-#ifndef SLUGALLOCATOR_MONITOR_H
-#define SLUGALLOCATOR_MONITOR_H
+#ifndef CXLMEMSIM_MONITOR_H
+#define CXLMEMSIM_MONITOR_H
 
 #include "cxlcontroller.h"
 #include "helper.h"
@@ -76,21 +76,22 @@ template <> struct fmt::formatter<Monitors> {
         auto out = fmt::format_to(ctx.out(), "");
         if (p.print_flag) {
             for (auto const &[mon_id, mon] : p.mon | enumerate) {
-                for (int core_idx=0;core_idx< helper.used_cha.size();core_idx++) {
-                    for (int cha_idx=0;cha_idx< helper.perf_conf.cha.size();cha_idx++) {
-                            out = fmt::format_to(out, "mon{}_{}_{}_{},",mon_id, std::get<0>(helper.perf_conf.cha[cha_idx]), helper.used_cha[core_idx],
-                                                 core_idx);
-                        }
-
+                for (auto core_idx = 0; core_idx < helper.used_cha.size(); core_idx++) {
+                    for (auto cha_idx = 0; cha_idx < helper.perf_conf.cha.size(); cha_idx++) {
+                        out = fmt::format_to(out, "mon{}_{}_{}_{},", mon_id, std::get<0>(helper.perf_conf.cha[cha_idx]),
+                                             helper.used_cha[core_idx], core_idx);
+                    }
                 }
 
-                for (int core_idx=0;core_idx< helper.used_cpu.size();core_idx++) {
-                    for (int cpu_idx=0;cpu_idx< helper.perf_conf.cpu.size();cpu_idx++) {
+                for (auto core_idx = 0; core_idx < helper.used_cpu.size(); core_idx++) {
+                    for (auto cpu_idx = 0; cpu_idx < helper.perf_conf.cpu.size(); cpu_idx++) {
                         if (cpu_idx == helper.perf_conf.cpu.size() - 1 && core_idx == helper.used_cpu.size() - 1) {
-                            out = fmt::format_to(out, "mon{}_{}_{}_{}",mon_id, std::get<0>(helper.perf_conf.cpu[cpu_idx]), helper.used_cpu[core_idx],
+                            out = fmt::format_to(out, "mon{}_{}_{}_{}", mon_id,
+                                                 std::get<0>(helper.perf_conf.cpu[cpu_idx]), helper.used_cpu[core_idx],
                                                  core_idx);
                         } else {
-                            out = fmt::format_to(out, "mon{}_{}_{}_{},",mon_id, std::get<0>(helper.perf_conf.cpu[cpu_idx]), helper.used_cpu[core_idx],
+                            out = fmt::format_to(out, "mon{}_{}_{}_{},", mon_id,
+                                                 std::get<0>(helper.perf_conf.cpu[cpu_idx]), helper.used_cpu[core_idx],
                                                  core_idx);
                         }
                     }
@@ -99,16 +100,15 @@ template <> struct fmt::formatter<Monitors> {
         } else {
 
             for (auto const &[mon_id, mon] : p.mon | enumerate) {
-                for (int core_idx=0;core_idx< helper.used_cha.size();core_idx++) {
-                    for (int cha_idx=0;cha_idx< helper.perf_conf.cha.size();cha_idx++) {
-                            out = fmt::format_to(out, "{},",
-                                                 mon.after->chas[core_idx].cha[cha_idx] -
-                                                     mon.before->chas[core_idx].cha[cha_idx]);
-                        }
-
+                for (auto core_idx = 0; core_idx < helper.used_cha.size(); core_idx++) {
+                    for (auto cha_idx = 0; cha_idx < helper.perf_conf.cha.size(); cha_idx++) {
+                        out = fmt::format_to(out, "{},",
+                                             mon.after->chas[core_idx].cha[cha_idx] -
+                                                 mon.before->chas[core_idx].cha[cha_idx]);
+                    }
                 }
-                for (int core_idx=0;core_idx< helper.used_cpu.size();core_idx++) {
-                    for (int cpu_idx=0;cpu_idx< helper.perf_conf.cpu.size();cpu_idx++) {
+                for (auto core_idx = 0; core_idx < helper.used_cpu.size(); core_idx++) {
+                    for (auto cpu_idx = 0; cpu_idx < helper.perf_conf.cpu.size(); cpu_idx++) {
                         if (cpu_idx == helper.perf_conf.cpu.size() - 1 && core_idx == helper.used_cpu.size() - 1) {
                             out = fmt::format_to(out, "{}",
                                                  mon.after->cpus[core_idx].cpu[cpu_idx] -
@@ -122,10 +122,10 @@ template <> struct fmt::formatter<Monitors> {
                 }
             } // visitor mode write to the file
         }
-//        *out++ = '\n';
+        //        *out++ = '\n';
         ctx.advance_to(out);
         return out;
     };
 };
 
-#endif // SLUGALLOCATOR_MONITOR_H
+#endif // CXLMEMSIM_MONITOR_H

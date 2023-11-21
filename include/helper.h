@@ -2,8 +2,8 @@
 // Created by victoryang00 on 1/12/23.
 //
 
-#ifndef CXL_MEM_SIMULATOR_HELPER_H
-#define CXL_MEM_SIMULATOR_HELPER_H
+#ifndef CXLMEMSIM_HELPER_H
+#define CXLMEMSIM_HELPER_H
 
 #include "incore.h"
 #include "logging.h"
@@ -119,4 +119,4 @@ public:
                             const std::vector<uint64_t> &perf_conf1, const std::vector<uint64_t> &perf_conf2);
 };
 
-#endif // CXL_MEM_SIMULATOR_HELPER_H
+#endif // CXLMEMSIM_HELPER_H

@@ -2,8 +2,8 @@
 // Created by victoryang00 on 1/14/23.
 //
 
-#ifndef CXL_MEM_SIMULATOR_CXLCONTROLLER_H
-#define CXL_MEM_SIMULATOR_CXLCONTROLLER_H
+#ifndef CXLMEMSIM_CXLCONTROLLER_H
+#define CXLMEMSIM_CXLCONTROLLER_H
 
 #include "cxlcounter.h"
 #include "cxlendpoint.h"
@@ -27,6 +27,14 @@ public:
     virtual int compute_once(CXLController *) = 0; // reader writer
     // paging related
     // switching related
+};
+
+// need to give a timeout and will be added latency later,
+class PagingPolicy {
+public:
+    PagingPolicy();
+    virtual int compute_once(CXLController *) = 0; // reader writer
+    // paging related
 };
 
 class CXLController : CXLSwitch {
@@ -54,4 +62,4 @@ public:
     std::string output() override;
 };
 
-#endif // CXL_MEM_SIMULATOR_CXLCONTROLLER_H
+#endif // CXLMEMSIM_CXLCONTROLLER_H

@@ -2,8 +2,8 @@
 // Created by victoryang00 on 1/12/23.
 //
 
-#ifndef CXL_MEM_SIMULATOR_POLICY_H
-#define CXL_MEM_SIMULATOR_POLICY_H
+#ifndef CXLMEMSIM_POLICY_H
+#define CXLMEMSIM_POLICY_H
 #include "cxlcontroller.h"
 #include "cxlendpoint.h"
 #include "helper.h"
@@ -21,4 +21,4 @@ public:
     int compute_once(CXLController *) override;
 };
 
-#endif // CXL_MEM_SIMULATOR_POLICY_H
+#endif // CXLMEMSIM_POLICY_H

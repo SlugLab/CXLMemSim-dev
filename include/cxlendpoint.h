@@ -2,8 +2,8 @@
 // Created by victoryang00 on 1/13/23.
 //
 
-#ifndef CXL_MEM_SIMULATOR_CXLENDPOINT_H
-#define CXL_MEM_SIMULATOR_CXLENDPOINT_H
+#ifndef CXLMEMSIM_CXLENDPOINT_H
+#define CXLMEMSIM_CXLENDPOINT_H
 #include "cxlcounter.h"
 #include "helper.h"
 
@@ -112,4 +112,4 @@ public:
     void set_epoch(int epoch) override;
 };
 
-#endif // CXL_MEM_SIMULATOR_CXLENDPOINT_H
+#endif // CXLMEMSIM_CXLENDPOINT_H

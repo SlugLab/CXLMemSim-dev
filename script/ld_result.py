@@ -5,7 +5,7 @@ import time
 import matplotlib.pyplot as plt
 import pandas as pd
 import csv
-import sys
+import sys, os
 
 workloads = ["mlc", "ld", "st", "nt-ld", "nt-st", "ptr-chasing"]
 
@@ -22,37 +22,45 @@ def run_command(size):
 def run_cxlmemsim_command(size):
     # start_time = time.time()
     cmd = [
+        "LOGV=1",
         "../cmake-build-debug/CXLMemSim",
-        ' -t "../cmake-build-debug/microbench/ld' + str(size) + '"',
+        "-t",
+        "../cmake-build-debug/microbench/ld" + str(size),
+        "-i","100"
     ]
+    cmd =" ".join(cmd)
     print(cmd)
-    subprocess.run(cmd)
+    os.system(cmd)
     # end_time = time.time()
-    df = pd.read_csv("../cmake-build-debug/output_pmu.csv")
-
+    df = pd.read_csv("./output_pmu.csv")
+    os.system(f"mv ./output_pmu.csv ./ld_pmu{size}_results.csv")
     return df
 
+
 def plot_cxlmemsim_pmu_time(df):
-    plt.plot(df["Time"], df["IPC"])
-    plt.xlabel("Time (s)")
-    plt.ylabel(df["IPC"].name)
+    print(df)
+    # plt.plot(df["Time"], df["IPC"])
+    # plt.xlabel("Time (s)")
+    # plt.ylabel(df["IPC"].name)
+
 
 def main():
-    sizes = [2**x for x in range(8,9)]
+    sizes = [2**x for x in range(3, 9)]
 
     f = open("ld_results.csv", "a")
 
     writer = csv.writer(f, delimiter=",")
 
     # writer.writerow(["size", "time"])
-    for i in range(100):
-        for size in sizes:
-            exec_time = run_command(size)
-            writer.writerow([size, exec_time])
+    # for i in range(100):
+    #     for size in sizes:
+    #         exec_time = run_command(size)
+    #         writer.writerow([size, exec_time])
 
-    # for size in sizes:
-    #     df = run_cxlmemsim_command(size)
-    #     plot_cxlmemsim_pmu_time(df)
+    for size in sizes:
+        df = run_cxlmemsim_command(size)
+        plot_cxlmemsim_pmu_time(df)
+
 
 if __name__ == "__main__":
     main()

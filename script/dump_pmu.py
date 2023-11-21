@@ -51,5 +51,6 @@ def load_csv(path):
 
 if __name__ == '__main__':
     pmu = {"INST_RETIRED.ANY" : 0}
-    x, y = load_csv('data.csv')
-    draw_graph(x, y)
+    get_perfmon("../cmake-build-debug/output_pmu.csv", pmu)
+    # x, y = load_csv('data.csv')
+    # draw_graph(x, y)

@@ -2,15 +2,15 @@
 // Created by victoryang00 on 1/12/23.
 //
 
-#ifndef CXL_MEM_SIMULATOR_CXLCOUNTER_H
-#define CXL_MEM_SIMULATOR_CXLCOUNTER_H
+#ifndef CXLMEMSIM_CXLCOUNTER_H
+#define CXLMEMSIM_CXLCOUNTER_H
 
 #include <cstdint>
 #include <map>
 #include <string>
 #include <tuple>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
 /** TODO: Whether to using the pebs to record the state. add back invalidation migrate huge/ page and prefetch*/
 class CXLSwitchEvent {
@@ -52,4 +52,4 @@ public:
     void inc_hitm();
 };
 
-#endif // CXL_MEM_SIMULATOR_CXLCOUNTER_H
+#endif // CXLMEMSIM_CXLCOUNTER_H

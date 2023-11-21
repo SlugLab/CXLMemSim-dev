@@ -1,8 +1,8 @@
 // Created by victoryang00 on 1/14/23.
 //
 
-#ifndef CXL_MEM_SIMULATOR_INCORE_H
-#define CXL_MEM_SIMULATOR_INCORE_H
+#ifndef CXLMEMSIM_INCORE_H
+#define CXLMEMSIM_INCORE_H
 #include "helper.h"
 #include "perf.h"
 #include <array>
@@ -31,4 +31,4 @@ public:
 void pcm_cpuid(unsigned leaf, CPUID_INFO *info);
 bool get_cpu_info(struct CPUInfo *);
 
-#endif // CXL_MEM_SIMULATOR_INCORE_H
+#endif // CXLMEMSIM_INCORE_H

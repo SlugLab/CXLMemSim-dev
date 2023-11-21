@@ -96,8 +96,8 @@ void Helper::detach_children() {
 }
 int PMUInfo::start_all_pmcs() {
     /* enable all pmcs to count */
-    int r,i;
-    for (i=0;i<this->cpus.size();i++) {
+    int r, i;
+    for (i = 0; i < this->cpus.size(); i++) {
         r = this->cpus[i].start();
         if (r < 0) {
             LOG(ERROR) << fmt::format("start failed. cpu:{}\n", i);
@@ -132,7 +132,7 @@ int PMUInfo::stop_all_pmcs() {
     /* disable all pmcs to count */
     int i, r;
 
-    for (i=0;i<this->cpus.size();i++) {
+    for (i = 0; i < this->cpus.size(); i++) {
         r = this->cpus[i].stop();
         if (r < 0) {
             LOG(ERROR) << fmt::format("stop failed. cpu:{}\n", i);
@@ -145,7 +145,7 @@ int PMUInfo::stop_all_pmcs() {
 int PMUInfo::unfreeze_counters_cha_all() {
     int i, r;
 
-    for (i=0;i<this->chas.size();i++) {
+    for (i = 0; i < this->chas.size(); i++) {
         for (int j : {0, 1, 2, 3}) {
             r = this->chas[i].perf[j]->start();
             if (r < 0) {
@@ -159,7 +159,7 @@ int PMUInfo::unfreeze_counters_cha_all() {
 int PMUInfo::freeze_counters_cha_all() {
     int i, r;
 
-    for (i=0;i<this->chas.size();i++) {
+    for (i = 0; i < this->chas.size(); i++) {
         for (int j : {0, 1, 2, 3}) {
             r = this->chas[i].perf[j]->stop();
             if (r < 0) {
