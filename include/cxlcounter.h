@@ -10,6 +10,7 @@
 #include <string>
 #include <tuple>
 #include <vector>
+#include <unordered_map>
 
 /** TODO: Whether to using the pebs to record the state. add back invalidation migrate huge/ page and prefetch*/
 class CXLSwitchEvent {

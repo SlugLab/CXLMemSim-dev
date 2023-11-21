@@ -19,12 +19,16 @@ class AllocationPolicy {
 public:
     AllocationPolicy();
     virtual int compute_once(CXLController *) = 0;
+    // No write problem
 };
 class MigrationPolicy {
 public:
     MigrationPolicy();
-    virtual int compute_once(CXLController *) = 0;
+    virtual int compute_once(CXLController *) = 0; // reader writer
+    // paging related
+    // switching related
 };
+
 class CXLController : CXLSwitch {
 public:
     std::vector<CXLMemExpander *> cur_expanders{};
@@ -35,11 +39,7 @@ public:
     std::map<uint64_t, uint64_t> va_pa_map;
     enum page_type page_type_; // percentage
     int num_switches = 0;
-    /** LRU Cache for wb and timeseries map */
-    std::list<uint64_t> lru_list;
-    std::unordered_map<uint64_t, std::list<uint64_t>::iterator> lru_map;
-    std::unordered_map<uint64_t, uint64_t> wb_map;
-    std::unordered_map<uint64_t, uint64_t> timeseries_map;
+
     CXLController(AllocationPolicy *p, int capacity, enum page_type page_type_, int epoch);
     void construct_topo(std::string_view newick_tree);
     void insert_end_point(CXLMemExpander *end_point);

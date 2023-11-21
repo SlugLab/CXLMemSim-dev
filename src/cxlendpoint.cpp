@@ -89,6 +89,7 @@ void CXLMemExpander::delete_entry(uint64_t addr, uint64_t length) {
 }
 
 int CXLMemExpander::insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr, int index) {
+
     if (index == this->id) {
         last_timestamp = last_timestamp > timestamp ? last_timestamp : timestamp; // Update the last timestamp
         // Check if the address is already in the map)

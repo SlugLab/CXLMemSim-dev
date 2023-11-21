@@ -17,7 +17,7 @@ find_package(fmt REQUIRED)
 file(GLOB_RECURSE SOURCE_FILES src/*.cpp)
 
 execute_process(COMMAND uname -r OUTPUT_VARIABLE arch OUTPUT_STRIP_TRAILING_WHITESPACE)
-set(CMAKE_CXX_FLAGS "-std=c++2b -fPIC -pthread -lrt -mavx512f -mpreferred-stack-boundary=4")
+set(CMAKE_CXX_FLAGS "-std=c++2b -fPIC -shared -pthread -ldl -Wall -lrt -mavx512f -mpreferred-stack-boundary=4 -g")
 
 add_executable(CXLMemSim ${SOURCE_FILES})
 

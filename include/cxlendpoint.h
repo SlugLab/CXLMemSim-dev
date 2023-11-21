@@ -8,6 +8,11 @@
 #include "helper.h"
 
 class CXLEndPoint {
+    /** LRU Cache for wb and timeseries map */
+    std::list<uint64_t> lru_list;
+    std::unordered_map<uint64_t, std::list<uint64_t>::iterator> lru_map;
+    std::unordered_map<uint64_t, uint64_t> wb_map;
+
     virtual void set_epoch(int epoch) = 0;
     virtual std::string output() = 0;
     virtual void delete_entry(uint64_t addr, uint64_t length) = 0;
@@ -50,6 +55,7 @@ public:
     int id = -1;
     int epoch = 0;
     uint64_t last_timestamp = 0;
+    std::unordered_map<uint64_t, uint64_t> timeseries_map;
     double congestion_latency = 0.02;
     explicit CXLSwitch(int id);
     std::tuple<int, int> get_all_access() override;

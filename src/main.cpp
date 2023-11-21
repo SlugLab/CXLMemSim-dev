@@ -319,7 +319,7 @@ int main(int argc, char *argv[]) {
                 // of the LLC misses of all the CPU cores and the
                 // prefetchers (cpus_dram_rds).
                 // llcmiss_wb = wb_cnt * std::lround(((double)target_llcmiss) / ((double)read_config));
-                // TODO Calculate through the vector
+                // TODO Calculate through the vector !!! target latency
                 uint64_t llcmiss_ro = 0;
                 if (target_llcmiss < llcmiss_wb) { // tunning
                     LOG(ERROR) << fmt::format("[{}:{}:{}] cpus_dram_rds {}, llcmiss_wb {}, target_llcmiss {}\n", i,
