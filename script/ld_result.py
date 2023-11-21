@@ -12,11 +12,17 @@ workloads = ["mlc", "ld", "st", "nt-ld", "nt-st", "ptr-chasing"]
 
 def run_command(size):
     start_time = time.time()
-    cmd = ["../cmake-build-debug/microbench/ld" + str(size)]
+    cmd = [
+        "/usr/bin/numactl -m 0 ../cmake-build-debug/microbench/ld" + str(size),
+    ]
     print(cmd)
-    subprocess.run(cmd)
-    end_time = time.time()
-    return end_time - start_time
+    process = subprocess.Popen(
+        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
+
+    out, err = process.communicate()
+    print(err)
+    return int(out)
 
 
 def run_cxlmemsim_command(size):
@@ -26,9 +32,10 @@ def run_cxlmemsim_command(size):
         "../cmake-build-debug/CXLMemSim",
         "-t",
         "../cmake-build-debug/microbench/ld" + str(size),
-        "-i","100"
+        "-i",
+        "100",
     ]
-    cmd =" ".join(cmd)
+    cmd = " ".join(cmd)
     print(cmd)
     os.system(cmd)
     # end_time = time.time()
@@ -37,29 +44,21 @@ def run_cxlmemsim_command(size):
     return df
 
 
-def plot_cxlmemsim_pmu_time(df):
-    print(df)
-    # plt.plot(df["Time"], df["IPC"])
-    # plt.xlabel("Time (s)")
-    # plt.ylabel(df["IPC"].name)
-
-
 def main():
-    sizes = [2**x for x in range(3, 9)]
+    sizes = [2**x for x in range(0, 9)]
 
     f = open("ld_results.csv", "a")
 
     writer = csv.writer(f, delimiter=",")
 
-    # writer.writerow(["size", "time"])
-    # for i in range(100):
-    #     for size in sizes:
-    #         exec_time = run_command(size)
-    #         writer.writerow([size, exec_time])
+    writer.writerow(["size", "time"])
+    for i in range(10):
+        for size in sizes:
+            exec_time = run_command(size)
+            writer.writerow([size, exec_time])
 
-    for size in sizes:
-        df = run_cxlmemsim_command(size)
-        plot_cxlmemsim_pmu_time(df)
+    # for size in sizes:
+    #     df = run_cxlmemsim_command(size)
 
 
 if __name__ == "__main__":
