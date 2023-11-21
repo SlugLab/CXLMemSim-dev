@@ -20,7 +20,7 @@ typedef void *(*mmap_ptr_t)(void *, size_t, int, int, int, off_t);
 typedef int (*munmap_ptr_t)(void *, size_t);
 typedef void* (*malloc_ptr_t)(size_t);
 typedef int (*calloc_ptr_t)(void*, size_t);
-typedef int (*realloc_ptr_t)(void*, size_t);
+typedef void *(*realloc_ptr_t)(void*, size_t);
 typedef int (*posix_memalign_ptr_t)(void **, size_t, size_t);
 typedef void* (*aligned_alloc_ptr_t)(size_t, size_t);
 typedef int (*free_ptr_t)(void *);
@@ -58,7 +58,8 @@ cxlmemsim_param_t param ={
 };
 
 inline void call_socket_with_int3() {
-    const char *message = "";
+    const char *message = "hello";
+    // sendback tid
     if (sendto(param.sock, message, strlen(message), 0, (struct sockaddr *)&param.addr, sizeof(param.addr)) < 0) {
         perror("sendto");
         exit(1);
@@ -85,6 +86,7 @@ inline int init_mmap_ptr(void){
 
 CXLMEMSIM_EXPORT
 void *malloc(size_t size) {
+    call_socket_with_int3();
     fprintf(stderr, "malloc%d\n",size);
     call_socket_with_int3();
     return param.malloc( size);
@@ -92,6 +94,7 @@ void *malloc(size_t size) {
 
 CXLMEMSIM_EXPORT
 void *calloc(size_t num, size_t size) {
+    call_socket_with_int3();
     if (param.mmap == nullptr) {
         return (void *)param.calloc;
     }
@@ -101,21 +104,25 @@ void *calloc(size_t num, size_t size) {
 
 CXLMEMSIM_EXPORT
 void *realloc(void *ptr, size_t size) {
+    call_socket_with_int3();
     return param.realloc(ptr, size);
 }
 
 CXLMEMSIM_EXPORT
 int posix_memalign(void **memptr, size_t alignment, size_t size) {
+    call_socket_with_int3();
     return param.posix_memalign( memptr, alignment, size);
 }
 
 CXLMEMSIM_EXPORT
 void *aligned_alloc(size_t alignment, size_t size) {
+    call_socket_with_int3();
     return param.aligned_alloc( alignment, size);
 }
 
 CXLMEMSIM_EXPORT
 void free(void *ptr) {
+    call_socket_with_int3();
     if (ptr == (void *)param.calloc) {
         return;
     }
@@ -125,6 +132,7 @@ void free(void *ptr) {
 
 CXLMEMSIM_EXPORT
 void *mmap(void *start, size_t len, int prot, int flags, int fd, off_t off) {
+    call_socket_with_int3();
     void *ret = NULL;
     int mmap_initialized = init_mmap_ptr();
 
@@ -140,11 +148,13 @@ void *mmap(void *start, size_t len, int prot, int flags, int fd, off_t off) {
 
 CXLMEMSIM_EXPORT
 void *mmap64(void *start, size_t len, int prot, int flags, int fd, off_t off) {
+    call_socket_with_int3();
     return mmap(start, len, prot, flags, fd, off);
 }
 
 CXLMEMSIM_EXPORT
 size_t malloc_usable_size (void *ptr) { /* added for redis */
+call_socket_with_int3();
     return param.malloc_usable_size( ptr);
 }
 

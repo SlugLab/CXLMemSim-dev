@@ -332,8 +332,8 @@ int main(int argc, char *argv[]) {
                 LOG(DEBUG) << fmt::format("[{}:{}:{}]llcmiss_wb={}, llcmiss_ro={}\n", i, mon.tgid, mon.tid, llcmiss_wb,
                                           llcmiss_ro);
 
-                uint64_t mastall_wb = 0;
-                uint64_t mastall_ro = 0;
+                uint64_t mastall_wb = 0; // synthetical
+                uint64_t mastall_ro = 0; // synthetical
                 // If both target_llchits and target_llcmiss are 0, it means that hit in L2.
                 // Stall by LLC misses is 0.
                 // choose by vector
