@@ -13,7 +13,7 @@ workloads = ["mlc", "ld", "st", "nt-ld", "nt-st", "ptr-chasing"]
 def run_command(size):
     start_time = time.time()
     cmd = [
-        "/usr/bin/numactl -m 0 ../cmake-build-debug/microbench/ld" + str(size),
+        "/usr/bin/numactl -m 1 ../cmake-build-debug/microbench/ld" + str(size),
     ]
     print(cmd)
     process = subprocess.Popen(
@@ -47,7 +47,7 @@ def run_cxlmemsim_command(size):
 def main():
     sizes = [2**x for x in range(0, 9)]
 
-    f = open("ld_results.csv", "a")
+    f = open("ld_results_remote.csv", "a")
 
     writer = csv.writer(f, delimiter=",")
 
