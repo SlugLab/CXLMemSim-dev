@@ -31,16 +31,16 @@ def main():
     args = parser.parse_args()
 
     df = pd.read_csv(args.file_name)
-    print (df)
     means, error = get_mean_and_ebars(df, ["size"], "time")
 
+    fig,ax = plt.subplots()
 
-    ax = means.plot(yerr=error, grid=True)
+    ax.errorbar(means.index, means["mean"],yerr=error["error"], capsize=4)
+    #means.plot(ax=ax, yerr=error, grid=True, rot=0, capsize=4)
     ax.set_xlabel("Size")
     ax.set_ylabel("Execution Time (seconds)")
+    print(error)
 
-
-    fig = ax.get_figure()
     fig.savefig("ld_results.png")
 
 #    plt.plot(sizes, execution_times, marker="o")
