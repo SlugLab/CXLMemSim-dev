@@ -38,7 +38,7 @@ def plot_cxlmemsim_pmu_time(df):
     plt.ylabel(df["IPC"].name)
 
 def main():
-    sizes = [2**x for x in range(3, 8)]
+    sizes = [2**x for x in range(8,9)]
 
     f = open("ld_results.csv", "a")
 
@@ -50,9 +50,9 @@ def main():
             exec_time = run_command(size)
             writer.writerow([size, exec_time])
 
-    for size in sizes:
-        df = run_cxlmemsim_command(size)
-        plot_cxlmemsim_pmu_time(df)
+    # for size in sizes:
+    #     df = run_cxlmemsim_command(size)
+    #     plot_cxlmemsim_pmu_time(df)
 
 if __name__ == "__main__":
     main()

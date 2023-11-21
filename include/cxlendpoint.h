@@ -7,12 +7,51 @@
 #include "cxlcounter.h"
 #include "helper.h"
 
-class CXLEndPoint {
-    /** LRU Cache for wb and timeseries map */
+class LRUCache {
     std::list<uint64_t> lru_list;
     std::unordered_map<uint64_t, std::list<uint64_t>::iterator> lru_map;
     std::unordered_map<uint64_t, uint64_t> wb_map;
+    size_t capacity;
 
+public:
+    LRUCache(size_t cap) : capacity(cap) {}
+
+    void insert(uint64_t key, uint64_t value) {
+        // Check if the item is already in the cache
+        if (lru_map.find(key) != lru_map.end()) {
+            // Move the element to the front of the list
+            lru_list.erase(lru_map[key]);
+            lru_list.push_front(key);
+            lru_map[key] = lru_list.begin();
+            wb_map[key] = value;
+        } else {
+            // If the cache is full, remove the least recently used item
+            if (lru_list.size() == capacity) {
+                uint64_t old_key = lru_list.back();
+                lru_list.pop_back();
+                lru_map.erase(old_key);
+                wb_map.erase(old_key);
+            }
+            // Insert the new item
+            lru_list.push_front(key);
+            lru_map[key] = lru_list.begin();
+            wb_map[key] = value;
+        }
+    }
+
+    uint64_t get(uint64_t key) {
+        if (lru_map.find(key) == lru_map.end()) {
+            throw std::runtime_error("Key not found");
+        }
+        // Move the accessed item to the front of the list
+        lru_list.erase(lru_map[key]);
+        lru_list.push_front(key);
+        lru_map[key] = lru_list.begin();
+        return wb_map[key];
+    }
+};
+
+class CXLEndPoint {
     virtual void set_epoch(int epoch) = 0;
     virtual std::string output() = 0;
     virtual void delete_entry(uint64_t addr, uint64_t length) = 0;
@@ -32,6 +71,9 @@ public:
     std::map<uint64_t, uint64_t> va_pa_map; // va, pa
     CXLMemExpanderEvent counter{};
     CXLMemExpanderEvent last_counter{};
+
+    LRUCache lru_cache;
+    // tlb map and paging map -> invalidate
     int last_read = 0;
     int last_write = 0;
     double last_latency = 0.;

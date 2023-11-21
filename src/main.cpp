@@ -233,11 +233,74 @@ int main(int argc, char *argv[]) {
     }
 
     while (true) {
+        /** Get from the CXLMemSimHook */
+        int n;
+        do {
+            memset(sock_buf, 0, sock_buf_size);
+            // without blocking
+            n = recv(sock, sock_buf, sock_buf_size, MSG_DONTWAIT);
+            if (n < 1) {
+                if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                    // no data
+                    break;
+                } else {
+                    handle_error("Failed to recv");
+                }
+            } else if (n >= sizeof(struct op_data) && n <= sock_data_size) {
+                struct op_data *opd = (struct op_data *)sock_buf;
+                DEBUG_PRINT("received data: size=%d, tgid=%u, tid=%u, opcode=%u, num_of_region=%u\n",
+                            n, opd->tgid, opd->tid, opd->opcode, opd->num_of_region);
+
+                if (opd->opcode == MES_THREAD_CREATE || opd->opcode == MES_PROCESS_CREATE) {
+                    int target;
+                    bool is_process = (opd->opcode == MES_PROCESS_CREATE) ? true : false;
+                    uint64_t period = (opd->num_of_region >= 2) ? pebs_sample_period : 0 ; // is hybrid
+                    // register to monitor
+                    target = enable_mon(opd->tgid, opd->tid, is_process, period, tnum, mons);
+                    if (target == -1) {
+                        exit_with_message("Failed to enable monitor\n");
+                    } else if (target < 0) {
+                        // tid not found. might be already terminated.
+                        continue;
+                    }
+                    mon = &mons[target];
+                    if (opd->num_of_region >= 2) { // Ignored if num_of_region is 1 or less
+                        // pebs sampling
+                        if ((n - sizeof(struct op_data)) != (sizeof(struct __region_info) * opd->num_of_region)) {
+                            exit_with_message("Received data is invalid.\n");
+                        }
+                        struct __region_info *ri = (struct __region_info *)(sock_buf + sizeof(struct op_data));
+                        if (set_region_info_mon(mon, opd->num_of_region, ri) < 0) {
+                            exit_with_message("Received data is invalid.\n");
+                        }
+                    }
+                    // Wait the target processes until emulation process initialized.
+                    stop_mon(mon);
+                    /* read CBo params */
+                    for (j = 0; j < ncbo; j++) {
+                        read_cbo_elems(&pmu.cbos[j], &mon->before->cbos[j]);
+                    }
+                    for (j = 0; j < ncpu; j++) {
+                        read_cpu_elems(&pmu.cpus[j], &mon->before->cpus[j]);
+                    }
+                    // Run the target processes.
+                    run_mon(mon);
+                    clock_gettime(CLOCK_MONOTONIC, &mon->start_exec_ts);
+                } else if (opd->opcode == MES_THREAD_EXIT) {
+                    // unregister from monitor, and display results.
+                    if (terminate_mon(opd->tgid, opd->tid, tnum, mons) < 0) {
+                        DEBUG_PRINT("It might be already terminated.\n");
+                    }
+                }
+            } else {
+                exit_with_message("received data is invalid size: size=%d\n", n);
+            }
+        } while (n > 0); // check the next message.
+
         /* wait for pre-defined interval */
         clock_gettime(CLOCK_MONOTONIC, &sleep_start_ts);
 
         /** Here was a definition for the multi process and thread to enable multiple monitor */
-
         struct timespec req = waittime;
         struct timespec rem = {0};
         while (true) {
@@ -271,20 +334,18 @@ int main(int argc, char *argv[]) {
                 LOG(DEBUG) << fmt::format("[{}:{}:{}] start_ts: {}.{}\n", i, mon.tgid, mon.tid, start_ts.tv_sec,
                                           start_ts.tv_nsec);
                 mon.stop();
-                /* read CHA values */
-                //{
+                /** Read CHA values */
                 uint64_t wb_cnt = 0;
                 std::vector<uint64_t> cha_vec,cpu_vec{};
-                //    for (int j = 0; j < ncha; j++) {
-                //        pmu.chas[j].read_cha_elems(&mon.after->chas[j]);
-                //        wb_cnt += mon.after->chas[j].cpu_llc_wb - mon.before->chas[j].cpu_llc_wb;
-                //    }
-                //    LOG(INFO) << fmt::format("[{}:{}:{}] LLC_WB = {}\n", i, mon.tgid, mon.tid, wb_cnt);
+                //for (int j = 0; j < ncha; j++) {
+                //    pmu.chas[j].read_cha_elems(&mon.after->chas[j]);
+                //    wb_cnt += mon.after->chas[j].cpu_llc_wb - mon.before->chas[j].cpu_llc_wb;
+                //}
+                //LOG(INFO) << fmt::format("[{}:{}:{}] LLC_WB = {}\n", i, mon.tgid, mon.tid, wb_cnt);
                 //}
                 for (int j = 0; j < helper.used_cha.size(); j++) {
                     for (auto const &[idx, value] : pmu.chas | enumerate) {
                         value.read_cha_elems(&mon.after->chas[j]);
-//                        wb_cnt = mon.after->chas[j].cha[idx] - mon.before->chas[j].cha[idx];
                         cha_vec.emplace_back(mon.after->chas[j].cha[idx] - mon.before->chas[j].cha[idx]);
                     }
                 }
@@ -305,10 +366,10 @@ int main(int argc, char *argv[]) {
                  //     mon.after->cpus[mon.cpu_core].cpu_l2stall_t - mon.before->cpus[mon.cpu_core].cpu_l2stall_t;
                  // target_llchits =
                  //     mon.after->cpus[mon.cpu_core].cpu_llcl_hits - mon.before->cpus[mon.cpu_core].cpu_llcl_hits;
-//                 for (auto const &[idx, value] : pmu.cpus | enumerate) {
-//                     target_l2stall += mon.after->cpus[idx].cpu_l2stall_t - mon.before->cpus[idx].cpu_l2stall_t;
-//                     target_llchits += mon.after->cpus[idx].cpu_llcl_hits - mon.before->cpus[idx].cpu_llcl_hits;
-//                 }
+                 //  for (auto const &[idx, value] : pmu.cpus | enumerate) {
+                 //      target_l2stall += mon.after->cpus[idx].cpu_l2stall_t - mon.before->cpus[idx].cpu_l2stall_t;
+                 //      target_llchits += mon.after->cpus[idx].cpu_llcl_hits - mon.before->cpus[idx].cpu_llcl_hits;
+                 //  }
                 for (int j = 0; j < helper.used_cpu.size(); j++) {
                     for (auto const &[idx, value] : pmu.cpus | enumerate) {
                         value.read_cpu_elems(&mon.after->cpus[j]);
@@ -362,7 +423,7 @@ int main(int argc, char *argv[]) {
 
                 mon.before->pebs.total = mon.after->pebs.total;
 
-                LOG(DEBUG) << fmt::format("writeback={}, readonly={}, delay={}\n", ma_wb, ma_ro, emul_delay);
+                LOG(DEBUG) << fmt::format("delay={}\n", emul_delay);
 
                 /* compensation of delay END(1) */
                 clock_gettime(CLOCK_MONOTONIC, &end_ts);
@@ -370,7 +431,6 @@ int main(int argc, char *argv[]) {
                 LOG(DEBUG) << fmt::format("dif:{}\n", diff_nsec);
 
                 calibrated_delay = (diff_nsec > emul_delay) ? 0 : emul_delay - diff_nsec;
-                // uint64_t calibrated_delay = emul_delay;
                 mon.total_delay += (double)calibrated_delay / 1000000000;
                 diff_nsec = 0;
 
@@ -429,7 +489,7 @@ int main(int argc, char *argv[]) {
             mon.after = swap;
 
             /* continue suspended processes: send SIGCONT */
-              // mon.unfreeze_counters_cha_all(fds.msr[0]);
+            // mon.unfreeze_counters_cha_all(fds.msr[0]);
             // start_pmc(&fds, i);
             if (calibrated_delay == 0) {
                 Monitor::clear_time(&mon.wasted_delay);
