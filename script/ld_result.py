@@ -1,7 +1,11 @@
+#!/usr/bin/env python
+
 import subprocess
 import time
 import matplotlib.pyplot as plt
 import pandas as pd
+import csv
+import sys
 
 workloads = ["mlc", "ld", "st", "nt-ld", "nt-st", "ptr-chasing"]
 
@@ -28,19 +32,17 @@ def run_cxlmemsim_command(size):
     return df
 
 
-sizes = [2**x for x in range(3, 8)]
-execution_times = []
-plot_datas = []
+def main():
+    sizes = [2**x for x in range(3, 8)]
+    writer = csv.writer(sys.stdout, delimiter=",")
 
-for i in range(10):
-    for size in sizes:
-        exec_time = run_command(size)
-        execution_times.append(exec_time)
-#    print(f"Size: {size}, Time: {exec_time} seconds")
+    writer.writerow(["size", "time"])
+    for i in range(10):
+        for size in sizes:
+            exec_time = run_command(size)
+            #exec_time = size;
+            writer.writerow([size, exec_time])
 
-plt.plot(sizes, execution_times, marker="o")
-plt.xlabel("Size")
-plt.ylabel("Execution Time (seconds)")
-plt.title("Execution Time vs Size")
-plt.grid(True)
-plt.savefig("ld.png")
+
+if __name__ == "__main__":
+    main()
