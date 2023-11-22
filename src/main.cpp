@@ -1,6 +1,7 @@
 //
 // Created by victoryang00 on 1/12/23.
 //
+
 #include "cxlendpoint.h"
 #include "helper.h"
 #include "monitor.h"
@@ -177,7 +178,7 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
     /** In case of process, use SIGSTOP. */
-    auto res = monitors.enable(t_process, t_process, true, pebsperiod, tnum, mode);
+    auto res = monitors.enable(t_process, t_process, true, pebsperiod, tnum);
     if (res == -1) {
         LOG(ERROR) << fmt::format("Failed to enable monitor\n");
         exit(0);
@@ -254,42 +255,57 @@ int main(int argc, char *argv[]) {
                 }
             } else if (n >= sizeof(struct op_data) && n <= sock_buf_size - 1) {
                 auto *opd = (struct op_data *)sock_buf;
-                LOG(ERROR)<<fmt::format("received data: size={}, tgid={}, tid=[], opcode={}\n", n, opd->tgid,
-                            opd->tid, opd->opcode);
+                LOG(ERROR) << fmt::format("received data: size={}, tgid={}, tid=[], opcode={}\n", n, opd->tgid,
+                                          opd->tid, opd->opcode);
 
-                if (opd->opcode == CXLMEMSIM_THREAD_CREATE || opd->opcode == CXLMEMSIM_PROCESS_CREATE) {
-                    int target;
-                    bool is_process = (opd->opcode == CXLMEMSIM_PROCESS_CREATE) ? true : false;
+                if (opd->opcode == CXLMEMSIM_PROCESS_CREATE) {
+                    int t;
+                    bool is_process = (opd->opcode == CXLMEMSIM_PROCESS_CREATE);
                     // register to monitor
-                //     target = enable_mon(opd->tgid, opd->tid, is_process, pebsperiod, tnum, moniters->mon);
-                //     if (target == -1) {
-                //         LOG(ERROR)<<"Failed to enable monitor\n";
-                //     } else if (target < 0) {
-                //         // tid not found. might be already terminated.
-                //         continue;
-                //     }
-                //     auto mon = &moniters->mon[target];
-                //     // Wait the target processes until emulation process initialized.
-                //     mon.stop();
-                //     /* read CBo params */
-                //    for (int j = 0; j < helper.used_cpu.size(); j++) {
-                //         read_cbo_elems(&pmu.cbos[j], &mon->before->cbos[j]);
-                //         value.read_cpu_elems(&mon.after->cpus[j]);
-                //     }
-                //     for (j = 0; j < ncpu; j++) {
-                //         read_cpu_elems(&pmu.cpus[j], &mon->before->cpus[j]);
-                //     }
-                    // Run the target processes.
-                    // mon.run();
-                    // clock_gettime(CLOCK_MONOTONIC, &mon->start_exec_ts);
+
+                    t = monitors.enable(opd->tgid, opd->tid, is_process, pebsperiod, tnum);
+                    if (t == -1) {
+                        LOG(ERROR) << "Failed to enable monitor\n";
+                    } else if (t < 0) {
+                        // tid not found. might be already terminated.
+                        continue;
+                    }
+                    auto mon = monitors.mon[t];
+                    // Wait the t processes until emulation process initialized.
+                    mon.stop();
+                    /* read CBo params */
+//                    for (int j = 0; j < helper.used_cpu.size(); j++) {
+////                        read_cbo_elems(&pmu.cbos[j], &mon->before->cbos[j]);
+//                        value.read_cha_elems(&mon.after->chas[j]);
+//                    }
+                    pmu = mon.pmu;
+                    for (auto const &[idx, value] : pmu.chas | enumerate) {
+                        pmu.chas[idx].read_cha_elems(&mon.before->chas[idx]);
+                    }
+                    for (auto const &[idx, value] : pmu.chas | enumerate) {
+                        pmu.chas[idx].read_cha_elems(&mon.before->chas[idx]);
+                    }
+                    // Run the t processes.
+                    mon.run();
+                    clock_gettime(CLOCK_MONOTONIC, &mon.start_exec_ts);
                 } else if (opd->opcode == CXLMEMSIM_THREAD_EXIT) {
                     // unregister from monitor, and display results.
-                    // if (terminate_mon(opd->tgid, opd->tid, tnum, moniters->mon) < 0) {
-                    //     LOG(DEBUG)<<("It might be already terminated.\n");
-                    // }
+                    // get the tid from the tgid
+
+                     if (mon.terminate(opd->tgid, opd->tid, tnum) < 0) {
+                         LOG(DEBUG)<<("It might be already terminated.\n");
+                     }
+                } else if (opd->opcode == CXLMEMSIM_STABLE_SIGNAL){
+                     for (auto const &[i, mon] : monitors.mon | enumerate) {
+                         if (mon.status == MONITOR_ON) {
+                             mon.stop();
+                             mon.status = MONITOR_SUSPEND;
+                         }
+                     }
                 }
+
             } else {
-                 LOG(ERROR)<<fmt::format("received data is invalid size: size={}", n);
+                LOG(ERROR) << fmt::format("received data is invalid size: size={}", n);
             }
         } while (n > 0); // check the next message.
 
@@ -325,7 +341,7 @@ int main(int argc, char *argv[]) {
             if (mon.status == MONITOR_DISABLE) {
                 continue;
             }
-            if (mon.status == MONITOR_ON) {
+            if (mon.status == MONITOR_ON || mon.status == MONITOR_SUSPEND) {
                 clock_gettime(CLOCK_MONOTONIC, &start_ts);
                 LOG(DEBUG) << fmt::format("[{}:{}:{}] start_ts: {}.{}\n", i, mon.tgid, mon.tid, start_ts.tv_sec,
                                           start_ts.tv_nsec);

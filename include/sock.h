@@ -13,6 +13,7 @@ enum opcode {
     CXLMEMSIM_PROCESS_CREATE = 0,
     CXLMEMSIM_THREAD_CREATE = 1,
     CXLMEMSIM_THREAD_EXIT = 2,
+    CXLMEMSIM_STABLE_SIGNAL = 3,
 };
 struct op_data {
     uint32_t tgid;

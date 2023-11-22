@@ -12,7 +12,7 @@ workloads = ["mlc", "ld", "st", "nt-ld", "nt-st", "ptr-chasing"]
 def run_command(size, mem_node):
     start_time = time.time()
     cmd = [
-        f"/usr/bin/numactl -m {mem_node} ../cmake-build-debug/microbench/ld" + str(size),
+        f"/usr/bin/numactl -m {mem_node} ../cmake-build-debug/microbench/st" + str(size),
     ]
     print(cmd)
     process = subprocess.Popen(
@@ -31,7 +31,7 @@ def run_cxlmemsim_command(size, mem_node):
         f"/usr/bin/numactl -m {mem_node}",
         "../cmake-build-debug/CXLMemSim",
         "-t",
-        "../cmake-build-debug/microbench/ld" + str(size),
+        "../cmake-build-debug/microbench/st" + str(size),
         "-i",
         "100",
     ]
@@ -40,7 +40,7 @@ def run_cxlmemsim_command(size, mem_node):
     os.system(cmd)
     # end_time = time.time()
     df = pd.read_csv("./output_pmu.csv")
-    os.system(f"mv ./output_pmu.csv ./ld_pmu{size}_results.csv")
+    os.system(f"mv ./output_pmu.csv ./st_pmu{size}_results.csv")
     return df
 
 
@@ -51,7 +51,7 @@ def main():
     mem_node = 0 if mode == "local" else 1
 
         
-    f = open(f"ld_results_{mode}.csv", "a")
+    f = open(f"st_results_{mode}.csv", "a")
 
     writer = csv.writer(f, delimiter=",")
 

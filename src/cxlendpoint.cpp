@@ -5,7 +5,7 @@
 #include "cxlendpoint.h"
 
 CXLMemExpander::CXLMemExpander(int read_bw, int write_bw, int read_lat, int write_lat, int id, int capacity)
-    : capacity(capacity), id(id), lru_cache(capacity/1000/64) {
+    : capacity(capacity), id(id), lru_cache(capacity / 1000 / 64) {
     this->bandwidth.read = read_bw;
     this->bandwidth.write = write_bw;
     this->latency.read = read_lat;
@@ -31,20 +31,20 @@ double CXLMemExpander::calculate_latency(LatencyPass lat) {
     /**     If both target_llchits and target_llcmiss are 0, it means that hit in L2.
      *     Stall by LLC misses is 0.
      *     choose by vector */
-     
-//    mastall_wb = (double)(target_l2stall / frequency) *
-//                 ((double)(weight * llcmiss_wb) / (double)(target_llchits + (weight * target_llcmiss))) * 1000;
-//    // weight is a delay specific value current pro
-//    mastall_ro = (double)(target_l2stall / frequency) *
-//                 ((double)(weight * llcmiss_ro) / (double)(target_llchits + (weight * target_llcmiss))) *
-//                 1000; // weight is a delay specific value
-//    LOG(DEBUG) << fmt::format("l2stall={}, mastall_wb={}, mastall_ro={}, target_llchits={}, target_llcmiss={}\n",
-//                              target_l2stall, mastall_wb, mastall_ro, target_llchits, target_llcmiss);
 
-     auto writeback = (double)mastall_wb / dramlatency;
-     auto readonly = (double)mastall_ro / dramlatency;
-     this->last_latency =
-         ma_ro * read_sample * (latency.read - dramlatency) + ma_wb * write_sample * (latency.write - dramlatency);
+    //    mastall_wb = (double)(target_l2stall / frequency) *
+    //                 ((double)(weight * llcmiss_wb) / (double)(target_llchits + (weight * target_llcmiss))) * 1000;
+    //    // weight is a delay specific value current pro
+    //    mastall_ro = (double)(target_l2stall / frequency) *
+    //                 ((double)(weight * llcmiss_ro) / (double)(target_llchits + (weight * target_llcmiss))) *
+    //                 1000; // weight is a delay specific value
+    //    LOG(DEBUG) << fmt::format("l2stall={}, mastall_wb={}, mastall_ro={}, target_llchits={}, target_llcmiss={}\n",
+    //                              target_l2stall, mastall_wb, mastall_ro, target_llchits, target_llcmiss);
+
+    auto writeback = (double)mastall_wb / dramlatency;
+    auto readonly = (double)mastall_ro / dramlatency;
+    this->last_latency =
+        ma_ro * read_sample * (latency.read - dramlatency) + ma_wb * write_sample * (latency.write - dramlatency);
     return this->last_latency;
 }
 double CXLMemExpander::calculate_bandwidth(BandwidthPass bw) {
@@ -60,7 +60,7 @@ double CXLMemExpander::calculate_bandwidth(BandwidthPass bw) {
     if (all_read != 0) {
         read_sample = ((double)last_read / all_read);
     }
-    double write_sample = 0.;
+    double write_sample = 0.; // based on time series
     if (all_write != 0) {
         write_sample = ((double)last_write / all_write);
     }
@@ -68,13 +68,13 @@ double CXLMemExpander::calculate_bandwidth(BandwidthPass bw) {
         ((double)bandwidth.read)) {
         res +=
             read_sample * 64 * read_config / 1024 / 1024 / (this->epoch + this->last_latency) * 1000 / bandwidth.read -
-            this->epoch * 0.001;
+            this->epoch * 0.001; // TODO: read
     }
     if ((((double)write_sample * 64 * write_config) / 1024 / 1024 / (this->epoch + this->last_latency) * 1000) >
         bandwidth.write) {
         res += (((double)write_sample * 64 * write_config) / 1024 / 1024 / (this->epoch + this->last_latency) * 1000 /
                 bandwidth.write) -
-               this->epoch * 0.001;
+               this->epoch * 0.001; // TODO: wb+clflush
     }
     return res;
 }
@@ -106,7 +106,7 @@ void CXLMemExpander::delete_entry(uint64_t addr, uint64_t length) {
 }
 
 int CXLMemExpander::insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr, int index) {
-    
+
     if (index == this->id) {
         last_timestamp = last_timestamp > timestamp ? last_timestamp : timestamp; // Update the last timestamp
         // Check if the address is already in the map)

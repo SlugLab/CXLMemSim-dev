@@ -22,6 +22,7 @@ enum MONITOR_STATUS {
     MONITOR_TERMINATED = 2,
     MONITOR_NOPERMISSION = 3,
     MONITOR_DISABLE = 4,
+    MONITOR_SUSPEND = 5,
     MONITOR_UNKNOWN = 0xff
 };
 
@@ -37,7 +38,7 @@ public:
 
     void stop_all(int);
     void run_all(int);
-    int enable(uint32_t, uint32_t, bool, uint64_t, int32_t, bool is_page);
+    int enable(const uint32_t, const uint32_t, bool, uint64_t, const int32_t);
     void disable(uint32_t target);
     int terminate(uint32_t, uint32_t, int32_t);
     bool check_all_terminated(uint32_t);

@@ -8,7 +8,7 @@ workloads = ["mlc", "ld", "st", "nt-ld", "nt-st", "ptr-chasing"]
 
 def run_command(size):
     start_time = time.time()
-    cmd = ["../cmake-build-debug/microbench/ld" + str(size)]
+    cmd = ["../misc/MLC/Linux/mlc","--loaded_latency"]
     print(cmd)
     subprocess.run(cmd)
     end_time = time.time()

@@ -1,6 +1,7 @@
 //
 // Created by victoryang00 on 1/12/23.
 //
+
 #include "uncore.h"
 extern Helper helper;
 Uncore::Uncore(const uint32_t unc_idx, PerfConfig *perf_config) {
@@ -30,15 +31,11 @@ Uncore::Uncore(const uint32_t unc_idx, PerfConfig *perf_config) {
         LOG(ERROR) << fmt::format("strtoul {} failed", fd);
         throw std::runtime_error("strtoul");
     }
-    //    this->perf[0] = init_uncore_perf(-1, unc_idx, std::get<1>(perf_config->cpu_1),
-    //    std::get<2>(perf_config->cpu_1), value);
+
     for (auto const &[k, v] : this->perf | enumerate) {
-        v = init_uncore_perf(-1, (int)unc_idx, std::get<1>(perf_config->cha[k]), std::get<2>(perf_config->cha[k]), value);
+        v = init_uncore_perf(-1, (int)unc_idx, std::get<1>(perf_config->cha[k]), std::get<2>(perf_config->cha[k]),
+                             value);
     }
-    //    this->perf[1] = init_uncore_perf(-1, unc_idx, std::get<1>(perf_config->cpu_2),
-    //    std::get<2>(perf_config->cpu_2), value); this->perf[2] = init_uncore_perf(-1, unc_idx,
-    //    std::get<1>(perf_config->cpu_3), std::get<2>(perf_config->cpu_3), value); this->perf[3] = init_uncore_perf(-1,
-    //    unc_idx, std::get<1>(perf_config->cpu_4), std::get<2>(perf_config->cpu_4), value);
 }
 
 int Uncore::read_cha_elems(struct CHAElem *elem) {

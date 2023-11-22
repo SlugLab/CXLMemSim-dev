@@ -5,22 +5,22 @@
 #include <string>
 #include <vector>
 
-struct ModelContext model_ctx[] = {CPU_MDL_BDX,
-                                   {
-                                       "/sys/bus/event_source/devices/uncore_cbo_%u/type",
-                                   },
-                                   CPU_MDL_SKX,
-                                   {
-                                       "/sys/bus/event_source/devices/uncore_cha_%u/type",
-                                   },
-                                   CPU_MDL_SPR,
-                                   {
-                                       "/sys/bus/event_source/devices/uncore_cha_%u/type",
-                                   },
-                                   CPU_MDL_ADL,
-                                   {
-                                       "/sys/bus/event_source/devices/uncore_cbo_%u/type",
-                                   },
+struct ModelContext model_ctx[] = {{CPU_MDL_BDX,
+                                    {
+                                        "/sys/bus/event_source/devices/uncore_cbo_%u/type",
+                                    }},
+                                   {CPU_MDL_SKX,
+                                    {
+                                        "/sys/bus/event_source/devices/uncore_cha_%u/type",
+                                    }},
+                                   {CPU_MDL_SPR,
+                                    {
+                                        "/sys/bus/event_source/devices/uncore_cha_%u/type",
+                                    }},
+                                   {CPU_MDL_ADL,
+                                    {
+                                        "/sys/bus/event_source/devices/uncore_cbo_%u/type",
+                                    }},
                                    {CPU_MDL_END, {""}}};
 
 int Helper::num_of_cpu() {

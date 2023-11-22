@@ -35,7 +35,7 @@ void Monitors::run_all(const int processes) {
     }
 }
 int Monitors::enable(const uint32_t tgid, const uint32_t tid, bool is_process, uint64_t pebs_sample_period,
-                     const int32_t tnum, bool is_page) {
+                     const int32_t tnum) {
     int target = -1;
 
     for (int i = 0; i < tnum; i++) {
@@ -88,7 +88,7 @@ int Monitors::enable(const uint32_t tgid, const uint32_t tid, bool is_process, u
 
     LOG(INFO) << fmt::format("pid {}[tgid={}, tid={}] monitoring start\n", target, mon[target].tgid, mon[target].tid);
 
-    return 0;
+    return target;
 }
 void Monitors::disable(const uint32_t target) {
     mon[target].is_process = false; // Here to add the multi process.
@@ -181,7 +181,7 @@ bool Monitors::check_continue(const uint32_t target, const struct timespec w) {
 }
 
 void Monitor::stop() { // thread create and proecess create get the pmu
-    int ret = -1;
+    int ret;
 
     if (this->is_process) {
         // In case of process, use SIGSTOP.

@@ -44,7 +44,7 @@ ssize_t Incore::read_cpu_elems(struct CPUElem *elem) {
             LOG(ERROR) << fmt::format("read cpu_elems[{}] failed.\n", std::get<0>(helper.perf_conf.cha[idx]));
             return r;
         }
-         LOG(DEBUG) << fmt::format("read cpu_elems[{}]:{}\n", std::get<0>(helper.perf_conf.cpu[idx]), elem->cpu[idx]);
+        LOG(DEBUG) << fmt::format("read cpu_elems[{}]:{}\n", std::get<0>(helper.perf_conf.cpu[idx]), elem->cpu[idx]);
     }
 
     return 0;
