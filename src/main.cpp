@@ -258,9 +258,9 @@ int main(int argc, char *argv[]) {
                 LOG(ERROR) << fmt::format("received data: size={}, tgid={}, tid=[], opcode={}\n", n, opd->tgid,
                                           opd->tid, opd->opcode);
 
-                if (opd->opcode == CXLMEMSIM_PROCESS_CREATE) {
+                if (opd->opcode == CXLMEMSIM_THREAD_CREATE || opd->opcode == CXLMEMSIM_PROCESS_CREATE) {
                     int t;
-                    bool is_process = (opd->opcode == CXLMEMSIM_PROCESS_CREATE);
+                    bool is_process = opd->opcode == CXLMEMSIM_PROCESS_CREATE;
                     // register to monitor
 
                     t = monitors.enable(opd->tgid, opd->tid, is_process, pebsperiod, tnum);
@@ -273,12 +273,7 @@ int main(int argc, char *argv[]) {
                     auto mon = monitors.mon[t];
                     // Wait the t processes until emulation process initialized.
                     mon.stop();
-                    /* read CBo params */
-//                    for (int j = 0; j < helper.used_cpu.size(); j++) {
-////                        read_cbo_elems(&pmu.cbos[j], &mon->before->cbos[j]);
-//                        value.read_cha_elems(&mon.after->chas[j]);
-//                    }
-                    pmu = mon.pmu;
+                    /* read CHA params */
                     for (auto const &[idx, value] : pmu.chas | enumerate) {
                         pmu.chas[idx].read_cha_elems(&mon.before->chas[idx]);
                     }
@@ -291,17 +286,15 @@ int main(int argc, char *argv[]) {
                 } else if (opd->opcode == CXLMEMSIM_THREAD_EXIT) {
                     // unregister from monitor, and display results.
                     // get the tid from the tgid
-
-                     if (mon.terminate(opd->tgid, opd->tid, tnum) < 0) {
-                         LOG(DEBUG)<<("It might be already terminated.\n");
-                     }
-                } else if (opd->opcode == CXLMEMSIM_STABLE_SIGNAL){
-                     for (auto const &[i, mon] : monitors.mon | enumerate) {
-                         if (mon.status == MONITOR_ON) {
-                             mon.stop();
-                             mon.status = MONITOR_SUSPEND;
-                         }
-                     }
+                    auto mon = monitors.get_mon(opd->tgid, opd->tid);
+                    mon.stop();
+                } else if (opd->opcode == CXLMEMSIM_STABLE_SIGNAL) {
+                    for (auto const &[i, mon] : monitors.mon | enumerate) {
+                        if (mon.status == MONITOR_ON) {
+                            mon.stop();
+                            mon.status = MONITOR_SUSPEND;
+                        }
+                    }
                 }
 
             } else {

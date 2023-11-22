@@ -41,7 +41,6 @@
   "xor %%r8, %%r8 \n"						\
   "LOOP_START%=: \n"						\
   "lea (%[" #start "], %%r8), %%r9 \n"				\
-  "movdqa  (%%r9), %%xmm0 \n"					\
   "add $" STR(MOVE_SIZE) ", %%r8 \n"				\
   "cmp $" STR(FENCE_BOUND) ",%%r8\n"				\
   "jl LOOP_START%= \n"						\
@@ -96,7 +95,6 @@ int main(int argc, char **argv) {
   asm volatile ("mfence\n" :::);
 
   clock_gettime(CLOCK_MONOTONIC, &tstart);
-for (int i=0;i<1e3;i++){
   addr = base;
   while (addr < (base + MAP_SIZE)) {
     //fprintf (stderr, "addr %p bound %p\n", addr, base + MAP_SIZE);
@@ -114,6 +112,5 @@ for (int i=0;i<1e3;i++){
 
 
   printf("%lu\n", nanos);
-}
   return 0;
 }

@@ -34,6 +34,13 @@ void Monitors::run_all(const int processes) {
         }
     }
 }
+Monitor Monitors::get_mon(int tgid, int tid) {
+    for (auto &i : mon) {
+        if (i.tgid == tgid && i.tid == tid) {
+            return i;
+        }
+    }
+}
 int Monitors::enable(const uint32_t tgid, const uint32_t tid, bool is_process, uint64_t pebs_sample_period,
                      const int32_t tnum) {
     int target = -1;

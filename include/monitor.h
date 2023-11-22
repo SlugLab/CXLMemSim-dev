@@ -38,6 +38,7 @@ public:
 
     void stop_all(int);
     void run_all(int);
+    Monitor get_mon(int, int);
     int enable(const uint32_t, const uint32_t, bool, uint64_t, const int32_t);
     void disable(uint32_t target);
     int terminate(uint32_t, uint32_t, int32_t);

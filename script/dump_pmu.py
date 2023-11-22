@@ -6,24 +6,26 @@ import json
 
 # TODO Load from perf concat file
 def get_perfmon(path: str, pmu:list) -> dict:
-    pmu
+    data_dict = {}
+    cur_csv = json.loads(f.read())
+    
     with open(path, 'r') as f:
-        data_dict = json.loads(f.read())
+        for line in pmu:
+            
+            # Extract the EventName, UMask, and EventCode
+            event = cur_csv["Events"][0]
+            event_name = event["EventName"]
+            umask = event["UMask"]
+            event_code = event["EventCode"]
 
-        # Extract the EventName, UMask, and EventCode
-        event = data_dict["Events"][0]
-        event_name = event["EventName"]
-        umask = event["UMask"]
-        event_code = event["EventCode"]
+            # Combine UMask and EventCode
+            combined_code = umask + event_code[2:]  # Concatenate and remove '0x' from EventCode
+            combined_code_hex = "0x" + combined_code[2:]  # Add '0x' back for hex representation
 
-        # Combine UMask and EventCode
-        combined_code = umask + event_code[2:]  # Concatenate and remove '0x' from EventCode
-        combined_code_hex = "0x" + combined_code[2:]  # Add '0x' back for hex representation
-
-        # Print the results
-        print(f"Event Name: {event_name}")
-        print(f"Combined UMask and EventCode: {combined_code_hex}")
-
+            # Print the results
+            print(f"Event Name: {event_name}")
+            print(f"Combined UMask and EventCode: {combined_code_hex}")
+    return data_dict
 
 
 def batch_pmu_run(pmu: dict):

@@ -1,10 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import subprocess
 import time
 import csv
 import sys, os
-import pandas as pd
 
 workloads = ["mlc", "ld", "st", "nt-ld", "nt-st", "ptr-chasing"]
 
@@ -43,24 +42,37 @@ def run_cxlmemsim_command(size, mem_node):
     os.system(f"mv ./output_pmu.csv ./ld_pmu{size}_results.csv")
     return df
 
+def execute(cmd):
+    print(cmd)
+    process = subprocess.Popen(
+        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
+
+    out, err = process.communicate()
+    print(f"err: {err}, out: {out}")
+    return out
+
 
 def main():
+    prefetching_off = [f"wrmsr -a 0x1a4 0xf"]
+    prefetching_on = [f"wrmsr -a 0x1a4 0xf"]
+
     sizes = [2**x for x in range(0, 9)]
 
     mode = "remote"
     mem_node = 0 if mode == "local" else 1
 
-        
-    f = open(f"ld_results_{mode}.csv", "a")
 
+    execute(prefetching_off)
+    f = open(f"ld_results_{mode}_noprefetch.csv", "a")
     writer = csv.writer(f, delimiter=",")
-
     writer.writerow(["size", "time"])
-    for i in range(25):
+    for i in range(10):
         for size in sizes:
             exec_time = run_command(size, mem_node)
             writer.writerow([size, exec_time])
 
+    execute(prefetching_on)            
     # for size in sizes:
     #     df = run_cxlmemsim_command(size,1)
 

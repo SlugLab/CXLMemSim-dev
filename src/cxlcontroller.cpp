@@ -125,4 +125,4 @@ std::tuple<double, std::vector<uint64_t>> CXLController::calculate_congestion() 
 void CXLController::set_epoch(int epoch) { CXLSwitch::set_epoch(epoch); }
 // TODO: impl me
 MigrationPolicy::MigrationPolicy() {}
-PagePolicy::PagePolicy() {}
+PagingPolicy::PagingPolicy() {}
