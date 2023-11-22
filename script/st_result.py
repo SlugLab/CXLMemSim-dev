@@ -56,13 +56,13 @@ def main():
     writer = csv.writer(f, delimiter=",")
 
     writer.writerow(["size", "time"])
-    # for i in range(25):
-    #     for size in sizes:
-    #         exec_time = run_command(size, mem_node)
-    #         writer.writerow([size, exec_time])
+    for i in range(25):
+        for size in sizes:
+            exec_time = run_command(size, mem_node)
+            writer.writerow([size, exec_time])
 
-    for size in sizes:
-        df = run_cxlmemsim_command(size,1)
+    # for size in sizes:
+    #     df = run_cxlmemsim_command(size,1)
 
 
 if __name__ == "__main__":
