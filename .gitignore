@@ -15,3 +15,4 @@ CMakePresets.json
 CMakeUserPresets.json
 *~
 voltdb
+#ld_base_result.py#

@@ -29,6 +29,8 @@ typedef int (*pthread_create_ptr_t)(pthread_t *, const pthread_attr_t *, void *(
 typedef int (*pthread_join_ptr_t)(pthread_t, void **);
 typedef int (*pthread_detach_ptr_t)(pthread_t);
 typedef size_t (*malloc_usable_size_ptr_t)(void *);
+// typedef int (*mpi_send_t)(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm);
+
 typedef struct cxlmemsim_param {
     int sock;
     struct sockaddr_un addr;
@@ -58,17 +60,9 @@ cxlmemsim_param_t param = {.sock = 0,
 
 inline void call_socket_with_int3() {
     const char *message = "hello";
+    fprintf(stderr, "call_socket_with_int3\n");
     // sendback tid
-    if (sendto(param.sock, message, strlen(message), 0, (struct sockaddr *)&param.addr, sizeof(param.addr)) < 0) {
-        perror("sendto");
-        exit(1);
-    }
-    strcpy(param.addr.sun_path, SOCKET_PATH);
-    remove(param.addr.sun_path);
-    if (bind(param.sock, (struct sockaddr *)&param.addr, sizeof(param.addr)) == -1) { // can be blocked for multi thread
-        fprintf(stderr, "Failed to execute. Can't bind to a socket.\n");
-        exit(1);
-    }
+
     __asm__("int $0x3");
 }
 
@@ -86,8 +80,7 @@ inline int init_mmap_ptr(void) {
 CXLMEMSIM_EXPORT
 void *malloc(size_t size) {
     call_socket_with_int3();
-    fprintf(stderr, "malloc%d\n", size);
-    call_socket_with_int3();
+    fprintf(stderr, "malloc%ld\n", size);
     return param.malloc(size);
 }
 

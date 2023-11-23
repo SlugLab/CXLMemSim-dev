@@ -1,4 +1,4 @@
-import os
+import os, subprocess
 import time
 workloads = ["mlc","ld","st","nt-ld","nt-st","ptr-chasing"]
 
@@ -8,7 +8,7 @@ def batch_run():
     
 def run_command(size):
     start_time = time.time()
-    cmd = ["../cmake-build-debug/CXLMemSim" + str(size)]
+    cmd = ["../cmake-build-debug/CXLMemSim" ,"-s"]
     print(cmd)
     subprocess.run(cmd)
     end_time = time.time()

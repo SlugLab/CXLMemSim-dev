@@ -38,18 +38,19 @@ def print_pmu_csv():
     for c in pmus:
         for i in sizes:
             df = pd.read_csv(f"ld_pmu{i}_results.csv")
-            col = df[c]
-            if col[0] == "0":
+            col = df[df[c]<1844674407][c]
+            print(col)
+            if col[11] == "0":
                 print(col)
                 continue
             # Plotting the data
-            plt.plot(df[col], marker="o", linestyle="-", label=c)
+            plt.plot(col, marker="o", linestyle="-", label=i)
 
         # Adding title and labels
         plt.title("PMU Plot for ld")
         plt.xlabel("PMU gathered per epoch")
         plt.ylabel(f"{c} Values")
-        plt.label.legend()
+        plt.legend()
         plt.savefig(f"ld_results_pmu_{c}.png")
 
 

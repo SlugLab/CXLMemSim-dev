@@ -17,13 +17,13 @@ find_package(fmt REQUIRED)
 file(GLOB_RECURSE SOURCE_FILES src/*.cpp)
 
 execute_process(COMMAND uname -r OUTPUT_VARIABLE arch OUTPUT_STRIP_TRAILING_WHITESPACE)
-set(CMAKE_CXX_FLAGS "-std=c++2b -fPIC -pthread -ldl -Wall -lrt -mavx512f -mpreferred-stack-boundary=4 -g")
+set(CMAKE_CXX_FLAGS "-Wall -std=c++2b -fPIC -pthread -ldl -lrt -mavx512f -mpreferred-stack-boundary=4 -g")
 
-add_executable(CXLMemSim ${SOURCE_FILES})
+add_executable(CXLMemSim ${SOURCE_FILES} src/main.cc)
 
 include_directories(CXLMemSim include ${cxxopts_INCLUDE_DIR} ${fmt_INCLUDE_DIR})
 target_link_libraries(CXLMemSim fmt::fmt cxxopts::cxxopts)
 
 add_library(CXLMemSimHook SHARED src/module.cc)
-
-
+add_executable(CXLMemSimSock ${SOURCE_FILES} src/sock.cc)
+target_link_libraries(CXLMemSimSock fmt::fmt cxxopts::cxxopts)

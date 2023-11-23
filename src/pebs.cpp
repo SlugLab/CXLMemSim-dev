@@ -121,7 +121,7 @@ int PEBS::read(CXLController *controller, struct PEBSElem *elem) {
         mp->data_tail = last_head;
         barrier();
     } while (mp->lock != this->seq);
-
+    
     return r;
 }
 int PEBS::start() {

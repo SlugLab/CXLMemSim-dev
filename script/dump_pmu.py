@@ -3,15 +3,17 @@ import matplotlib.pyplot as plt
 import os
 import json
 
+pmu_list = ["INST_RETIRED.ANY"]
+pmu_core_after = {"INST_RETIRED.ANY": (0, 0)}
+pmu_core_before = {"INST_RETIRED.ANY": (0, 0)}
 
-# TODO Load from perf concat file
-def get_perfmon(path: str, pmu:list) -> dict:
+
+def get_perfmon(path: str, pmu: list) -> dict:
     data_dict = {}
     cur_csv = json.loads(f.read())
-    
-    with open(path, 'r') as f:
+
+    with open(path, "r") as f:
         for line in pmu:
-            
             # Extract the EventName, UMask, and EventCode
             event = cur_csv["Events"][0]
             event_name = event["EventName"]
@@ -19,8 +21,12 @@ def get_perfmon(path: str, pmu:list) -> dict:
             event_code = event["EventCode"]
 
             # Combine UMask and EventCode
-            combined_code = umask + event_code[2:]  # Concatenate and remove '0x' from EventCode
-            combined_code_hex = "0x" + combined_code[2:]  # Add '0x' back for hex representation
+            combined_code = (
+                umask + event_code[2:]
+            )  # Concatenate and remove '0x' from EventCode
+            combined_code_hex = (
+                "0x" + combined_code[2:]
+            )  # Add '0x' back for hex representation
 
             # Print the results
             print(f"Event Name: {event_name}")
@@ -29,30 +35,19 @@ def get_perfmon(path: str, pmu:list) -> dict:
 
 
 def batch_pmu_run(pmu: dict):
-    return
+    for i, p in enumerate(pmu):
+        print(p)
+        if i % 4 == 0:
+            os.system(
+                "../cmake-build-debug/CXLMemSim -t ../cmake-build-debug/microbench/ld2 -i 100 --p"+ 
+            )
+            os.system("mv ./output_pmu.csv ./ld_pmu2_results.csv")
 
 
-def draw_graph(x, y):
-    plt.plot(x, y, marker='o')
-    plt.xlabel('Distance in meters')
-    plt.ylabel('Gravitational force in newtons')
-    plt.title('Gravitational force and distance')
-    plt.show()
-
-
-def load_csv(path):
-    with open(path, 'r') as f:
-        reader = csv.reader(f)
-        next(reader)
-        x = []
-        y = []
-        for row in reader:
-            x.append(float(row[0]))
-            y.append(float(row[1]))
-    return x, y
-
-if __name__ == '__main__':
-    pmu = {"INST_RETIRED.ANY" : 0}
-    get_perfmon("../cmake-build-debug/output_pmu.csv", pmu)
+if __name__ == "__main__":
+    pmu = {"INST_RETIRED.ANY": 0}
+    get_perfmon("./perfmon/SPR/events/sapphirerapids_core.json", pmu)
+    get_perfmon("./perfmon/SPR/events/sapphirerapids_uncore.json", pmu)
+    get_perfmon("./perfmon/SPR/events/sapphirerapids_uncore_experimental.json", pmu)
     # x, y = load_csv('data.csv')
     # draw_graph(x, y)

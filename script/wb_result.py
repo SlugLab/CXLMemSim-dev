@@ -18,6 +18,7 @@ def run_command(size, mem_node):
     process = subprocess.Popen(
         cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
+    print(f"err: {err}, out: {out}")
 
     out, err = process.communicate()
 
@@ -41,7 +42,7 @@ def run_cxlmemsim_command(size, mem_node):
         "-i",
         "100",
         "-c",
-        "0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18.19,20,21,22,23”
+        '0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23'
     ]
     cmd = " ".join(cmd)
     print(cmd)

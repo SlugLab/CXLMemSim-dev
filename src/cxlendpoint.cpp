@@ -26,8 +26,8 @@ double CXLMemExpander::calculate_latency(LatencyPass lat) {
     if (all_write != 0) {
         write_sample = ((double)last_write / all_write);
     }
-    uint64_t mastall_wb = 0; // synthetical
-    uint64_t mastall_ro = 0; // synthetical
+    uint64_t mastall_wb = 0; 
+    uint64_t mastall_ro = 0; 
     /**     If both target_llchits and target_llcmiss are 0, it means that hit in L2.
      *     Stall by LLC misses is 0.
      *     choose by vector */
