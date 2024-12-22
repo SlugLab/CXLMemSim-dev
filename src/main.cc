@@ -6,13 +6,13 @@
 #include "helper.h"
 #include "monitor.h"
 #include "policy.h"
-#include "sock.h"
 #include <cerrno>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
 #include <cxxopts.hpp>
+#include <spdlog/cfg/env.h>
 #include <sys/poll.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -20,6 +20,7 @@
 
 Helper helper{};
 int main(int argc, char *argv[]) {
+    spdlog::cfg::load_env_levels();
     cxxopts::Options options("CXLMemSim", "For simulation of CXL.mem Type 3 on Sapphire Rapids");
     options.add_options()("t,target", "The script file to execute",
                           cxxopts::value<std::string>()->default_value("./microbench/ld_simple"))(
@@ -93,7 +94,7 @@ int main(int argc, char *argv[]) {
     for (auto i : cpuset) {
         if (!use_cpus || use_cpus & 1UL << i) {
             CPU_SET(i, &use_cpuset);
-            LOG(DEBUG) << fmt::format("use cpuid: {}{}\n", i, use_cpus);
+            SPDLOG_DEBUG("use cpuid: {}{}\n", i, use_cpus);
         }
     }
 
@@ -101,48 +102,48 @@ int main(int argc, char *argv[]) {
     auto cur_processes = 0;
     auto ncpu = helper.num_of_cpu();
     auto ncha = helper.num_of_cha();
-    LOG(DEBUG) << fmt::format("tnum:{}, intrval:{}\n", tnum, interval);
+    SPDLOG_DEBUG("tnum:{}, intrval:{}\n", tnum, interval);
     for (auto const &[idx, value] : weight | enumerate) {
-        LOG(DEBUG) << fmt::format("weight[{}]:{}\n", weight_vec[idx], value);
+        SPDLOG_DEBUG("weight[{}]:{}\n", weight_vec[idx], value);
     }
 
     for (auto const &[idx, value] : capacity | enumerate) {
         if (idx == 0) {
-            LOG(DEBUG) << fmt::format("local_memory_region capacity:{}\n", value);
+            SPDLOG_DEBUG("local_memory_region capacity:{}\n", value);
             controller = new CXLController(policy, capacity[0], mode, interval);
         } else {
-            LOG(DEBUG) << fmt::format("memory_region:{}\n", (idx - 1) + 1);
-            LOG(DEBUG) << fmt::format(" capacity:{}\n", capacity[(idx - 1) + 1]);
-            LOG(DEBUG) << fmt::format(" read_latency:{}\n", latency[(idx - 1) * 2]);
-            LOG(DEBUG) << fmt::format(" write_latency:{}\n", latency[(idx - 1) * 2 + 1]);
-            LOG(DEBUG) << fmt::format(" read_bandwidth:{}\n", bandwidth[(idx - 1) * 2]);
-            LOG(DEBUG) << fmt::format(" write_bandwidth:{}\n", bandwidth[(idx - 1) * 2 + 1]);
+            SPDLOG_DEBUG("memory_region:{}\n", (idx - 1) + 1);
+            SPDLOG_DEBUG(" capacity:{}\n", capacity[(idx - 1) + 1]);
+            SPDLOG_DEBUG(" read_latency:{}\n", latency[(idx - 1) * 2]);
+            SPDLOG_DEBUG(" write_latency:{}\n", latency[(idx - 1) * 2 + 1]);
+            SPDLOG_DEBUG(" read_bandwidth:{}\n", bandwidth[(idx - 1) * 2]);
+            SPDLOG_DEBUG(" write_bandwidth:{}\n", bandwidth[(idx - 1) * 2 + 1]);
             auto *ep = new CXLMemExpander(bandwidth[(idx - 1) * 2], bandwidth[(idx - 1) * 2 + 1],
                                           latency[(idx - 1) * 2], latency[(idx - 1) * 2 + 1], (idx - 1), capacity[idx]);
             controller->insert_end_point(ep);
         }
     }
     controller->construct_topo(topology);
-    LOG(INFO) << controller->output() << "\n";
+    SPDLOG_INFO("%s", controller->output() );
     int sock;
-    struct sockaddr_un addr {};
+    sockaddr_un addr{};
 
     /** Hove been got by socket if it's not main thread and synchro */
-    sock = socket(AF_UNIX, SOCK_DGRAM, 0);
-    addr.sun_family = AF_UNIX;
-    strcpy(addr.sun_path, SOCKET_PATH);
-    remove(addr.sun_path);
-    if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) == -1) { // can be blocked for multi thread
-        LOG(ERROR) << "Failed to execute. Can't bind to a socket.\n";
-        exit(1);
-    }
+    // sock = socket(AF_UNIX, SOCK_DGRAM, 0);
+    // addr.sun_family = AF_UNIX;
+    // strcpy(addr.sun_path, SOCKET_PATH);
+    // remove(addr.sun_path);
+    // if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) == -1) { // can be blocked for multi thread
+    //     SPDLOG_ERROR("Failed to execute. Can't bind to a socket.\n";
+    //     exit(1);
+    // }
+    //
+    // size_t sock_buf_size = sizeof(op_data) + 1;
+    // char *sock_buf = (char *)malloc(sock_buf_size);
 
-    size_t sock_buf_size = sizeof(op_data) + 1;
-    char *sock_buf = (char *)malloc(sock_buf_size);
-
-    LOG(DEBUG) << fmt::format("cpu_freq:{}\n", frequency);
-    LOG(DEBUG) << fmt::format("num_of_cha:{}\n", ncha);
-    LOG(DEBUG) << fmt::format("num_of_cpu:{}\n", ncpu);
+    SPDLOG_DEBUG("cpu_freq:{}\n", frequency);
+    SPDLOG_DEBUG("num_of_cha:{}\n", ncha);
+    SPDLOG_DEBUG("num_of_cpu:{}\n", ncpu);
     for (auto j : cpuset) {
         helper.used_cpu.push_back(cpuset[j]);
         helper.used_cha.push_back(cpuset[j]);
@@ -163,35 +164,34 @@ int main(int argc, char *argv[]) {
             break;
         }
         args[current_arg_idx] = current_arg;
-        LOG(INFO) << fmt::format("args[{}] = {}\n", current_arg_idx, args[current_arg_idx]);
+        SPDLOG_INFO("args[{}] = {}\n", current_arg_idx, args[current_arg_idx]);
     }
 
     /** Create target process */
     Helper::detach_children();
     auto t_process = fork();
     if (t_process < 0) {
-        LOG(ERROR) << "Fork: failed to create target process";
+        SPDLOG_ERROR("Fork: failed to create target process");
         exit(1);
     } else if (t_process == 0) {
         execv(filename, args); // taskset in lpace
-        LOG(ERROR) << "Exec: failed to create target process\n";
+        SPDLOG_ERROR("Exec: failed to create target process\n");
         exit(1);
     }
     /** In case of process, use SIGSTOP. */
     auto res = monitors.enable(t_process, t_process, true, pebsperiod, tnum);
     if (res == -1) {
-        LOG(ERROR) << fmt::format("Failed to enable monitor\n");
+        SPDLOG_ERROR("Failed to enable monitor\n");
         exit(0);
     } else if (res < 0) {
-        LOG(DEBUG) << fmt::format("pid({}) not found. might be already terminated.\n", t_process);
+        SPDLOG_DEBUG("pid({}) not found. might be already terminated.\n", t_process);
     }
     cur_processes++;
-    LOG(DEBUG) << fmt::format("pid of CXLMemSim = {}, cur process={}\n", t_process, cur_processes);
+    SPDLOG_DEBUG("pid of CXLMemSim = {}, cur process={}\n", t_process, cur_processes);
 
     if (cur_processes >= ncpu) {
-        LOG(ERROR) << fmt::format(
-            "Failed to execute. The number of processes/threads of the target application is more than "
-            "physical CPU cores.\n");
+        SPDLOG_ERROR("Failed to execute. The number of processes/threads of the target application is more than "
+                     "physical CPU cores.\n");
         exit(0);
     }
 
@@ -200,20 +200,20 @@ int main(int argc, char *argv[]) {
 
     /** Get CPU information */
     if (!get_cpu_info(&monitors.mon[0].before->cpuinfo)) {
-        LOG(DEBUG) << "Failed to obtain CPU information.\n";
+        SPDLOG_DEBUG("Failed to obtain CPU information.\n");
     }
     auto perf_config =
         helper.detect_model(monitors.mon[0].before->cpuinfo.cpu_model, pmu_name, pmu_config1, pmu_config2);
     PMUInfo pmu{t_process, &helper, &perf_config};
 
     /*% Caculate epoch time */
-    struct timespec waittime {};
+    struct timespec waittime{};
     waittime.tv_sec = interval / 1000;
     waittime.tv_nsec = (interval % 1000) * 1000000;
 
-    LOG(DEBUG) << "The target process starts running.\n";
-    LOG(DEBUG) << fmt::format("set nano sec = {}\n", waittime.tv_nsec);
-    LOG(TRACE) << fmt::format("{}\n", monitors);
+    SPDLOG_DEBUG("The target process starts running.\n");
+    SPDLOG_DEBUG("set nano sec = {}\n", waittime.tv_nsec);
+    SPDLOG_TRACE("{}\n", monitors);
     monitors.print_flag = false;
 
     /* read CHA params */
@@ -227,10 +227,8 @@ int main(int argc, char *argv[]) {
     }
 
     uint32_t diff_nsec = 0;
-    struct timespec start_ts {
-    }, end_ts{};
-    struct timespec sleep_start_ts {
-    }, sleep_end_ts{};
+    struct timespec start_ts{}, end_ts{};
+    struct timespec sleep_start_ts{}, sleep_end_ts{};
 
     /** Wait all the target processes until emulation process initialized. */
     monitors.run_all(cur_processes);
@@ -241,92 +239,91 @@ int main(int argc, char *argv[]) {
     while (true) {
         /** Get from the CXLMemSimHook */
         int n;
-        do {
-            memset(sock_buf, 0, sock_buf_size);
-            // without blocking
-            n = recv(sock, sock_buf, sock_buf_size, MSG_DONTWAIT);
-            if (n < 1) {
-                if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                    // no data
-                    break;
-                } else {
-                    LOG(ERROR) << "Failed to recv";
-                    exit(-1);
-                }
-            } else if (n >= sizeof(struct op_data) && n <= sock_buf_size - 1) {
-                auto *opd = (struct op_data *)sock_buf;
-                LOG(ERROR) << fmt::format("received data: size={}, tgid={}, tid=[], opcode={}\n", n, opd->tgid,
-                                          opd->tid, opd->opcode);
-
-                if (opd->opcode == CXLMEMSIM_THREAD_CREATE || opd->opcode == CXLMEMSIM_PROCESS_CREATE) {
-                    int t;
-                    bool is_process = opd->opcode == CXLMEMSIM_PROCESS_CREATE;
-                    // register to monitor
-
-                    t = monitors.enable(opd->tgid, opd->tid, is_process, pebsperiod, tnum);
-                    if (t == -1) {
-                        LOG(ERROR) << "Failed to enable monitor\n";
-                    } else if (t < 0) {
-                        // tid not found. might be already terminated.
-                        continue;
-                    }
-                    auto mon = monitors.mon[t];
-                    // Wait the t processes until emulation process initialized.
-                    mon.stop();
-                    /* read CHA params */
-                    for (auto const &[idx, value] : pmu.chas | enumerate) {
-                        pmu.chas[idx].read_cha_elems(&mon.before->chas[idx]);
-                    }
-                    for (auto const &[idx, value] : pmu.chas | enumerate) {
-                        pmu.chas[idx].read_cha_elems(&mon.before->chas[idx]);
-                    }
-                    // Run the t processes.
-                    mon.run();
-                    clock_gettime(CLOCK_MONOTONIC, &mon.start_exec_ts);
-                } else if (opd->opcode == CXLMEMSIM_THREAD_EXIT) {
-                    // unregister from monitor, and display results.
-                    // get the tid from the tgid
-                    auto mon = monitors.get_mon(opd->tgid, opd->tid);
-                    mon.stop();
-                } else if (opd->opcode == CXLMEMSIM_STABLE_SIGNAL) {
-                    for (auto const &[i, mon] : monitors.mon | enumerate) {
-                        if (mon.status == MONITOR_ON) {
-                            mon.stop();
-                            mon.status = MONITOR_SUSPEND;
-                        }
-                    }
-                }
-
-            } else {
-                LOG(ERROR) << fmt::format("received data is invalid size: size={}", n);
-            }
-        } while (n > 0); // check the next message.
-
-        /* wait for pre-defined interval */
-        clock_gettime(CLOCK_MONOTONIC, &sleep_start_ts);
-
-        /** Here was a definition for the multi process and thread to enable multiple monitor */
-        struct timespec req = waittime;
-        struct timespec rem = {0};
-        while (true) {
-            auto ret = nanosleep(&req, &rem);
-            if (ret == 0) { // success
-                break;
-            } else { // ret < 0
-                if (errno == EINTR) {
-                    LOG(ERROR) << fmt::format("nanosleep: remain time {}.{}(sec)\n", (long)rem.tv_sec,
-                                              (long)rem.tv_nsec);
-                    // if the milisecs was set below 5, will trigger stop before the target process stop.
-                    // The pause has been interrupted by a signal that was delivered to the thread.
-                    req = rem; // call nanosleep() again with the remain time.
-                    break;
-                } else {
-                    // fatal error
-                    LOG(ERROR) << "Failed to wait nanotime";
-                    exit(0);
-                }
-            }
-        }
+        // do {
+        //     // memset(sock_buf, 0, sock_buf_size);
+        //     // // without blocking
+        //     // n = recv(sock, sock_buf, sock_buf_size, MSG_DONTWAIT);
+        //     // if (n < 1) {
+        //     //     if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        //     //         // no data
+        //     //         break;
+        //     //     } else {
+        //     //         SPDLOG_ERROR("Failed to recv";
+        //     //         exit(-1);
+        //     //     }
+        //     // } else if (n >= sizeof(struct op_data) && n <= sock_buf_size - 1) {
+        //     //     auto *opd = (struct op_data *)sock_buf;
+        //     //     SPDLOG_ERROR("received data: size={}, tgid={}, tid=[], opcode={}\n", n, opd->tgid, opd->tid,
+        //     //                  opd->opcode);
+        //
+        //         if (opd->opcode == CXLMEMSIM_THREAD_CREATE || opd->opcode == CXLMEMSIM_PROCESS_CREATE) {
+        //             int t;
+        //             bool is_process = opd->opcode == CXLMEMSIM_PROCESS_CREATE;
+        //             // register to monitor
+        //
+        //             t = monitors.enable(opd->tgid, opd->tid, is_process, pebsperiod, tnum);
+        //             if (t == -1) {
+        //                 SPDLOG_ERROR("Failed to enable monitor\n");
+        //             } else if (t < 0) {
+        //                 // tid not found. might be already terminated.
+        //                 continue;
+        //             }
+        //             auto mon = monitors.mon[t];
+        //             // Wait the t processes until emulation process initialized.
+        //             mon.stop();
+        //             /* read CHA params */
+        //             for (auto const &[idx, value] : pmu.chas | enumerate) {
+        //                 pmu.chas[idx].read_cha_elems(&mon.before->chas[idx]);
+        //             }
+        //             for (auto const &[idx, value] : pmu.chas | enumerate) {
+        //                 pmu.chas[idx].read_cha_elems(&mon.before->chas[idx]);
+        //             }
+        //             // Run the t processes.
+        //             mon.run();
+        //             clock_gettime(CLOCK_MONOTONIC, &mon.start_exec_ts);
+        //         } else if (opd->opcode == CXLMEMSIM_THREAD_EXIT) {
+        //             // unregister from monitor, and display results.
+        //             // get the tid from the tgid
+        //             auto mon = monitors.get_mon(opd->tgid, opd->tid);
+        //             mon.stop();
+        //         } else if (opd->opcode == CXLMEMSIM_STABLE_SIGNAL) {
+        //             for (auto const &[i, mon] : monitors.mon | enumerate) {
+        //                 if (mon.status == MONITOR_ON) {
+        //                     mon.stop();
+        //                     mon.status = MONITOR_SUSPEND;
+        //                 }
+        //             }
+        //         }
+        //
+        //     } else {
+        //         SPDLOG_ERROR("received data is invalid size: size={}", n);
+        //     }
+        // } while (n > 0); // check the next message.
+        //
+        // /* wait for pre-defined interval */
+        // clock_gettime(CLOCK_MONOTONIC, &sleep_start_ts);
+        //
+        // /** Here was a definition for the multi process and thread to enable multiple monitor */
+        // struct timespec req = waittime;
+        // struct timespec rem = {0};
+        // while (true) {
+        //     auto ret = nanosleep(&req, &rem);
+        //     if (ret == 0) { // success
+        //         break;
+        //     } else { // ret < 0
+        //         if (errno == EINTR) {
+        //             SPDLOG_ERROR("nanosleep: remain time {}.{}(sec)\n", (long)rem.tv_sec, (long)rem.tv_nsec);
+        //             // if the milisecs was set below 5, will trigger stop before the target process stop.
+        //             // The pause has been interrupted by a signal that was delivered to the thread.
+        //             req = rem; // call nanosleep() again with the remain time.
+        //             break;
+        //         } else {
+        //             // fatal error
+        //             SPDLOG_ERROR("Failed to wait nanotime";
+        //             exit(0);
+        //         }
+        //     }
+        // }
 
         uint64_t calibrated_delay;
         for (auto const &[i, mon] : monitors.mon | enumerate) {
@@ -336,8 +333,7 @@ int main(int argc, char *argv[]) {
             }
             if (mon.status == MONITOR_ON || mon.status == MONITOR_SUSPEND) {
                 clock_gettime(CLOCK_MONOTONIC, &start_ts);
-                LOG(DEBUG) << fmt::format("[{}:{}:{}] start_ts: {}.{}\n", i, mon.tgid, mon.tid, start_ts.tv_sec,
-                                          start_ts.tv_nsec);
+                SPDLOG_DEBUG("[{}:{}:{}] start_ts: {}.{}\n", i, mon.tgid, mon.tid, start_ts.tv_sec, start_ts.tv_nsec);
                 mon.stop();
                 /** Read CHA values */
                 uint64_t wb_cnt = 0;
@@ -346,7 +342,7 @@ int main(int argc, char *argv[]) {
                 //     pmu.chas[j].read_cha_elems(&mon.after->chas[j]);
                 //     wb_cnt += mon.after->chas[j].cpu_llc_wb - mon.before->chas[j].cpu_llc_wb;
                 // }
-                // LOG(INFO) << fmt::format("[{}:{}:{}] LLC_WB = {}\n", i, mon.tgid, mon.tid, wb_cnt);
+                // SPDLOG_INFO("[{}:{}:{}] LLC_WB = {}\n", i, mon.tgid, mon.tid, wb_cnt);
                 // }
                 for (int j = 0; j < helper.used_cha.size(); j++) {
                     for (auto const &[idx, value] : pmu.chas | enumerate) {
@@ -363,7 +359,7 @@ int main(int argc, char *argv[]) {
                 // }
                 /* read PEBS sample */
                 if (mon.pebs_ctx->read(controller, &mon.after->pebs) < 0) {
-                    LOG(ERROR) << fmt::format("[{}:{}:{}] Warning: Failed PEBS read\n", i, mon.tgid, mon.tid);
+                    SPDLOG_ERROR("[{}:{}:{}] Warning: Failed PEBS read\n", i, mon.tgid, mon.tid);
                 }
                 // target_llcmiss = mon.after->pebs.total - mon.before->pebs.total;
 
@@ -394,19 +390,18 @@ int main(int argc, char *argv[]) {
                 // TODO Calculate through the vector !!! target latency
                 uint64_t llcmiss_ro = 0;
                 if (target_llcmiss < llcmiss_wb) { // tunning
-                    LOG(ERROR) << fmt::format("[{}:{}:{}] cpus_dram_rds {}, llcmiss_wb {}, target_llcmiss {}\n", i,
-                                              mon.tgid, mon.tid, read_config, llcmiss_wb, target_llcmiss);
+                    SPDLOG_ERROR("[{}:{}:{}] cpus_dram_rds {}, llcmiss_wb {}, target_llcmiss {}\n", i, mon.tgid,
+                                 mon.tid, read_config, llcmiss_wb, target_llcmiss);
                     llcmiss_wb = target_llcmiss;
                     llcmiss_ro = 0;
                 } else {
                     llcmiss_ro = target_llcmiss - llcmiss_wb;
                 }
-                LOG(DEBUG) << fmt::format("[{}:{}:{}]llcmiss_wb={}, llcmiss_ro={}\n", i, mon.tgid, mon.tid, llcmiss_wb,
-                                          llcmiss_ro);
+                SPDLOG_DEBUG("[{}:{}:{}]llcmiss_wb={}, llcmiss_ro={}\n", i, mon.tgid, mon.tid, llcmiss_wb, llcmiss_ro);
 
                 uint64_t emul_delay = 0;
 
-                LOG(DEBUG) << fmt::format("[{}:{}:{}] pebs: total={}, \n", i, mon.tgid, mon.tid, mon.after->pebs.total);
+                SPDLOG_DEBUG("[{}:{}:{}] pebs: total={}, \n", i, mon.tgid, mon.tid, mon.after->pebs.total);
 
                 /** TODO: calculate latency construct the passing value and use interleaving policy and counter to get
                  * the sample_prop */
@@ -428,12 +423,12 @@ int main(int argc, char *argv[]) {
 
                 mon.before->pebs.total = mon.after->pebs.total;
 
-                LOG(DEBUG) << fmt::format("delay={}\n", emul_delay);
+                SPDLOG_DEBUG("delay={}\n", emul_delay);
 
                 /* compensation of delay END(1) */
                 clock_gettime(CLOCK_MONOTONIC, &end_ts);
                 diff_nsec += (end_ts.tv_sec - start_ts.tv_sec) * 1000000000 + (end_ts.tv_nsec - start_ts.tv_nsec);
-                LOG(DEBUG) << fmt::format("dif:{}\n", diff_nsec);
+                SPDLOG_DEBUG("dif:{}\n", diff_nsec);
 
                 calibrated_delay = (diff_nsec > emul_delay) ? 0 : emul_delay - diff_nsec;
                 mon.total_delay += (double)calibrated_delay / 1000000000;
@@ -442,22 +437,22 @@ int main(int argc, char *argv[]) {
                 /* insert emulated NVM latency */
                 mon.injected_delay.tv_sec += std::lround(calibrated_delay / 1000000000);
                 mon.injected_delay.tv_nsec += std::lround(calibrated_delay % 1000000000);
-                LOG(DEBUG) << fmt::format("[{}:{}:{}]delay:{} , total delay:{}\n", i, mon.tgid, mon.tid,
-                                          calibrated_delay, mon.total_delay);
+                SPDLOG_DEBUG("[{}:{}:{}]delay:{} , total delay:{}\n", i, mon.tgid, mon.tid, calibrated_delay,
+                             mon.total_delay);
 
             } else if (mon.status == MONITOR_OFF) {
                 // Wasted epoch time
                 clock_gettime(CLOCK_MONOTONIC, &start_ts);
                 uint64_t sleep_diff = (sleep_end_ts.tv_sec - sleep_start_ts.tv_sec) * 1000000000 +
                                       (sleep_end_ts.tv_nsec - sleep_start_ts.tv_nsec);
-                struct timespec sleep_time {};
+                struct timespec sleep_time{};
                 sleep_time.tv_sec = std::lround(sleep_diff / 1000000000);
                 sleep_time.tv_nsec = std::lround(sleep_diff % 1000000000);
                 mon.wasted_delay.tv_sec += sleep_time.tv_sec;
                 mon.wasted_delay.tv_nsec += sleep_time.tv_nsec;
-                LOG(DEBUG) << fmt::format("[{}:{}:{}][OFF] total: {}| wasted : {}| waittime : {}| squabble : {}\n", i,
-                                          mon.tgid, mon.tid, mon.injected_delay.tv_nsec, mon.wasted_delay.tv_nsec,
-                                          waittime.tv_nsec, mon.squabble_delay.tv_nsec);
+                SPDLOG_DEBUG("[{}:{}:{}][OFF] total: {}| wasted : {}| waittime : {}| squabble : {}\n", i, mon.tgid,
+                             mon.tid, mon.injected_delay.tv_nsec, mon.wasted_delay.tv_nsec, waittime.tv_nsec,
+                             mon.squabble_delay.tv_nsec);
                 if (monitors.check_continue(i, sleep_time)) {
                     Monitor::clear_time(&mon.wasted_delay);
                     Monitor::clear_time(&mon.injected_delay);
@@ -473,9 +468,9 @@ int main(int argc, char *argv[]) {
                 if (mon.wasted_delay.tv_sec >= waittime.tv_sec && remain_time < waittime.tv_nsec) {
                     mon.squabble_delay.tv_nsec += remain_time;
                     if (mon.squabble_delay.tv_nsec < 40000000) {
-                        LOG(DEBUG) << fmt::format("[SQ]total: {}| wasted : {}| waittime : {}| squabble : {}\n",
-                                                  mon.injected_delay.tv_nsec, mon.wasted_delay.tv_nsec,
-                                                  waittime.tv_nsec, mon.squabble_delay.tv_nsec);
+                        SPDLOG_DEBUG("[SQ]total: {}| wasted : {}| waittime : {}| squabble : {}\n",
+                                     mon.injected_delay.tv_nsec, mon.wasted_delay.tv_nsec, waittime.tv_nsec,
+                                     mon.squabble_delay.tv_nsec);
                         Monitor::clear_time(&mon.wasted_delay);
                         Monitor::clear_time(&mon.injected_delay);
                         mon.run();
@@ -486,7 +481,7 @@ int main(int argc, char *argv[]) {
                 }
             }
         } // End for-loop for all target processes
-        LOG(TRACE) << fmt::format("{}\n", monitors);
+        SPDLOG_TRACE("%s\n", monitors);
         for (auto mon : monitors.mon) {
             if (mon.status == MONITOR_ON) {
                 auto swap = mon.before;

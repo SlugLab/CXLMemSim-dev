@@ -26,8 +26,8 @@ double CXLMemExpander::calculate_latency(LatencyPass lat) {
     if (all_write != 0) {
         write_sample = ((double)last_write / all_write);
     }
-    uint64_t mastall_wb = 0; 
-    uint64_t mastall_ro = 0; 
+    uint64_t mastall_wb = 0;
+    uint64_t mastall_ro = 0;
     /**     If both target_llchits and target_llcmiss are 0, it means that hit in L2.
      *     Stall by LLC misses is 0.
      *     choose by vector */
@@ -38,7 +38,7 @@ double CXLMemExpander::calculate_latency(LatencyPass lat) {
     //    mastall_ro = (double)(target_l2stall / frequency) *
     //                 ((double)(weight * llcmiss_ro) / (double)(target_llchits + (weight * target_llcmiss))) *
     //                 1000; // weight is a delay specific value
-    //    LOG(DEBUG) << fmt::format("l2stall={}, mastall_wb={}, mastall_ro={}, target_llchits={}, target_llcmiss={}\n",
+    //    SPDLOG_DEBUG("l2stall={}, mastall_wb={}, mastall_ro={}, target_llchits={}, target_llcmiss={}\n",
     //                              target_l2stall, mastall_wb, mastall_ro, target_llchits, target_llcmiss);
 
     auto writeback = (double)mastall_wb / dramlatency;
@@ -115,7 +115,7 @@ int CXLMemExpander::insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt
                 this->va_pa_map.emplace(virt_addr, phys_addr);
             } else {
                 this->va_pa_map[virt_addr] = phys_addr;
-                LOG(INFO) << fmt::format("virt:{} phys:{} conflict insertion detected\n", virt_addr, phys_addr);
+                SPDLOG_INFO("virt:{} phys:{} conflict insertion detected\n", virt_addr, phys_addr);
             }
             for (auto it = this->occupation.cbegin(); it != this->occupation.cend(); it++) {
                 if ((*it).second == phys_addr) {
@@ -147,7 +147,7 @@ int CXLMemExpander::insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt
         return 0;
     }
 }
-std::string CXLMemExpander::output() { return fmt::format("CXLMemExpander {}", this->id); }
+std::string CXLMemExpander::output() { return std::format("CXLMemExpander {}", this->id); }
 std::tuple<int, int> CXLMemExpander::get_all_access() {
     this->last_read = this->counter.load - this->last_counter.load;
     this->last_write = this->counter.store - this->last_counter.store;
@@ -156,7 +156,7 @@ std::tuple<int, int> CXLMemExpander::get_all_access() {
 }
 void CXLMemExpander::set_epoch(int epoch) { this->epoch = epoch; }
 std::string CXLSwitch::output() {
-    std::string res = fmt::format("CXLSwitch {} ", this->id);
+    std::string res = std::format("CXLSwitch {} ", this->id);
     if (!this->switches.empty()) {
         res += "(";
         res += this->switches[0]->output();

@@ -244,7 +244,7 @@ void ScanMemoryControllers(void) {
     closedir(dir);
 }
 
-int main() {
+int set_bw() {
     // First scan for memory controllers
     ScanMemoryControllers();
     // Example usage

@@ -6,7 +6,7 @@
 #define CXLMEMSIM_CXLENDPOINT_H
 #include "cxlcounter.h"
 #include "helper.h"
-
+#include <list>
 class LRUCache {
     std::list<uint64_t> lru_list;
     std::unordered_map<uint64_t, std::list<uint64_t>::iterator> lru_map;

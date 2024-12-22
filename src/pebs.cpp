@@ -21,9 +21,6 @@ struct perf_sample {
     uint64_t phys_addr;
 };
 
-long perf_event_open(struct perf_event_attr *event_attr, pid_t pid, int cpu, int group_fd, unsigned long flags) {
-    return syscall(__NR_perf_event_open, event_attr, pid, cpu, group_fd, flags);
-}
 PEBS::PEBS(pid_t pid, uint64_t sample_period) : pid(pid), sample_period(sample_period) {
     // Configure perf_event_attr struct
     struct perf_event_attr pe = {
@@ -82,36 +79,36 @@ int PEBS::read(CXLController *controller, struct PEBSElem *elem) {
 
             switch (header->type) {
             case PERF_RECORD_LOST:
-                LOG(DEBUG) << fmt::format("received PERF_RECORD_LOST\n");
+                SPDLOG_DEBUG("received PERF_RECORD_LOST\n");
                 break;
             case PERF_RECORD_SAMPLE:
                 data = (struct perf_sample *)(dp + this->rdlen % DATA_SIZE);
 
                 if (header->size < sizeof(*data)) {
-                    LOG(DEBUG) << fmt::format("size too small. size:{}\n", header->size);
+                    SPDLOG_DEBUG("size too small. size:{}\n", header->size);
                     r = -1;
                     continue;
                 }
                 if (this->pid == data->pid) {
-                    LOG(ERROR) << fmt::format("pid:{} tid:{} time:{} addr:{} phys_addr:{} llc_miss:{} timestamp={}\n",
-                                              data->pid, data->tid, data->time_enabled, data->addr, data->phys_addr,
-                                              data->value, data->timestamp);
+                    SPDLOG_ERROR("pid:{} tid:{} time:{} addr:{} phys_addr:{} llc_miss:{} timestamp={}\n", data->pid,
+                                 data->tid, data->time_enabled, data->addr, data->phys_addr, data->value,
+                                 data->timestamp);
                     controller->insert(data->timestamp, data->phys_addr, data->addr, 0);
                     elem->total++;
                     elem->llcmiss = data->value; // this is the number of llc miss
                 }
                 break;
             case PERF_RECORD_THROTTLE:
-                LOG(DEBUG) << "received PERF_RECORD_THROTTLE\n";
+                SPDLOG_DEBUG("received PERF_RECORD_THROTTLE\n");
                 break;
             case PERF_RECORD_UNTHROTTLE:
-                LOG(DEBUG) << "received PERF_RECORD_UNTHROTTLE\n";
+                SPDLOG_DEBUG("received PERF_RECORD_UNTHROTTLE\n");
                 break;
             case PERF_RECORD_LOST_SAMPLES:
-                LOG(DEBUG) << "received PERF_RECORD_LOST_SAMPLES\n";
+                SPDLOG_DEBUG("received PERF_RECORD_LOST_SAMPLES\n");
                 break;
             default:
-                LOG(DEBUG) << fmt::format("other data received. type:{}\n", header->type);
+                SPDLOG_DEBUG("other data received. type:{}\n", header->type);
                 break;
             }
 
@@ -121,10 +118,10 @@ int PEBS::read(CXLController *controller, struct PEBSElem *elem) {
         mp->data_tail = last_head;
         barrier();
     } while (mp->lock != this->seq);
-    
+
     return r;
 }
-int PEBS::start() {
+int PEBS::start() const {
     if (this->fd < 0) {
         return 0;
     }
@@ -135,7 +132,7 @@ int PEBS::start() {
 
     return 0;
 }
-int PEBS::stop() {
+int PEBS::stop() const {
     if (this->fd < 0) {
         return 0;
     }
@@ -154,7 +151,7 @@ PEBS::~PEBS() {
 
     if (this->mp != MAP_FAILED) {
         munmap(this->mp, this->mplen);
-        this->mp = reinterpret_cast<struct perf_event_mmap_page *>(MAP_FAILED);
+        this->mp = static_cast<perf_event_mmap_page *>(MAP_FAILED);
         this->mplen = 0;
     }
 
