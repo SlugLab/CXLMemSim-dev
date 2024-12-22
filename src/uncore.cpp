@@ -3,6 +3,7 @@
 //
 
 #include "uncore.h"
+#include <climits>
 extern Helper helper;
 Uncore::Uncore(const uint32_t unc_idx, PerfConfig *perf_config) {
     unsigned long value;
@@ -32,7 +33,7 @@ Uncore::Uncore(const uint32_t unc_idx, PerfConfig *perf_config) {
         throw std::runtime_error("strtoul");
     }
 
-    for (auto const &[k, v] : this->perf | enumerate) {
+    for (auto const &[k, v] : this->perf | std::views::enumerate) {
         v = init_uncore_perf(-1, (int)unc_idx, std::get<1>(perf_config->cha[k]), std::get<2>(perf_config->cha[k]),
                              value);
     }
@@ -40,7 +41,7 @@ Uncore::Uncore(const uint32_t unc_idx, PerfConfig *perf_config) {
 
 int Uncore::read_cha_elems(struct CHAElem *elem) {
     ssize_t r;
-    for (auto const &[idx, value] : this->perf | enumerate) {
+    for (auto const &[idx, value] : this->perf | std::views::enumerate) {
         r = value->read_pmu(&elem->cha[idx]);
         if (r < 0) {
             SPDLOG_ERROR("read cha_elems[{}] failed.\n", std::get<0>(helper.perf_conf.cha[idx]));

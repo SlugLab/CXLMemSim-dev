@@ -103,11 +103,11 @@ int main(int argc, char *argv[]) {
     auto ncpu = helper.num_of_cpu();
     auto ncha = helper.num_of_cha();
     SPDLOG_DEBUG("tnum:{}, intrval:{}\n", tnum, interval);
-    for (auto const &[idx, value] : weight | enumerate) {
+    for (auto const &[idx, value] : weight | std::views::enumerate) {
         SPDLOG_DEBUG("weight[{}]:{}\n", weight_vec[idx], value);
     }
 
-    for (auto const &[idx, value] : capacity | enumerate) {
+    for (auto const &[idx, value] : capacity | std::views::enumerate) {
         if (idx == 0) {
             SPDLOG_DEBUG("local_memory_region capacity:{}\n", value);
             controller = new CXLController(policy, capacity[0], mode, interval);
@@ -124,10 +124,8 @@ int main(int argc, char *argv[]) {
         }
     }
     controller->construct_topo(topology);
-    SPDLOG_INFO("%s", controller->output() );
-    int sock;
-    sockaddr_un addr{};
-
+    SPDLOG_INFO("{}", controller->output());
+    
     /** Hove been got by socket if it's not main thread and synchro */
     // sock = socket(AF_UNIX, SOCK_DGRAM, 0);
     // addr.sun_family = AF_UNIX;
@@ -218,10 +216,10 @@ int main(int argc, char *argv[]) {
 
     /* read CHA params */
     for (const auto &mon : monitors.mon) {
-        for (auto const &[idx, value] : pmu.chas | enumerate) {
+        for (auto const &[idx, value] : pmu.chas | std::views::enumerate) {
             pmu.chas[idx].read_cha_elems(&mon.before->chas[idx]);
         }
-        for (auto const &[idx, value] : pmu.cpus | enumerate) {
+        for (auto const &[idx, value] : pmu.cpus | std::views::enumerate) {
             pmu.cpus[idx].read_cpu_elems(&mon.before->cpus[idx]);
         }
     }
@@ -326,7 +324,7 @@ int main(int argc, char *argv[]) {
         // }
 
         uint64_t calibrated_delay;
-        for (auto const &[i, mon] : monitors.mon | enumerate) {
+        for (auto const &[i, mon] : monitors.mon | std::views::enumerate) {
             // check other process
             if (mon.status == MONITOR_DISABLE) {
                 continue;
@@ -345,7 +343,7 @@ int main(int argc, char *argv[]) {
                 // SPDLOG_INFO("[{}:{}:{}] LLC_WB = {}\n", i, mon.tgid, mon.tid, wb_cnt);
                 // }
                 for (int j = 0; j < helper.used_cha.size(); j++) {
-                    for (auto const &[idx, value] : pmu.chas | enumerate) {
+                    for (auto const &[idx, value] : pmu.chas | std::views::enumerate) {
                         value.read_cha_elems(&mon.after->chas[j]);
                         cha_vec.emplace_back(mon.after->chas[j].cha[idx] - mon.before->chas[j].cha[idx]);
                     }
@@ -372,7 +370,7 @@ int main(int argc, char *argv[]) {
                 //      target_llchits += mon.after->cpus[idx].cpu_llcl_hits - mon.before->cpus[idx].cpu_llcl_hits;
                 //  }
                 for (int j = 0; j < helper.used_cpu.size(); j++) {
-                    for (auto const &[idx, value] : pmu.cpus | enumerate) {
+                    for (auto const &[idx, value] : pmu.cpus |  std::views::enumerate) {
                         value.read_cpu_elems(&mon.after->cpus[j]);
                         //                        wb_cnt = mon.after->cpus[j].cpu[idx] - mon.before->cpus[j].cpu[idx];
                         cpu_vec.emplace_back(mon.after->cpus[j].cpu[idx] - mon.before->cpus[j].cpu[idx]);

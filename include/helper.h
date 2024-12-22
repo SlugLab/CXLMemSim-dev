@@ -14,14 +14,6 @@
 #include <spdlog/spdlog.h>
 #include <ranges>
 
-struct Enumerate : std::ranges::range_adaptor_closure<Enumerate> {
-    template <std::ranges::viewable_range R> constexpr auto operator()(R &&r) const {
-        return std::views::zip(std::views::iota(0), (R &&) r);
-    }
-};
-
-inline constexpr Enumerate enumerate;
-
 /* CPU Models */
 enum { CPU_MDL_BDX = 63, CPU_MDL_SKX = 85, CPU_MDL_SPR = 143, CPU_MDL_ADL = 151, CPU_MDL_LNL = 189, CPU_MDL_END = 0x0ffff };
 class Incore;
