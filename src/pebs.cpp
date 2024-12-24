@@ -4,6 +4,7 @@
 
 #include "pebs.h"
 
+
 #define PAGE_SIZE 4096
 #define DATA_SIZE PAGE_SIZE
 #define MMAP_SIZE (PAGE_SIZE + DATA_SIZE)
@@ -26,7 +27,7 @@ PEBS::PEBS(pid_t pid, uint64_t sample_period) : pid(pid), sample_period(sample_p
     struct perf_event_attr pe = {
         .type = PERF_TYPE_RAW,
         .size = sizeof(struct perf_event_attr),
-        .config = 0x20d1, // mem_load_retired.l3_miss
+        .config = 0x7835, // mem_load_retired.l3_miss
         .sample_period = sample_period,
         .sample_type = PERF_SAMPLE_TID | PERF_SAMPLE_TIME | PERF_SAMPLE_ADDR | PERF_SAMPLE_READ | PERF_SAMPLE_PHYS_ADDR,
         .read_format = PERF_FORMAT_TOTAL_TIME_ENABLED,

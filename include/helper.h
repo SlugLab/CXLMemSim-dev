@@ -104,7 +104,7 @@ public:
     int num_of_cpu();
     int num_of_cha();
     static void detach_children();
-    static void noop_handler(int signum);
+    static void noop_handler(int);
     double cpu_frequency();
     PerfConfig detect_model(uint32_t model, const std::vector<std::string> &perf_name,
                             const std::vector<uint64_t> &perf_conf1, const std::vector<uint64_t> &perf_conf2);

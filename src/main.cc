@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
     spdlog::cfg::load_env_levels();
     cxxopts::Options options("CXLMemSim", "For simulation of CXL.mem Type 3 on Sapphire Rapids");
     options.add_options()("t,target", "The script file to execute",
-                          cxxopts::value<std::string>()->default_value("./microbench/ld_simple"))(
+                          cxxopts::value<std::string>()->default_value("/usr/bin/sleep 10"))(
         "h,help", "Help for CXLMemSim", cxxopts::value<bool>()->default_value("false"))(
         "i,interval", "The value for epoch value", cxxopts::value<int>()->default_value("1000"))(
         "s,source", "Collection Phase or Validation Phase", cxxopts::value<bool>()->default_value("false"))(
@@ -125,7 +125,7 @@ int main(int argc, char *argv[]) {
     }
     controller->construct_topo(topology);
     SPDLOG_INFO("{}", controller->output());
-    
+
     /** Hove been got by socket if it's not main thread and synchro */
     // sock = socket(AF_UNIX, SOCK_DGRAM, 0);
     // addr.sun_family = AF_UNIX;
@@ -171,14 +171,14 @@ int main(int argc, char *argv[]) {
     if (t_process < 0) {
         SPDLOG_ERROR("Fork: failed to create target process");
         exit(1);
-    } else if (t_process == 0) {
+    }
+    if (t_process == 0) {
         execv(filename, args); // taskset in lpace
         SPDLOG_ERROR("Exec: failed to create target process\n");
         exit(1);
     }
     /** In case of process, use SIGSTOP. */
-    auto res = monitors.enable(t_process, t_process, true, pebsperiod, tnum);
-    if (res == -1) {
+    if (auto res = monitors.enable(t_process, t_process, true, pebsperiod, tnum); res == -1) {
         SPDLOG_ERROR("Failed to enable monitor\n");
         exit(0);
     } else if (res < 0) {
@@ -205,7 +205,7 @@ int main(int argc, char *argv[]) {
     PMUInfo pmu{t_process, &helper, &perf_config};
 
     /*% Caculate epoch time */
-    struct timespec waittime{};
+    timespec waittime{};
     waittime.tv_sec = interval / 1000;
     waittime.tv_nsec = (interval % 1000) * 1000000;
 
@@ -301,27 +301,27 @@ int main(int argc, char *argv[]) {
         // /* wait for pre-defined interval */
         // clock_gettime(CLOCK_MONOTONIC, &sleep_start_ts);
         //
-        // /** Here was a definition for the multi process and thread to enable multiple monitor */
-        // struct timespec req = waittime;
-        // struct timespec rem = {0};
-        // while (true) {
-        //     auto ret = nanosleep(&req, &rem);
-        //     if (ret == 0) { // success
-        //         break;
-        //     } else { // ret < 0
-        //         if (errno == EINTR) {
-        //             SPDLOG_ERROR("nanosleep: remain time {}.{}(sec)\n", (long)rem.tv_sec, (long)rem.tv_nsec);
-        //             // if the milisecs was set below 5, will trigger stop before the target process stop.
-        //             // The pause has been interrupted by a signal that was delivered to the thread.
-        //             req = rem; // call nanosleep() again with the remain time.
-        //             break;
-        //         } else {
-        //             // fatal error
-        //             SPDLOG_ERROR("Failed to wait nanotime";
-        //             exit(0);
-        //         }
-        //     }
-        // }
+        /** Here was a definition for the multi process and thread to enable multiple monitor */
+        struct timespec req = waittime;
+        struct timespec rem = {0};
+        while (true) {
+            auto ret = nanosleep(&req, &rem);
+            if (ret == 0) { // success
+                break;
+            } else { // ret < 0
+                if (errno == EINTR) {
+                    SPDLOG_ERROR("nanosleep: remain time {}.{}(sec)\n", (long)rem.tv_sec, (long)rem.tv_nsec);
+                    // if the milisecs was set below 5, will trigger stop before the target process stop.
+                    // The pause has been interrupted by a signal that was delivered to the thread.
+                    req = rem; // call nanosleep() again with the remain time.
+                    break;
+                } else {
+                    // fatal error
+                    SPDLOG_ERROR("Failed to wait nanotime");
+                    exit(0);
+                }
+            }
+
 
         uint64_t calibrated_delay;
         for (auto const &[i, mon] : monitors.mon | std::views::enumerate) {
@@ -336,12 +336,12 @@ int main(int argc, char *argv[]) {
                 /** Read CHA values */
                 uint64_t wb_cnt = 0;
                 std::vector<uint64_t> cha_vec, cpu_vec{};
-                // for (int j = 0; j < ncha; j++) {
-                //     pmu.chas[j].read_cha_elems(&mon.after->chas[j]);
-                //     wb_cnt += mon.after->chas[j].cpu_llc_wb - mon.before->chas[j].cpu_llc_wb;
-                // }
-                // SPDLOG_INFO("[{}:{}:{}] LLC_WB = {}\n", i, mon.tgid, mon.tid, wb_cnt);
-                // }
+                for (int j = 0; j < ncha; j++) {
+                    pmu.chas[j].read_cha_elems(&mon.after->chas[j]);
+                    wb_cnt += mon.after->chas[j].cha[0] - mon.before->chas[j].cha[0];
+                }
+                SPDLOG_INFO("[{}:{}:{}] LLC_WB = {}\n", i, mon.tgid, mon.tid, wb_cnt);
+
                 for (int j = 0; j < helper.used_cha.size(); j++) {
                     for (auto const &[idx, value] : pmu.chas | std::views::enumerate) {
                         value.read_cha_elems(&mon.after->chas[j]);
@@ -353,24 +353,24 @@ int main(int argc, char *argv[]) {
                 uint64_t target_l2stall = 0, target_llcmiss = 0, target_llchits = 0;
                 // for (int j = 0; j < ncpu; ++j) {
                 //     pmu.cpus[j].read_cpu_elems(&mon.after->cpus[j]);
-                //     read_config += mon.after->cpus[j].cpu_bandwidth - mon.before->cpus[j].cpu_bandwidth;
+                //     read_config += mon.after->cpus[j].cha[1] - mon.before->cpus[j].cha[1];
                 // }
                 /* read PEBS sample */
                 if (mon.pebs_ctx->read(controller, &mon.after->pebs) < 0) {
                     SPDLOG_ERROR("[{}:{}:{}] Warning: Failed PEBS read\n", i, mon.tgid, mon.tid);
                 }
-                // target_llcmiss = mon.after->pebs.total - mon.before->pebs.total;
+                target_llcmiss = mon.after->pebs.total - mon.before->pebs.total;
 
-                // target_l2stall =
-                //     mon.after->cpus[mon.cpu_core].cpu_l2stall_t - mon.before->cpus[mon.cpu_core].cpu_l2stall_t;
-                // target_llchits =
-                //     mon.after->cpus[mon.cpu_core].cpu_llcl_hits - mon.before->cpus[mon.cpu_core].cpu_llcl_hits;
-                //  for (auto const &[idx, value] : pmu.cpus | enumerate) {
-                //      target_l2stall += mon.after->cpus[idx].cpu_l2stall_t - mon.before->cpus[idx].cpu_l2stall_t;
-                //      target_llchits += mon.after->cpus[idx].cpu_llcl_hits - mon.before->cpus[idx].cpu_llcl_hits;
-                //  }
+                target_l2stall =
+                    mon.after->cpus[mon.cpu_core].cpu_l2stall_t - mon.before->cpus[mon.cpu_core].cpu_l2stall_t;
+                target_llchits =
+                    mon.after->cpus[mon.cpu_core].cpu_llcl_hits - mon.before->cpus[mon.cpu_core].cpu_llcl_hits;
+                 for (auto const &[idx, value] : pmu.cpus | std::views::enumerate) {
+                     target_l2stall += mon.after->cpus[idx].cpu_l2stall_t - mon.before->cpus[idx].cpu_l2stall_t;
+                     target_llchits += mon.after->cpus[idx].cpu_llcl_hits - mon.before->cpus[idx].cpu_llcl_hits;
+                 }
                 for (int j = 0; j < helper.used_cpu.size(); j++) {
-                    for (auto const &[idx, value] : pmu.cpus |  std::views::enumerate) {
+                    for (auto const &[idx, value] : pmu.cpus | std::views::enumerate) {
                         value.read_cpu_elems(&mon.after->cpus[j]);
                         //                        wb_cnt = mon.after->cpus[j].cpu[idx] - mon.before->cpus[j].cpu[idx];
                         cpu_vec.emplace_back(mon.after->cpus[j].cpu[idx] - mon.before->cpus[j].cpu[idx]);

@@ -58,7 +58,7 @@ double Helper::cpu_frequency() {
     std::ifstream fp("/proc/cpuinfo");
 
     for (std::string line; c != this->num_of_cpu() - 1; std::getline(fp, line)) {
-        // SPDLOG_DEBUG("line: {}\n", line);
+        SPDLOG_DEBUG("line: {}\n", line);
         i = std::sscanf(line.c_str(), "cpu MHz : %lf", &cpu_mhz);
         max_cpu_mhz = i == 1 ? std::max(max_cpu_mhz, cpu_mhz) : max_cpu_mhz;
         std::sscanf(line.c_str(), "processor : %d", &c);
@@ -91,7 +91,7 @@ Helper::Helper() {
     cpu = num_of_cpu();
     cha = num_of_cha();
 }
-void Helper::noop_handler(int sig) { ; }
+void Helper::noop_handler(int) { ; }
 void Helper::detach_children() {
     struct sigaction sa{};
 

@@ -4,6 +4,7 @@
 
 #include "monitor.h"
 #include <iostream>
+#include <csignal>
 Monitors::Monitors(int tnum, cpu_set_t *use_cpuset) : print_flag(true) {
     mon = std::vector<Monitor>(tnum, Monitor());
     /** Init mon */

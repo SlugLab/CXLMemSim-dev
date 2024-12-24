@@ -5,24 +5,12 @@
 #ifndef CXLMEMSIM_PEBS_H
 #define CXLMEMSIM_PEBS_H
 
-#include "cxlcontroller.h"
 #include "helper.h"
-#include <asm/unistd.h>
-#include <cerrno>
-#include <csignal>
-#include <cstdint>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <ctime>
-#include <fcntl.h>
-#include <sys/ioctl.h>
 #include <sys/mman.h>
-#include <sys/syscall.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
+#include <cstdint>
+#include <cxlcontroller.h>
 #include <x86intrin.h>
+#include <sys/types.h>
 
 class PEBS {
 public:
