@@ -1,11 +1,17 @@
-//
-// Created by victoryang00 on 1/14/23.
-//
+/*
+ * CXLMemSim perf
+ *
+ *  By: Andrew Quinn
+ *      Yiwei Yang
+ *
+ *  Copyright 2025 Regents of the University of California
+ *  UC Santa Cruz Sluglab.
+ */
 
 #include "perf.h"
 #include "pebs.h"
 
-PerfInfo::PerfInfo(int group_fd, int cpu, pid_t pid, unsigned long flags, struct perf_event_attr attr)
+PerfInfo::PerfInfo(int group_fd, int cpu, pid_t pid, unsigned long flags, perf_event_attr attr)
     : group_fd(group_fd), cpu(cpu), pid(pid), flags(flags), attr(attr) {
     this->fd = perf_event_open(&this->attr, this->pid, this->cpu, this->group_fd, this->flags);
     if (this->fd == -1) {

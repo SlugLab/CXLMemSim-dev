@@ -1,6 +1,12 @@
-//
-// Created by victoryang00 on 1/14/23.
-//
+/*
+ * CXLMemSim controller
+ *
+ *  By: Andrew Quinn
+ *      Yiwei Yang
+ *
+ *  Copyright 2025 Regents of the University of California
+ *  UC Santa Cruz Sluglab.
+ */
 
 #include "cxlcontroller.h"
 
@@ -75,6 +81,9 @@ std::string CXLController::output() {
 
 void CXLController::delete_entry(uint64_t addr, uint64_t length) { CXLSwitch::delete_entry(addr, length); }
 
+int CXLController::insert(uint64_t timestamp, uint64_t* call_chain, uint64_t* lbrs, uint64_t* counters) {
+
+}
 int CXLController::insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr, int index) {
     auto index_ = policy->compute_once(this);
     if (index_ == -1) {

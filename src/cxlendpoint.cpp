@@ -1,6 +1,13 @@
-//
-// Created by victoryang00 on 1/13/23.
-//
+/*
+ * CXLMemSim endpoint
+ *
+ *  By: Andrew Quinn
+ *      Yiwei Yang
+ *
+ *  Copyright 2025 Regents of the University of California
+ *  UC Santa Cruz Sluglab.
+ */
+
 
 #include "cxlendpoint.h"
 

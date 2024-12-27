@@ -1,6 +1,12 @@
-//
-// Created by victoryang00 on 1/12/23.
-//
+/*
+* CXLMemSim main
+ *
+ *  By: Andrew Quinn
+ *      Yiwei Yang
+ *
+ *  Copyright 2025 Regents of the University of California
+ *  UC Santa Cruz Sluglab.
+ */
 
 #include "cxlendpoint.h"
 #include "helper.h"
@@ -302,26 +308,25 @@ int main(int argc, char *argv[]) {
         // clock_gettime(CLOCK_MONOTONIC, &sleep_start_ts);
         //
         /** Here was a definition for the multi process and thread to enable multiple monitor */
-        struct timespec req = waittime;
-        struct timespec rem = {0};
+        timespec req = waittime;
+        timespec rem = {0};
         while (true) {
             auto ret = nanosleep(&req, &rem);
             if (ret == 0) { // success
                 break;
-            } else { // ret < 0
-                if (errno == EINTR) {
-                    SPDLOG_ERROR("nanosleep: remain time {}.{}(sec)\n", (long)rem.tv_sec, (long)rem.tv_nsec);
-                    // if the milisecs was set below 5, will trigger stop before the target process stop.
-                    // The pause has been interrupted by a signal that was delivered to the thread.
-                    req = rem; // call nanosleep() again with the remain time.
-                    break;
-                } else {
-                    // fatal error
-                    SPDLOG_ERROR("Failed to wait nanotime");
-                    exit(0);
-                }
             }
-
+            if (errno == EINTR) {
+                SPDLOG_ERROR("nanosleep: remain time {}.{}(sec)\n", (long)rem.tv_sec, (long)rem.tv_nsec);
+                // if the milisecs was set below 5, will trigger stop before the target process stop.
+                // The pause has been interrupted by a signal that was delivered to the thread.
+                req = rem; // call nanosleep() again with the remain time.
+                break;
+            } else {
+                // fatal error
+                SPDLOG_ERROR("Failed to wait nanotime");
+                exit(0);
+            }
+        }
 
         uint64_t calibrated_delay;
         for (auto const &[i, mon] : monitors.mon | std::views::enumerate) {
@@ -361,18 +366,17 @@ int main(int argc, char *argv[]) {
                 }
                 target_llcmiss = mon.after->pebs.total - mon.before->pebs.total;
 
-                target_l2stall =
-                    mon.after->cpus[mon.cpu_core].cpu_l2stall_t - mon.before->cpus[mon.cpu_core].cpu_l2stall_t;
-                target_llchits =
-                    mon.after->cpus[mon.cpu_core].cpu_llcl_hits - mon.before->cpus[mon.cpu_core].cpu_llcl_hits;
-                 for (auto const &[idx, value] : pmu.cpus | std::views::enumerate) {
-                     target_l2stall += mon.after->cpus[idx].cpu_l2stall_t - mon.before->cpus[idx].cpu_l2stall_t;
-                     target_llchits += mon.after->cpus[idx].cpu_llcl_hits - mon.before->cpus[idx].cpu_llcl_hits;
-                 }
+                target_l2stall = mon.after->cpus[mon.cpu_core].cpu[1] - mon.before->cpus[mon.cpu_core].cpu[1];
+                target_llchits = mon.after->cpus[mon.cpu_core].cpu[2] - mon.before->cpus[mon.cpu_core].cpu[2];
+                for (auto const &[idx, value] : pmu.cpus | std::views::enumerate) {
+                    target_l2stall += mon.after->cpus[idx].cpu[1] - mon.before->cpus[idx].cpu[1];
+                    target_llchits += mon.after->cpus[idx].cpu[2] - mon.before->cpus[idx].cpu[2];
+                }
                 for (int j = 0; j < helper.used_cpu.size(); j++) {
                     for (auto const &[idx, value] : pmu.cpus | std::views::enumerate) {
                         value.read_cpu_elems(&mon.after->cpus[j]);
-                        //                        wb_cnt = mon.after->cpus[j].cpu[idx] - mon.before->cpus[j].cpu[idx];
+                        //                        wb_cnt = mon.after->cpus[j].cpu[idx] -
+                        //                        mon.before->cpus[j].cpu[idx];
                         cpu_vec.emplace_back(mon.after->cpus[j].cpu[idx] - mon.before->cpus[j].cpu[idx]);
                     }
                 }
@@ -384,7 +388,7 @@ int main(int argc, char *argv[]) {
                 // the LLC misses of the CPU core (target_llcmiss) to that
                 // of the LLC misses of all the CPU cores and the
                 // prefetchers (cpus_dram_rds).
-                // llcmiss_wb = wb_cnt * std::lround(((double)target_llcmiss) / ((double)read_config));
+                llcmiss_wb = wb_cnt * std::lround(((double)target_llcmiss) / ((double)read_config));
                 // TODO Calculate through the vector !!! target latency
                 uint64_t llcmiss_ro = 0;
                 if (target_llcmiss < llcmiss_wb) { // tunning
@@ -401,8 +405,8 @@ int main(int argc, char *argv[]) {
 
                 SPDLOG_DEBUG("[{}:{}:{}] pebs: total={}, \n", i, mon.tgid, mon.tid, mon.after->pebs.total);
 
-                /** TODO: calculate latency construct the passing value and use interleaving policy and counter to get
-                 * the sample_prop */
+                /** TODO: calculate latency construct the passing value and use interleaving policy and counter to
+                 * get the sample_prop */
                 auto all_access = controller->get_all_access();
                 LatencyPass lat_pass = {
                     .all_access = all_access,

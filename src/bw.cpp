@@ -1,3 +1,13 @@
+/*
+ * CXLMemSim bandwidth test
+ *
+ *  By: Andrew Quinn
+ *      Yiwei Yang
+ *
+ *  Copyright 2025 Regents of the University of California
+ *  UC Santa Cruz Sluglab.
+ */
+
 #include <stdio.h>
 #include <stdint.h>
 #include <fcntl.h>

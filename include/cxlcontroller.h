@@ -1,6 +1,12 @@
-//
-// Created by victoryang00 on 1/14/23.
-//
+/*
+ * CXLMemSim controller
+ *
+ *  By: Andrew Quinn
+ *      Yiwei Yang
+ *
+ *  Copyright 2025 Regents of the University of California
+ *  UC Santa Cruz Sluglab.
+ */
 
 #ifndef CXLMEMSIM_CXLCONTROLLER_H
 #define CXLMEMSIM_CXLCONTROLLER_H
@@ -17,12 +23,14 @@ enum page_type { CACHELINE, PAGE, HUGEPAGE_2M, HUGEPAGE_1G };
 class CXLController;
 class AllocationPolicy {
 public:
+    virtual ~AllocationPolicy() = default;
     AllocationPolicy();
     virtual int compute_once(CXLController *) = 0;
     // No write problem
 };
 class MigrationPolicy {
 public:
+    virtual ~MigrationPolicy() = default;
     MigrationPolicy();
     virtual int compute_once(CXLController *) = 0; // reader writer
     // paging related
@@ -45,10 +53,10 @@ public:
     CXLCounter counter;
     std::map<uint64_t, uint64_t> occupation;
     std::map<uint64_t, uint64_t> va_pa_map;
-    enum page_type page_type_; // percentage
+    page_type page_type_; // percentage
     int num_switches = 0;
 
-    CXLController(AllocationPolicy *p, int capacity, enum page_type page_type_, int epoch);
+    CXLController(AllocationPolicy *p, int capacity, page_type page_type_, int epoch);
     void construct_topo(std::string_view newick_tree);
     void insert_end_point(CXLMemExpander *end_point);
     std::vector<std::string> tokenize(const std::string_view &s);
@@ -57,6 +65,7 @@ public:
     std::tuple<int, int> get_all_access() override;
     double calculate_latency(LatencyPass elem) override; // traverse the tree to calculate the latency
     double calculate_bandwidth(BandwidthPass elem) override;
+    int insert(uint64_t timestamp, uint64_t *call_chain, uint64_t* lbrs, uint64_t* counters);
     int insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr, int index) override;
     void delete_entry(uint64_t addr, uint64_t length) override;
     std::string output() override;

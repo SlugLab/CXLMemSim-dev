@@ -1,6 +1,12 @@
-//
-// Created by victoryang00 on 1/13/23.
-//
+/*
+ * CXLMemSim endpoint
+ *
+ *  By: Andrew Quinn
+ *      Yiwei Yang
+ *
+ *  Copyright 2025 Regents of the University of California
+ *  UC Santa Cruz Sluglab.
+ */
 
 #ifndef CXLMEMSIM_CXLENDPOINT_H
 #define CXLMEMSIM_CXLENDPOINT_H
@@ -52,6 +58,10 @@ public:
 };
 
 class CXLEndPoint {
+public:
+    virtual ~CXLEndPoint() = default;
+
+private:
     virtual void set_epoch(int epoch) = 0;
     virtual std::string output() = 0;
     virtual void delete_entry(uint64_t addr, uint64_t length) = 0;

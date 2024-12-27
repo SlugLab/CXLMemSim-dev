@@ -1,6 +1,12 @@
-//
-// Created by victoryang00 on 12/20/24.
-//
+/*
+ * CXLMemSim lbr
+ *
+ *  By: Andrew Quinn
+ *      Yiwei Yang
+ *
+ *  Copyright 2025 Regents of the University of California
+ *  UC Santa Cruz Sluglab.
+ */
 
 #ifndef CXLMEMSIM_LBR_H
 #define CXLMEMSIM_LBR_H
@@ -13,14 +19,13 @@ class LBR {
 public:
     int fd;
     int pid;
-    uint64_t sample_period;
     uint32_t seq{};
     size_t rdlen{};
     size_t mplen{};
     perf_event_mmap_page *mp;
-    LBR(pid_t, uint64_t);
+    LBR(pid_t);
     ~LBR();
-    int read(CXLController *, PEBSElem *);
+    int read(CXLController *, LBRElem *);
     int start();
     int stop();
 };

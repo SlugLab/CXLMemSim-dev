@@ -1,18 +1,18 @@
-//
-// Created by victoryang00 on 1/13/23.
-//
+/*
+ * CXLMemSim pebs
+ *
+ *  By: Andrew Quinn
+ *      Yiwei Yang
+ *
+ *  Copyright 2025 Regents of the University of California
+ *  UC Santa Cruz Sluglab.
+ */
 
 #include "pebs.h"
 
 
-#define PAGE_SIZE 4096
-#define DATA_SIZE PAGE_SIZE
-#define MMAP_SIZE (PAGE_SIZE + DATA_SIZE)
-
-#define barrier() _mm_mfence()
-
 struct perf_sample {
-    struct perf_event_header header;
+    perf_event_header header;
     uint32_t pid;
     uint32_t tid;
     uint64_t timestamp;
@@ -24,15 +24,16 @@ struct perf_sample {
 
 PEBS::PEBS(pid_t pid, uint64_t sample_period) : pid(pid), sample_period(sample_period) {
     // Configure perf_event_attr struct
-    struct perf_event_attr pe = {
+    perf_event_attr pe = {
         .type = PERF_TYPE_RAW,
-        .size = sizeof(struct perf_event_attr),
+        .size = sizeof(perf_event_attr),
         .config = 0x7835, // mem_load_retired.l3_miss
         .sample_period = sample_period,
         .sample_type = PERF_SAMPLE_TID | PERF_SAMPLE_TIME | PERF_SAMPLE_ADDR | PERF_SAMPLE_READ | PERF_SAMPLE_PHYS_ADDR,
         .read_format = PERF_FORMAT_TOTAL_TIME_ENABLED,
         .disabled = 1, // Event is initially disabled
         .exclude_kernel = 1,
+        .exclude_hv = 1,
         .precise_ip = 1,
         .config1 = 3,
     }; // excluding events that happen in the kernel-space
@@ -66,8 +67,8 @@ int PEBS::read(CXLController *controller, struct PEBSElem *elem) {
         return -1;
 
     int r = 0;
-    struct perf_event_header *header;
-    struct perf_sample *data;
+    perf_event_header *header;
+    perf_sample *data;
     uint64_t last_head;
     char *dp = ((char *)mp) + PAGE_SIZE;
 
@@ -76,7 +77,7 @@ int PEBS::read(CXLController *controller, struct PEBSElem *elem) {
         barrier();
         last_head = mp->data_head;
         while ((uint64_t)this->rdlen < last_head) {
-            header = (struct perf_event_header *)(dp + this->rdlen % DATA_SIZE);
+            header = reinterpret_cast<perf_event_header *>(dp + this->rdlen % DATA_SIZE);
 
             switch (header->type) {
             case PERF_RECORD_LOST:

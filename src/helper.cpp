@@ -1,11 +1,19 @@
-//
-// Created by victoryang00 on 1/12/23.
-//
+/*
+ * CXLMemSim helper
+ *
+ *  By: Andrew Quinn
+ *      Yiwei Yang
+ *
+ *  Copyright 2025 Regents of the University of California
+ *  UC Santa Cruz Sluglab.
+ */
+
 #include "helper.h"
 #include <fstream>
 #include <signal.h>
 #include <string>
 #include <vector>
+
 struct ModelContext model_ctx[] = {{CPU_MDL_BDX,
                                     {
                                         "/sys/bus/event_source/devices/uncore_cbo_%u/type",

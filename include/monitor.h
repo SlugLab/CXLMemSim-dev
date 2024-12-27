@@ -1,6 +1,13 @@
-//
-// Created by victoryang00 on 1/11/23.
-//
+/*
+ * CXLMemSim monitor
+ *
+ *  By: Andrew Quinn
+ *      Yiwei Yang
+ *
+ *  Copyright 2025 Regents of the University of California
+ *  UC Santa Cruz Sluglab.
+ */
+
 
 #ifndef CXLMEMSIM_MONITOR_H
 #define CXLMEMSIM_MONITOR_H
