@@ -7,6 +7,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     add_compile_options (-fcolor-diagnostics)
 endif ()
 set(CMAKE_CXX_STANDARD 26)
+add_subdirectory(lib/bpftime)
 add_subdirectory(microbench)
 add_subdirectory(workloads)
 

@@ -12,7 +12,7 @@
 #include "cxlendpoint.h"
 
 CXLMemExpander::CXLMemExpander(int read_bw, int write_bw, int read_lat, int write_lat, int id, int capacity)
-    : capacity(capacity), id(id), lru_cache(capacity / 1000 / 64) {
+    : capacity(capacity), id(id) {
     this->bandwidth.read = read_bw;
     this->bandwidth.write = write_bw;
     this->latency.read = read_lat;
@@ -213,32 +213,25 @@ double CXLSwitch::calculate_bandwidth(BandwidthPass elem) {
     // time series
     return bw;
 }
-int CXLSwitch::insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr, int index) {
-    for (auto &expander : this->expanders) { // differ read and write。
-        auto ret = expander->insert(timestamp, phys_addr, virt_addr, index);
-        if (ret == 1) {
-            this->counter.inc_store();
-            return 1;
-        } else if (ret == 2) {
-            this->counter.inc_load();
-            return 2;
-        } else {
-            return 0;
+int CXLSwitch::insert(uint64_t timestamp, uint64_t *call_chain, struct lbr *lbrs, struct cntr *counters) {
+    // 这里可以根据你的功能逻辑来处理 LBR 的插入信息
+    SPDLOG_DEBUG("CXLSwitch insert lbr for switch id:{}\n", this->id);
+
+    // 简单示例: 依次尝试调用下属的 Expander 和 Switch
+    for (auto &expander : this->expanders) {
+        int ret = expander->insert(timestamp, call_chain, lbrs, counters);
+        if (ret != 0) {
+            // 如果需要，执行相应的 load/store 计数
+            return ret;
         }
     }
-    for (auto &switch_ : this->switches) {
-        auto ret = switch_->insert(timestamp, phys_addr, virt_addr, index);
-        if (ret == 1) {
-            this->counter.inc_store();
-            return 1;
-        } else if (ret == 2) {
-            this->counter.inc_load();
-            return 2;
-        } else {
-            return 0;
+    for (auto &sw : this->switches) {
+        int ret = sw->insert(timestamp, call_chain, lbrs, counters);
+        if (ret != 0) {
+            return ret;
         }
     }
-    return 0;
+    return 0; // 未找到合适的处理者
 }
 std::tuple<double, std::vector<uint64_t>> CXLSwitch::calculate_congestion() {
     double latency = 0.0;
@@ -284,3 +277,45 @@ std::tuple<int, int> CXLSwitch::get_all_access() {
     return std::make_tuple(read, write);
 }
 void CXLSwitch::set_epoch(int epoch) { this->epoch = epoch; }
+
+int CXLMemExpander::insert(uint64_t timestamp, uint64_t *call_chain, struct lbr *lbrs, struct cntr *counters) {
+    // 这里可以根据你的功能逻辑来处理 LBR 的插入信息
+    SPDLOG_DEBUG("CXLMemExpander insert lbr for expander id:{}\n", this->id);
+
+    // 简单示例: 统计一次 load 或 store
+    this->counter.inc_load();
+    // 或者根据需要添加更多逻辑
+
+    return 1; // 返回非 0，表明已被当前 Expander 处理
+}
+
+int CXLSwitch::insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr, int index) {
+    // 简单示例：依次调用下属的 expander 和 switch
+    SPDLOG_DEBUG("CXLSwitch insert phys_addr={}, virt_addr={}, index={} for switch id:{}",
+                 phys_addr, virt_addr, index, this->id);
+
+    for (auto &expander : this->expanders) {
+        // 在每个 expander 上尝试插入
+        int ret = expander->insert(timestamp, phys_addr, virt_addr, index);
+        if (ret == 1) {
+            this->counter.inc_store();
+            return 1;
+        } else if (ret == 2) {
+            this->counter.inc_load();
+            return 2;
+        }
+    }
+    // 如果没有合适的 expander，就尝试下属的 switch
+    for (auto &sw : this->switches) {
+        int ret = sw->insert(timestamp, phys_addr, virt_addr, index);
+        if (ret == 1) {
+            this->counter.inc_store();
+            return 1;
+        } else if (ret == 2) {
+            this->counter.inc_load();
+            return 2;
+        }
+    }
+    // 如果都处理不了，就返回0
+    return 0;
+}

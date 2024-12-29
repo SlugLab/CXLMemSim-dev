@@ -19,6 +19,7 @@
 #include <vector>
 #include <spdlog/spdlog.h>
 #include <ranges>
+#include <x86intrin.h>
 
 #define PAGE_SIZE 4096
 #define DATA_SIZE PAGE_SIZE

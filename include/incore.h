@@ -16,7 +16,7 @@
 #include <array>
 #include <cstdint>
 
-class CXLController; // TODO: need to be shm gotten
+class CXLController;
 union CPUID_INFO {
     int array[4];
     struct {

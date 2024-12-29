@@ -9,7 +9,6 @@
  */
 
 #include "lbr.h"
-// PERF_RECORD_READ			= 8,
 
 /*
 * struct {
@@ -60,27 +59,6 @@
 *        #
 *        { u64 counters; } cntr[nr] && PERF_SAMPLE_BRANCH_COUNTERS
 *   } && PERF_SAMPLE_BRANCH_STACK */
-struct lbr {
-    uint64_t from;
-    uint64_t to;
-    uint64_t flags;
-};
-struct cntr {
-    uint64_t counters;
-};
-struct lbr_sample {
-    perf_event_header header;
-    uint32_t pid;
-    uint32_t tid;
-    uint64_t nr;
-    uint64_t ips[4];
-    uint32_t cpu;
-    uint64_t timestamp;
-    uint64_t nr2;
-    uint64_t hw_idx;
-    lbr lbrs[4];
-    cntr counters[4];
-};
 
 LBR::LBR(pid_t pid) : pid(pid){
     // Configure perf_event_attr struct
@@ -88,7 +66,7 @@ LBR::LBR(pid_t pid) : pid(pid){
         .type = PERF_TYPE_RAW,
         .size = sizeof(perf_event_attr),
         .config = 0x7835, // mem_load_retired.l3_miss
-        .sample_type = PERF_SAMPLE_TID | PERF_SAMPLE_CALLCHAIN | PERF_SAMPLE_CPU | PERF_SAMPLE_TIME | PERF_SAMPLE_BRANCH_STACK,
+        .sample_type = PERF_SAMPLE_TID | PERF_SAMPLE_CALLCHAIN | PERF_SAMPLE_CPU | PERF_SAMPLE_TIME | PERF_SAMPLE_BRANCH_STACK |PERF_SAMPLE_BRANCH_COUNTERS,
         .read_format = PERF_FORMAT_TOTAL_TIME_ENABLED,
         .disabled = 1, // Event is initially disabled
         .exclude_kernel = 1,
@@ -119,17 +97,15 @@ int LBR::read(CXLController *controller, LBRElem *elem) {
         return -1;
 
     int r = 0;
-    perf_event_header *header;
     lbr_sample *data;
-    uint64_t last_head;
     char *dp = ((char *)mp) + PAGE_SIZE;
 
     do {
         this->seq = mp->lock; // explicit copy
         barrier();
-        last_head = mp->data_head;
-        while ((uint64_t)this->rdlen < last_head) {
-            header = reinterpret_cast<perf_event_header *>(dp + this->rdlen % DATA_SIZE);
+        const uint64_t last_head = mp->data_head;
+        while (this->rdlen < last_head) {
+            const auto *header = reinterpret_cast<perf_event_header *>(dp + this->rdlen % DATA_SIZE);
 
             switch (header->type) {
             case PERF_RECORD_LOST:
@@ -144,12 +120,11 @@ int LBR::read(CXLController *controller, LBRElem *elem) {
                     continue;
                 }
                 if (this->pid == data->pid) {
-                    SPDLOG_ERROR("pid:{} tid:{} time:{} addr:{} phys_addr:{} llc_miss:{} timestamp={}\n", data->pid,
-                                 data->tid, data->nr, data->nr2, data->ips[0], data->cpu,
-                                 data->timestamp, data->nr2,data->hw_idx, data->lbrs[0],data->counters[0]);
-                    controller->insert(data->timestamp, data->ips, data->lbrs,  data->counters);
-                    // elem->total++;
-                    // elem->llcmiss = data->value; // this is the number of llc miss
+                    SPDLOG_ERROR("pid:{} tid:{} nr:{} nr2:{} ips:{} cpu:{} timestamp:{} hw_idx:{} lbrs:{} counters:{} \n", 
+                                 data->pid, data->tid, data->nr, data->nr2, data->ips[0], data->cpu,
+                                 data->timestamp, data->hw_idx, data->lbrs[0].from, data->counters[0].counters);
+                    controller->insert(data->timestamp, data->ips, data->lbrs, data->counters);
+                    elem->tid = data->tid;
                 }
                 break;
             case PERF_RECORD_THROTTLE:
@@ -175,7 +150,7 @@ int LBR::read(CXLController *controller, LBRElem *elem) {
 
     return r;
 }
-int LBR::start() {
+int LBR::start() const {
         if (this->fd < 0) {
         return 0;
     }
@@ -187,7 +162,7 @@ int LBR::start() {
     return 0;
 }
 
-int LBR::stop() {
+int LBR::stop() const {
     if (this->fd < 0) {
         return 0;
     }
@@ -195,6 +170,7 @@ int LBR::stop() {
         perror("ioctl");
         return -1;
     }
+    return 0;
 }
 
 LBR::~LBR() {

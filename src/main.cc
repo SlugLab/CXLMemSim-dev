@@ -1,5 +1,5 @@
 /*
-* CXLMemSim main
+ * CXLMemSim main
  *
  *  By: Andrew Quinn
  *      Yiwei Yang
@@ -243,70 +243,6 @@ int main(int argc, char *argv[]) {
     while (true) {
         /** Get from the CXLMemSimHook */
         int n;
-        // do {
-        //     // memset(sock_buf, 0, sock_buf_size);
-        //     // // without blocking
-        //     // n = recv(sock, sock_buf, sock_buf_size, MSG_DONTWAIT);
-        //     // if (n < 1) {
-        //     //     if (errno == EAGAIN || errno == EWOULDBLOCK) {
-        //     //         // no data
-        //     //         break;
-        //     //     } else {
-        //     //         SPDLOG_ERROR("Failed to recv";
-        //     //         exit(-1);
-        //     //     }
-        //     // } else if (n >= sizeof(struct op_data) && n <= sock_buf_size - 1) {
-        //     //     auto *opd = (struct op_data *)sock_buf;
-        //     //     SPDLOG_ERROR("received data: size={}, tgid={}, tid=[], opcode={}\n", n, opd->tgid, opd->tid,
-        //     //                  opd->opcode);
-        //
-        //         if (opd->opcode == CXLMEMSIM_THREAD_CREATE || opd->opcode == CXLMEMSIM_PROCESS_CREATE) {
-        //             int t;
-        //             bool is_process = opd->opcode == CXLMEMSIM_PROCESS_CREATE;
-        //             // register to monitor
-        //
-        //             t = monitors.enable(opd->tgid, opd->tid, is_process, pebsperiod, tnum);
-        //             if (t == -1) {
-        //                 SPDLOG_ERROR("Failed to enable monitor\n");
-        //             } else if (t < 0) {
-        //                 // tid not found. might be already terminated.
-        //                 continue;
-        //             }
-        //             auto mon = monitors.mon[t];
-        //             // Wait the t processes until emulation process initialized.
-        //             mon.stop();
-        //             /* read CHA params */
-        //             for (auto const &[idx, value] : pmu.chas | enumerate) {
-        //                 pmu.chas[idx].read_cha_elems(&mon.before->chas[idx]);
-        //             }
-        //             for (auto const &[idx, value] : pmu.chas | enumerate) {
-        //                 pmu.chas[idx].read_cha_elems(&mon.before->chas[idx]);
-        //             }
-        //             // Run the t processes.
-        //             mon.run();
-        //             clock_gettime(CLOCK_MONOTONIC, &mon.start_exec_ts);
-        //         } else if (opd->opcode == CXLMEMSIM_THREAD_EXIT) {
-        //             // unregister from monitor, and display results.
-        //             // get the tid from the tgid
-        //             auto mon = monitors.get_mon(opd->tgid, opd->tid);
-        //             mon.stop();
-        //         } else if (opd->opcode == CXLMEMSIM_STABLE_SIGNAL) {
-        //             for (auto const &[i, mon] : monitors.mon | enumerate) {
-        //                 if (mon.status == MONITOR_ON) {
-        //                     mon.stop();
-        //                     mon.status = MONITOR_SUSPEND;
-        //                 }
-        //             }
-        //         }
-        //
-        //     } else {
-        //         SPDLOG_ERROR("received data is invalid size: size={}", n);
-        //     }
-        // } while (n > 0); // check the next message.
-        //
-        // /* wait for pre-defined interval */
-        // clock_gettime(CLOCK_MONOTONIC, &sleep_start_ts);
-        //
         /** Here was a definition for the multi process and thread to enable multiple monitor */
         timespec req = waittime;
         timespec rem = {0};

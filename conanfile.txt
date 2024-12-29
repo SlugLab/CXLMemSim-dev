@@ -1,7 +1,5 @@
 [requires]
 cxxopts/3.0.0
-spdlog/1.13.0
-nlohmann_json/3.11.2
 [generators]
 CMakeDeps
 CMakeToolchain

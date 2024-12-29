@@ -16,7 +16,6 @@
 #include <sys/mman.h>
 #include <cstdint>
 #include <cxlcontroller.h>
-#include <x86intrin.h>
 #include <sys/types.h>
 
 class PEBS {

@@ -9,6 +9,7 @@
  */
 
 #include "cxlcontroller.h"
+#include "lbr.h"
 
 void CXLController::insert_end_point(CXLMemExpander *end_point) { this->cur_expanders.emplace_back(end_point); }
 
@@ -81,7 +82,7 @@ std::string CXLController::output() {
 
 void CXLController::delete_entry(uint64_t addr, uint64_t length) { CXLSwitch::delete_entry(addr, length); }
 
-int CXLController::insert(uint64_t timestamp, uint64_t* call_chain, uint64_t* lbrs, uint64_t* counters) {
+int CXLController::insert(uint64_t timestamp, uint64_t call_chain[4], lbr lbrs[4], cntr counters[4]) {
 
 }
 int CXLController::insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr, int index) {

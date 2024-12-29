@@ -11,16 +11,12 @@
 #ifndef CXLMEMSIM_CXLCONTROLLER_H
 #define CXLMEMSIM_CXLCONTROLLER_H
 
-#include "cxlcounter.h"
 #include "cxlendpoint.h"
-#include <cstdint>
+#include "lbr.h"
 #include <string_view>
-#include <unordered_map>
-#include <vector>
 
 enum page_type { CACHELINE, PAGE, HUGEPAGE_2M, HUGEPAGE_1G };
 
-class CXLController;
 class AllocationPolicy {
 public:
     virtual ~AllocationPolicy() = default;
@@ -45,7 +41,7 @@ public:
     // paging related
 };
 
-class CXLController : CXLSwitch {
+class CXLController : public CXLSwitch {
 public:
     std::vector<CXLMemExpander *> cur_expanders{};
     int capacity; // GB
@@ -65,7 +61,7 @@ public:
     std::tuple<int, int> get_all_access() override;
     double calculate_latency(LatencyPass elem) override; // traverse the tree to calculate the latency
     double calculate_bandwidth(BandwidthPass elem) override;
-    int insert(uint64_t timestamp, uint64_t *call_chain, uint64_t* lbrs, uint64_t* counters);
+    int insert(uint64_t timestamp, uint64_t call_chain[4], lbr lbrs[4], cntr counters[4]) override;
     int insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr, int index) override;
     void delete_entry(uint64_t addr, uint64_t length) override;
     std::string output() override;

@@ -10,6 +10,7 @@
 
 #include "uncore.h"
 #include <climits>
+#include <fcntl.h>
 extern Helper helper;
 Uncore::Uncore(const uint32_t unc_idx, PerfConfig *perf_config) {
     unsigned long value;

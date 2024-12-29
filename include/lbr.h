@@ -11,9 +11,32 @@
 #ifndef CXLMEMSIM_LBR_H
 #define CXLMEMSIM_LBR_H
 
-#include "cxlcontroller.h"
 #include "helper.h"
-#include "pebs.h"
+#include "cxlcontroller.h"
+#include <sys/mman.h>
+class CXLController;  // Forward declaration
+
+struct lbr {
+  uint64_t from;
+  uint64_t to;
+  uint64_t flags;
+};
+struct cntr {
+  uint64_t counters;
+};
+struct lbr_sample {
+  perf_event_header header;
+  uint32_t pid;
+  uint32_t tid;
+  uint64_t nr;
+  uint64_t ips[4];
+  uint32_t cpu;
+  uint64_t timestamp;
+  uint64_t nr2;
+  uint64_t hw_idx;
+  lbr lbrs[4];
+  cntr counters[4];
+};
 
 class LBR {
 public:
@@ -23,13 +46,12 @@ public:
     size_t rdlen{};
     size_t mplen{};
     perf_event_mmap_page *mp;
-    LBR(pid_t);
+    explicit LBR(pid_t);
     ~LBR();
     int read(CXLController *, LBRElem *);
-    int start();
-    int stop();
+    int start() const;
+    int stop() const;
 };
-
 
 
 #endif //CXLMEMSIM_LBR_H
