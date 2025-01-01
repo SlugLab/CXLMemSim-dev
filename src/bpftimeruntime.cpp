@@ -16,11 +16,7 @@
 #include <bpftime_shm.hpp>
 #include <bpf/bpf.h>
 extern "C" {
-uint64_t bpftime_csum_diff_runtime(uint64_t r1, uint64_t from_size, uint64_t r3,
-			   uint64_t to_size, uint64_t seed);
-uint64_t bpftime_xdp_adjust_tail_runtime(struct xdp_buff *xdp, __u64 offset);
 uint64_t bpftime_redirect_map_runtime(uint64_t map, __u64 key, __u64 flags);
-uint64_t bpftime_xdp_adjust_head_runtime(struct xdp_md_userspace *xdp, int offset);
 long bpftime_xdp_load_bytes_runtime(struct xdp_md_userspace *xdp_md, __u32 offset, void *buf, __u32 len);
 }
 #include <cassert>
@@ -39,32 +35,10 @@ static int selected_handler_id = -1;
 
 static bpftime_prog *entry_prog = nullptr;
 
-bpftime::bpftime_helper_info csum_diff = { .index = 28,
-					   .name = "bpftime_csum_diff",
-					   .fn = (void *)bpftime_csum_diff_runtime };
-
-bpftime::bpftime_helper_info xdp_adjust_tail = {
-	.index = 65,
-	.name = "bpf_xdp_adjust_tail",
-	.fn = (void *)bpftime_xdp_adjust_tail_runtime
-};
-
-bpftime::bpftime_helper_info bpf_xdp_load_bytes = {
-	.index = 189,
-	.name = "bpf_xdp_load_bytes",
-	.fn = (void *)bpftime_xdp_load_bytes_runtime
-};
-
 bpftime::bpftime_helper_info bpf_redirect_map = {
 	.index = 51,
 	.name = "bpf_redirect_map",
 	.fn = (void *)bpftime_redirect_map_runtime
-};
-
-bpftime::bpftime_helper_info xdp_adjust_head = {
-	.index = 44,
-	.name = "bpf_xdp_adjust_head",
-	.fn = (void *)bpftime_xdp_adjust_head_runtime
 };
 
 static bool if_enable_jit()
@@ -130,7 +104,6 @@ static int load_ebpf_programs()
 	} else {
 		using_aot = false;
 	}
-	// TODO: fix load programs
 	for (size_t i = 0; i < manager->size(); i++) {
 		if (std::holds_alternative<bpf_prog_handler>(
 			    manager->get_handler(i))) {
@@ -138,7 +111,6 @@ static int load_ebpf_programs()
 				manager->get_handler(i));
 			// temp work around: we need to create new attach points
 			// in the runtime
-			// TODO: fix this hard code name
 			auto new_prog = new bpftime_prog(prog.insns.data(),
 							 prog.insns.size(),
 							 prog.name.c_str());
@@ -334,5 +306,90 @@ int bpftime_run_xdp_program(int id, const std::string &data_in_file,
 		cerr << "Invalid id " << id << " not a bpf program" << endl;
 		return 1;
 	}
+	return 0;
+}
+
+
+struct xdp_buff {
+	void *data;
+	void *data_end;
+	void *data_meta;
+	void *data_hard_start;
+	struct xdp_rxq_info *rxq;
+	struct xdp_txq_info *txq;
+	__u32 frame_sz;
+	__u32 flags;
+};
+
+enum xdp_buff_flags {
+	XDP_FLAGS_HAS_FRAGS = 1,
+	XDP_FLAGS_FRAGS_PF_MEMALLOC = 2,
+};
+
+typedef s64 ktime_t;
+
+struct skb_shared_hwtstamps {
+	union {
+		ktime_t hwtstamp;
+		void *netdev_data;
+	};
+};
+
+typedef struct {
+	int counter;
+} atomic_t;
+
+typedef struct bio_vec skb_frag_t;
+
+struct skb_shared_info {
+	__u8 flags;
+	__u8 meta_len;
+	__u8 nr_frags;
+	__u8 tx_flags;
+	short unsigned int gso_size;
+	short unsigned int gso_segs;
+	struct sk_buff *frag_list;
+	struct skb_shared_hwtstamps hwtstamps;
+	unsigned int gso_type;
+	__u32 tskey;
+	atomic_t dataref;
+	unsigned int xdp_frags_size;
+	void *destructor_arg;
+	// skb_frag_t frags[17];
+};
+// ignore map id
+// TODO: fix the map id
+redirect_call_back_func redirect_map_callback = NULL;
+
+void register_redirect_map_callback(int map_id, redirect_call_back_func cb)
+{
+	redirect_map_callback = cb;
+}
+
+uint64_t bpftime_redirect_map_runtime(uint64_t map, __u64 key, __u64 flags)
+{
+	if (redirect_map_callback) {
+		redirect_map_callback(map, key);
+		return XDP_TX;
+	} else {
+		printf("redirect_map_callback is NULL\n");
+		return XDP_DROP;
+	}
+}
+
+uint64_t bpftime_xdp_adjust_head_runtime(struct xdp_md_userspace* xdp, int offset) {
+	// Do nothing because we don't use xdp meta data
+	printf("bpftime_xdp_adjust_head_runtime is not supported\n");
+	void *data = xdp->data + offset;
+	xdp->data = data;
+	return 0;
+}
+
+long bpftime_xdp_load_bytes_runtime(struct xdp_md_userspace *xdp_md, __u32 offset, void *buf, __u32 len) {
+	void *data = xdp_md->data + offset;
+	if (data + len > xdp_md->data_end) {
+		return -EINVAL;
+	}
+	memcpy(buf, data, len);
 	return 0;
 }
