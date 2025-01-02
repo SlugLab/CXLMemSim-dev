@@ -66,7 +66,7 @@ LBR::LBR(pid_t pid) : pid(pid){
         .type = PERF_TYPE_RAW,
         .size = sizeof(perf_event_attr),
         .config = 0x7835, // mem_load_retired.l3_miss
-        .sample_type = PERF_SAMPLE_TID | PERF_SAMPLE_CALLCHAIN | PERF_SAMPLE_CPU | PERF_SAMPLE_TIME | PERF_SAMPLE_BRANCH_STACK |PERF_SAMPLE_BRANCH_COUNTERS,
+        .sample_type = PERF_SAMPLE_TID | PERF_SAMPLE_CALLCHAIN | PERF_SAMPLE_CPU | PERF_SAMPLE_TIME | PERF_SAMPLE_BRANCH_STACK, //|PERF_SAMPLE_BRANCH_COUNTERS,
         .read_format = PERF_FORMAT_TOTAL_TIME_ENABLED,
         .disabled = 1, // Event is initially disabled
         .exclude_kernel = 1,

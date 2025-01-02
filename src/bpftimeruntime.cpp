@@ -15,8 +15,10 @@
 #include "handler/prog_handler.hpp"
 #include <bpftime_shm.hpp>
 #include <bpf/bpf.h>
+
 extern "C" {
 uint64_t bpftime_redirect_map_runtime(uint64_t map, __u64 key, __u64 flags);
+uint64_t bpftime_xdp_adjust_head_runtime(struct xdp_md_userspace* xdp, int offset);
 long bpftime_xdp_load_bytes_runtime(struct xdp_md_userspace *xdp_md, __u32 offset, void *buf, __u32 len);
 }
 #include <cassert>
@@ -26,8 +28,23 @@ long bpftime_xdp_load_bytes_runtime(struct xdp_md_userspace *xdp_md, __u32 offse
 #include <vector>
 #include <time.h>
 #include <fstream>
-#include "xdp-runtime.h"
 
+typedef signed char __s8;
+typedef unsigned char __u8;
+typedef short int __s16;
+typedef short unsigned int __u16;
+typedef int __s32;
+typedef unsigned int __u32;
+typedef long long int __s64;
+typedef long long unsigned int __u64;
+typedef __s8 s8;
+typedef __u8 u8;
+typedef __s16 s16;
+typedef __u16 u16;
+typedef __s32 s32;
+typedef __u32 u32;
+typedef __s64 s64;
+typedef __u64 u64;
 using namespace bpftime;
 using namespace std;
 
@@ -39,6 +56,16 @@ bpftime::bpftime_helper_info bpf_redirect_map = {
 	.index = 51,
 	.name = "bpf_redirect_map",
 	.fn = (void *)bpftime_redirect_map_runtime
+};
+bpftime::bpftime_helper_info xdp_adjust_head = {
+    .index = 52,
+    .name = "xdp_adjust_head",
+    .fn = (void *)bpftime_xdp_adjust_head_runtime
+};
+bpftime::bpftime_helper_info bpf_xdp_load_bytes = {
+    .index = 52,
+    .name = "bpf_xdp_load_bytes",
+    .fn = (void *)bpftime_xdp_load_bytes_runtime
 };
 
 static bool if_enable_jit()
@@ -120,15 +147,15 @@ static int load_ebpf_programs()
 				.add_helper_group_to_prog(new_prog);
 			bpftime_helper_group::get_shm_maps_helper_group()
 				.add_helper_group_to_prog(new_prog);
-			new_prog->bpftime_prog_register_raw_helper(csum_diff);
-			new_prog->bpftime_prog_register_raw_helper(
-				xdp_adjust_tail);
+			// new_prog->bpftime_prog_register_raw_helper(csum_diff);
+			// new_prog->bpftime_prog_register_raw_helper(
+				// xdp_adjust_tail);
 			new_prog->bpftime_prog_register_raw_helper(
 				bpf_redirect_map);
-			// new_prog->bpftime_prog_register_raw_helper(
-			// 	xdp_adjust_head);
-			// new_prog->bpftime_prog_register_raw_helper(
-			// 	bpf_xdp_load_bytes);
+			new_prog->bpftime_prog_register_raw_helper(
+				xdp_adjust_head);
+			new_prog->bpftime_prog_register_raw_helper(
+				bpf_xdp_load_bytes);
 			if (using_aot) {
 				// load aot object from share memory
 				int res = new_prog->load_aot_object(aot_buf);
@@ -163,44 +190,58 @@ static int load_ebpf_programs()
 	}
 	return 0;
 }
+static std::map<int, int> dev_hash_map = {};
 
-extern bpftime::bpftime_map_ops dev_map_ops;
-extern bpftime::bpftime_map_ops lpm_map_ops;
-extern bpftime::bpftime_map_ops lru_hash_map_ops;
+static void *elem_lookup_static(int id, const void *key, bool from_syscall)
+{
+    auto k = *(int *)key;
+    auto it = dev_hash_map.find(k);
+    if (it == dev_hash_map.end())
+        return nullptr;
+    return &it->second;
+}
+
+static long elem_update_static(int id, const void *key, const void *value,
+                   uint64_t flags, bool from_syscall)
+{
+    auto k = *(int *)key;
+    auto v = *(int *)value;
+    dev_hash_map[k] = v;
+    return 0;
+}
+
+static long elem_delete_static(int id, const void *key, bool from_syscall)
+{
+    auto k = *(int *)key;
+    auto it = dev_hash_map.find(k);
+    if (it == dev_hash_map.end())
+        return -1;
+    dev_hash_map.erase(it);
+    return 0;
+}
+
+static int elem_get_next_key_static(int id, const void *key, void *next_key, bool from_syscall)
+{
+    auto k = *(int *)key;
+    auto it = dev_hash_map.upper_bound(k);
+    if (it == dev_hash_map.end())
+        return -1;
+    *(int *)next_key = it->first;
+    return 0;
+}
+
+bpftime::bpftime_map_ops dev_map_ops{
+    .elem_lookup = elem_lookup_static,
+    .elem_update = elem_update_static,
+    .elem_delete = elem_delete_static,
+    .map_get_next_key = elem_get_next_key_static,
+};
+
 
 static int register_maps()
 {
 	bpftime_register_map_ops(
 		(int)bpftime::bpf_map_type::BPF_MAP_TYPE_DEVMAP, &dev_map_ops);
-	bpftime_register_map_ops(
-		(int)bpftime::bpf_map_type::BPF_MAP_TYPE_LPM_TRIE,
-		&lpm_map_ops);
-	bpftime_register_map_ops(
-		(int)bpftime::bpf_map_type::BPF_MAP_TYPE_LRU_HASH,
-		&lru_hash_map_ops);
-	return 0;
-}
-
-// A helper function to read the counts_map from your eBPF program
-static int read_counts_map() {
-	// For example, you might have the map FD from somewhere
-	// or discover it by name with bpftime_find_map_by_name
-	// Here we assume you already have "map_fd" from your code
-	int map_fd = bpftime_find_map_by_name("counts_map");
-	if (map_fd < 0) {
-		fprintf(stderr, "Failed to get counts_map FD.\n");
-		return -1;
-	}
-
-	// Example: iterate over all pids in the map
-	u32 key = 0, next_key;
-	u64 val;
-	while (bpf_map_get_next_key(map_fd, &key, &next_key) == 0) {
-		if (bpf_map_lookup_elem(map_fd, &key, &val) == 0) {
-			printf("PID: %u => count: %llu\n", key, val);
-		}
-		key = next_key;
-	}
 	return 0;
 }
 
@@ -211,7 +252,7 @@ extern "C" int ebpf_module_init()
 	register_maps();
 
 	// Example: after registering maps, read the counts_map once
-	read_counts_map();
+	// read_counts_map();
 	return -1;
 }
 
@@ -232,17 +273,14 @@ int run_xdp_and_measure(bpftime_prog &prog, std::vector<uint8_t> &data_in,
 	uint64_t return_val;
 	void *memory = data_in.data();
 	size_t memory_size = data_in.size();
-	struct xdp_md_userspace xdp;
-	xdp.data = (__u64)memory;
-	xdp.data_end = (__u64)memory + memory_size;
 
 	// start timer
 	struct timespec start, end;
 	clock_gettime(CLOCK_MONOTONIC, &start);
 	// run the program
-	for (int i = 0; i < repeat_N; i++) {
-		prog.bpftime_prog_exec(&xdp, sizeof(xdp), &return_val);
-	}
+	// for (int i = 0; i < repeat_N; i++) {
+	// 	prog.bpftime_prog_exec(&xdp, sizeof(xdp), &return_val);
+	// }
 	// end timer
 	clock_gettime(CLOCK_MONOTONIC, &end);
 	// get avg time in ns
@@ -285,8 +323,6 @@ int bpftime_run_xdp_program(int id, const std::string &data_in_file,
 			.add_helper_group_to_prog(&new_prog);
 		bpftime::bpftime_helper_group::get_shm_maps_helper_group()
 			.add_helper_group_to_prog(&new_prog);
-		new_prog.bpftime_prog_register_raw_helper(csum_diff);
-		new_prog.bpftime_prog_register_raw_helper(xdp_adjust_tail);
 		new_prog.bpftime_prog_register_raw_helper(bpf_redirect_map);
 		new_prog.bpftime_prog_register_raw_helper(xdp_adjust_head);
 		if (run_type == "JIT") {
@@ -357,8 +393,8 @@ struct skb_shared_info {
 	void *destructor_arg;
 	// skb_frag_t frags[17];
 };
-// ignore map id
-// TODO: fix the map id
+typedef void (*redirect_call_back_func)(void *data, int ifindex);
+
 redirect_call_back_func redirect_map_callback = NULL;
 
 void register_redirect_map_callback(int map_id, redirect_call_back_func cb)
@@ -369,7 +405,7 @@ void register_redirect_map_callback(int map_id, redirect_call_back_func cb)
 uint64_t bpftime_redirect_map_runtime(uint64_t map, __u64 key, __u64 flags)
 {
 	if (redirect_map_callback) {
-		redirect_map_callback(map, key);
+		// redirect_map_callback(map, key);
 		return XDP_TX;
 	} else {
 		printf("redirect_map_callback is NULL\n");
@@ -377,19 +413,16 @@ uint64_t bpftime_redirect_map_runtime(uint64_t map, __u64 key, __u64 flags)
 	}
 }
 
-uint64_t bpftime_xdp_adjust_head_runtime(struct xdp_md_userspace* xdp, int offset) {
+uint64_t bpftime_xdp_adjust_head_runtime(xdp_md_userspace* xdp, int offset) {
 	// Do nothing because we don't use xdp meta data
 	printf("bpftime_xdp_adjust_head_runtime is not supported\n");
-	void *data = xdp->data + offset;
-	xdp->data = data;
+	void *data = malloc(100);
+	// xdp->data = data;
 	return 0;
 }
 
-long bpftime_xdp_load_bytes_runtime(struct xdp_md_userspace *xdp_md, __u32 offset, void *buf, __u32 len) {
-	void *data = xdp_md->data + offset;
-	if (data + len > xdp_md->data_end) {
-		return -EINVAL;
-	}
+long bpftime_xdp_load_bytes_runtime(xdp_md_userspace *xdp_md, __u32 offset, void *buf, __u32 len) {
+	void *data = malloc(100);
 	memcpy(buf, data, len);
 	return 0;
 }

@@ -24,6 +24,7 @@ public:
     virtual int compute_once(CXLController *) = 0;
     // No write problem
 };
+
 class MigrationPolicy {
 public:
     virtual ~MigrationPolicy() = default;

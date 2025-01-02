@@ -12,9 +12,6 @@
 #include <numeric>
 // TODO:
 AllocationPolicy::AllocationPolicy() = default;
-AllocationPolicy::compute_once(CXLController *controller) {
-    return 0;
-}
 InterleavePolicy::InterleavePolicy() = default;
 // If the number is -1 for local, else it is the index of the remote server
 int InterleavePolicy::compute_once(CXLController *controller) {

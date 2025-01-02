@@ -28,4 +28,13 @@ public:
     int compute_once(CXLController *) override;
 };
 
+class NUMAPolicy : public AllocationPolicy {
+
+public:
+  NUMAPolicy();
+  int last_remote = 0;
+  int all_size = 0;
+  int compute_once(CXLController *) override;
+};
+
 #endif // CXLMEMSIM_POLICY_H

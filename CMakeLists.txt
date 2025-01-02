@@ -26,7 +26,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -fPIC -pthread -ldl -lrt -mavx2 -m
 add_executable(CXLMemSim ${SOURCE_FILES} src/main.cc)
 
 include_directories(CXLMemSim include ${cxxopts_INCLUDE_DIR} ${spdlog_INCLUDE_DIR} ${runtime_SOURCE_DIR}/include)
-target_link_libraries(CXLMemSim cxxopts::cxxopts spdlog::spdlog)
+target_link_libraries(CXLMemSim cxxopts::cxxopts spdlog::spdlog bpftime_vm bpftime-object bpftime_base_attach_impl bpftime-agent)
 
 function(bpf prefix)
     add_custom_target(${prefix}_bpf ALL
