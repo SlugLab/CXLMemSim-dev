@@ -80,11 +80,11 @@ struct PEBSElem {
 };
 
 struct LBRElem {
-    uint64_t ip[4];
+    //uint64_t ip[4];
     uint64_t tid;
-    uint64_t cpu;
+    //uint64_t cpu;
     uint64_t time;
-    uint64_t branch_stack[4];
+    uint64_t branch_stack[96];
 };
 
 struct CPUInfo {

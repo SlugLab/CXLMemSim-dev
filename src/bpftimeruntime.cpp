@@ -141,7 +141,7 @@ static int load_ebpf_programs()
 			auto new_prog = new bpftime_prog(prog.insns.data(),
 							 prog.insns.size(),
 							 prog.name.c_str());
-			printf("find eBPF program %s   %d\n", prog.name.c_str(),
+			printf("find eBPF program %s   %ld\n", prog.name.c_str(),
 			       prog.insns.size());
 			bpftime_helper_group::get_kernel_utils_helper_group()
 				.add_helper_group_to_prog(new_prog);

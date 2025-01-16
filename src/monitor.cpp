@@ -37,7 +37,7 @@ void Monitors::stop_all(const int processes) {
 }
 void Monitors::run_all(const int processes) {
     for (auto i = 0; i < processes; ++i) {
-        if (mon[i].status == MONITOR_ON) {
+        if (mon[i].status == MONITOR_OFF) {
             mon[i].run();
         }
     }
@@ -101,6 +101,7 @@ int Monitors::enable(const uint32_t tgid, const uint32_t tid, bool is_process, u
         SPDLOG_DEBUG("{}Process [tgid={}, tid={}]: enable to pebs.\n", target, mon[target].tgid,
                      mon[target].tid); // multiple tid multiple pid
     }
+    mon[target].lbr_ctx = new LBR(tgid, 1);
 
     SPDLOG_INFO("pid {}[tgid={}, tid={}] monitoring start\n", target, mon[target].tgid, mon[target].tid);
 
@@ -129,6 +130,15 @@ void Monitors::disable(const uint32_t target) {
         mon[target].pebs_ctx->mp = nullptr;
         mon[target].pebs_ctx->sample_period = 0;
     }
+    // if (mon[target].lbr_ctx != nullptr) {
+    //     mon[target].lbr_ctx->fd = -1;
+    //     mon[target].lbr_ctx->pid = -1;
+    //     mon[target].lbr_ctx->seq = 0;
+    //     mon[target].lbr_ctx->rdlen = 0;
+    //     mon[target].lbr_ctx->seq = 0;
+    //     mon[target].lbr_ctx->mp = nullptr;
+    //     mon[target].lbr_ctx->sample_period = 0;
+    // }
     for (auto &j : mon[target].elem) {
         j.pebs.total = 0;
         j.pebs.llcmiss = 0;
@@ -228,6 +238,7 @@ void Monitor::stop() { // thread create and proecess create get the pmu
 }
 
 void Monitor::run() {
+    if(this->status == MONITOR_TERMINATED) return;
     SPDLOG_DEBUG("Send SIGCONT to tid={}(tgid={})\n", this->tid, this->tgid);
     if (syscall(SYS_tgkill, this->tgid, this->tid, SIGCONT) == -1) {
         if (errno == ESRCH) {
@@ -240,6 +251,10 @@ void Monitor::run() {
             SPDLOG_ERROR("Failed to signal to any of the target processes. Due to does not have permission. \n It "
                          "might have wrong result.");
         }
+	else{
+		this->status = 10000;
+            SPDLOG_ERROR("I'm dying\n");
+	}
     } else {
         this->status = MONITOR_ON;
         SPDLOG_DEBUG("Process [{}:{}] is running.\n", this->tgid, this->tid);

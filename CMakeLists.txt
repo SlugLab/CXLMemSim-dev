@@ -24,9 +24,13 @@ execute_process(COMMAND uname -r OUTPUT_VARIABLE arch OUTPUT_STRIP_TRAILING_WHIT
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -fPIC -pthread -ldl -lrt -mavx2 -mpreferred-stack-boundary=4 -g")
 
 add_executable(CXLMemSim ${SOURCE_FILES} src/main.cc)
+add_executable(CXLMemSim-test ${SOURCE_FILES} src/main-test.cc)
 
 include_directories(CXLMemSim include ${cxxopts_INCLUDE_DIR} ${spdlog_INCLUDE_DIR} ${runtime_SOURCE_DIR}/include)
 target_link_libraries(CXLMemSim cxxopts::cxxopts spdlog::spdlog bpftime_vm bpftime-object bpftime_base_attach_impl bpftime-agent)
+
+include_directories(CXLMemSim-test include ${cxxopts_INCLUDE_DIR} ${spdlog_INCLUDE_DIR} ${runtime_SOURCE_DIR}/include)
+target_link_libraries(CXLMemSim-test cxxopts::cxxopts spdlog::spdlog bpftime_vm bpftime-object bpftime_base_attach_impl bpftime-agent)
 
 function(bpf prefix)
     add_custom_target(${prefix}_bpf ALL

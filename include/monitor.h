@@ -63,7 +63,7 @@ public:
     struct timespec start_exec_ts, end_exec_ts;
     bool is_process;
     struct PEBS *pebs_ctx;
-
+    struct LBR *lbr_ctx;
     explicit Monitor();
 
     void stop();
