@@ -41,7 +41,7 @@ Uncore::Uncore(const uint32_t unc_idx, PerfConfig *perf_config) {
     }
 
     for (auto const &[k, v] : this->perf | std::views::enumerate) {
-        v = init_uncore_perf(-1, (int)unc_idx, std::get<1>(perf_config->cha[k]), std::get<2>(perf_config->cha[k]),
+        this->perf[k] = init_uncore_perf(-1, (int)unc_idx, std::get<1>(perf_config->cha[k]), std::get<2>(perf_config->cha[k]),
                              value);
     }
 }

@@ -99,6 +99,7 @@ struct Elem {
     std::vector<CHAElem> chas;
     std::vector<CPUElem> cpus;
     struct PEBSElem pebs;
+    struct LBRElem lbr;
 };
 
 class PMUInfo {

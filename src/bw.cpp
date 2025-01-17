@@ -8,13 +8,13 @@
  *  UC Santa Cruz Sluglab.
  */
 
-#include <stdio.h>
-#include <stdint.h>
+#include <cstdio>
+#include <cstdint>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/io.h>
 #include <sys/mman.h>
-#include <errno.h>
+#include <cerrno>
 #include <cstring>
 #include <dirent.h>
 #include <cstdio>

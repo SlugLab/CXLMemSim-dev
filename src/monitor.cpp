@@ -147,6 +147,7 @@ void Monitors::disable(const uint32_t target) {
 bool Monitors::check_all_terminated(const uint32_t processes) {
     bool _terminated = true;
     for (uint32_t i = 0; i < processes; ++i) {
+        SPDLOG_INFO("mon[{}].status: {}", i, int(mon[i].status));
         if (mon[i].status == MONITOR_ON || mon[i].status == MONITOR_OFF) {
             _terminated = false;
         } else if (mon[i].status != MONITOR_DISABLE) {
@@ -225,7 +226,7 @@ void Monitor::stop() { // thread create and proecess create get the pmu
             // in this case process or process group does not exist.
             // It might be a zombie or has terminated execution.
             this->status = MONITOR_TERMINATED;
-            SPDLOG_DEBUG("Process [{}:{}] is terminated.\n", this->tgid, this->tid);
+            SPDLOG_ERROR("Process [{}:{}] is terminated.\n", this->tgid, this->tid);
         } else if (errno == EPERM) {
             this->status = MONITOR_NOPERMISSION;
             SPDLOG_ERROR("Failed to signal to any of the target processes. Due to does not have permission. \n It "
@@ -238,7 +239,6 @@ void Monitor::stop() { // thread create and proecess create get the pmu
 }
 
 void Monitor::run() {
-    if(this->status == MONITOR_TERMINATED) return;
     SPDLOG_DEBUG("Send SIGCONT to tid={}(tgid={})\n", this->tid, this->tgid);
     if (syscall(SYS_tgkill, this->tgid, this->tid, SIGCONT) == -1) {
         if (errno == ESRCH) {

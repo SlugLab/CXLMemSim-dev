@@ -30,9 +30,9 @@ int main(int argc, char *argv[]) {
     spdlog::cfg::load_env_levels();
     cxxopts::Options options("CXLMemSim", "For simulation of CXL.mem Type 3 on Sapphire Rapids");
     options.add_options()("t,target", "The script file to execute",
-                          cxxopts::value<std::string>()->default_value("/usr/bin/sleep 10"))(
+                          cxxopts::value<std::string>()->default_value("./microbench/many_malloc"))(
         "h,help", "Help for CXLMemSim", cxxopts::value<bool>()->default_value("false"))(
-        "i,interval", "The value for epoch value", cxxopts::value<int>()->default_value("1000"))(
+        "i,interval", "The value for epoch value", cxxopts::value<int>()->default_value("1"))(
         "s,source", "Collection Phase or Validation Phase", cxxopts::value<bool>()->default_value("false"))(
         "c,cpuset", "The CPUSET for CPU to set affinity on and only run the target process on those CPUs",
         cxxopts::value<std::vector<int>>()->default_value("0"))("d,dramlatency", "The current platform's dram latency",
@@ -253,7 +253,7 @@ int main(int argc, char *argv[]) {
                 break;
             }
             if (errno == EINTR) {
-                SPDLOG_ERROR("nanosleep: remain time {}.{}(sec)\n", (long)rem.tv_sec, (long)rem.tv_nsec);
+                SPDLOG_INFO("nanosleep: remain time {}.{}(sec)\n", (long)rem.tv_sec, (long)rem.tv_nsec);
                 // if the milisecs was set below 5, will trigger stop before the target process stop.
                 // The pause has been interrupted by a signal that was delivered to the thread.
                 req = rem; // call nanosleep() again with the remain time.
@@ -278,10 +278,6 @@ int main(int argc, char *argv[]) {
                 /** Read CHA values */
                 uint64_t wb_cnt = 0;
                 std::vector<uint64_t> cha_vec, cpu_vec{};
-                for (int j = 0; j < ncha; j++) {
-                    pmu.chas[j].read_cha_elems(&mon.after->chas[j]);
-                    wb_cnt += mon.after->chas[j].cha[0] - mon.before->chas[j].cha[0];
-                }
                 SPDLOG_INFO("[{}:{}:{}] LLC_WB = {}\n", i, mon.tgid, mon.tid, wb_cnt);
 
                 for (int j = 0; j < helper.used_cha.size(); j++) {
@@ -298,6 +294,9 @@ int main(int argc, char *argv[]) {
                 //     read_config += mon.after->cpus[j].cha[1] - mon.before->cpus[j].cha[1];
                 // }
                 /* read PEBS sample */
+                if (mon.lbr_ctx->read(controller, &mon.after->lbr) < 0) {
+                    SPDLOG_ERROR("[{}:{}:{}] Warning: Failed LBR read\n", i, mon.tgid, mon.tid);
+                }
                 if (mon.pebs_ctx->read(controller, &mon.after->pebs) < 0) {
                     SPDLOG_ERROR("[{}:{}:{}] Warning: Failed PEBS read\n", i, mon.tgid, mon.tid);
                 }
