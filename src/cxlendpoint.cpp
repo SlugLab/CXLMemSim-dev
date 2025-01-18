@@ -213,20 +213,20 @@ double CXLSwitch::calculate_bandwidth(BandwidthPass elem) {
     // time series
     return bw;
 }
-int CXLSwitch::insert(uint64_t timestamp, uint64_t *call_chain, struct lbr *lbrs, struct cntr *counters) {
+int CXLSwitch::insert(uint64_t timestamp, uint64_t tid, struct lbr *lbrs, struct cntr *counters) {
     // 这里可以根据你的功能逻辑来处理 LBR 的插入信息
     SPDLOG_DEBUG("CXLSwitch insert lbr for switch id:{}\n", this->id);
 
     // 简单示例: 依次尝试调用下属的 Expander 和 Switch
     for (auto &expander : this->expanders) {
-        int ret = expander->insert(timestamp, call_chain, lbrs, counters);
+        int ret = expander->insert(timestamp, tid, lbrs, counters);
         if (ret != 0) {
             // 如果需要，执行相应的 load/store 计数
             return ret;
         }
     }
     for (auto &sw : this->switches) {
-        int ret = sw->insert(timestamp, call_chain, lbrs, counters);
+        int ret = sw->insert(timestamp, tid, lbrs, counters);
         if (ret != 0) {
             return ret;
         }
@@ -278,7 +278,7 @@ std::tuple<int, int> CXLSwitch::get_all_access() {
 }
 void CXLSwitch::set_epoch(int epoch) { this->epoch = epoch; }
 
-int CXLMemExpander::insert(uint64_t timestamp, uint64_t *call_chain, struct lbr *lbrs, struct cntr *counters) {
+int CXLMemExpander::insert(uint64_t timestamp, uint64_t tid, struct lbr *lbrs, struct cntr *counters) {
     // 这里可以根据你的功能逻辑来处理 LBR 的插入信息
     SPDLOG_DEBUG("CXLMemExpander insert lbr for expander id:{}\n", this->id);
 

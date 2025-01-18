@@ -35,7 +35,7 @@ private:
     virtual void delete_entry(uint64_t addr, uint64_t length) = 0;
     virtual double calculate_latency(LatencyPass elem) = 0; // traverse the tree to calculate the latency
     virtual double calculate_bandwidth(BandwidthPass elem) = 0;
-    virtual int insert(uint64_t timestamp, uint64_t *call_chain, struct lbr *lbrs, struct cntr *counters) = 0;
+    virtual int insert(uint64_t timestamp, uint64_t tid, struct lbr *lbrs, struct cntr *counters) = 0;
     virtual int insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr,
                        int index) = 0; // 0 not this endpoint, 1 store, 2 load, 3 prefetch
     virtual std::tuple<int, int> get_all_access() = 0;
@@ -62,7 +62,7 @@ public:
     CXLMemExpander(int read_bw, int write_bw, int read_lat, int write_lat, int id, int capacity);
     std::tuple<int, int> get_all_access() override;
     void set_epoch(int epoch) override;
-    int insert(uint64_t timestamp, uint64_t *call_chain, struct lbr *lbrs, struct cntr *counters) override;
+    int insert(uint64_t timestamp, uint64_t tid, struct lbr *lbrs, struct cntr *counters) override;
     int insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr, int index) override;
     double calculate_latency(LatencyPass elem) override; // traverse the tree to calculate the latency
     double calculate_bandwidth(BandwidthPass elem) override;
@@ -85,7 +85,7 @@ public:
     std::tuple<int, int> get_all_access() override;
     double calculate_latency(LatencyPass elem) override; // traverse the tree to calculate the latency
     double calculate_bandwidth(BandwidthPass elem) override;
-    int insert(uint64_t timestamp, uint64_t *call_chain, struct lbr *lbrs, struct cntr *counters) override;
+    int insert(uint64_t timestamp, uint64_t tid, struct lbr *lbrs, struct cntr *counters) override;
     int insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr, int index) override;
     void delete_entry(uint64_t addr, uint64_t length) override;
     std::string output() override;

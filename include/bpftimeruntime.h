@@ -14,12 +14,13 @@
 #include <cstdint>
 #include <linux/bpf.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+class BpfTimeRuntime {
+public:
+    BpfTimeRuntime(std::string program_location);
+    ~BpfTimeRuntime();
 
-#ifdef __cplusplus
-}
-#endif
+    void start();
+    void stop();
+};
 
 #endif

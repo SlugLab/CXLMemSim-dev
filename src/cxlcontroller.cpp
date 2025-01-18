@@ -82,8 +82,14 @@ std::string CXLController::output() {
 
 void CXLController::delete_entry(uint64_t addr, uint64_t length) { CXLSwitch::delete_entry(addr, length); }
 
-int CXLController::insert(uint64_t timestamp, uint64_t call_chain[4], lbr lbrs[4], cntr counters[4]) {
-
+int CXLController::insert(uint64_t timestamp, uint64_t tid, lbr lbrs[4], cntr counters[4]) {
+    for (auto expander : this->expanders) {
+        auto res = expander->insert(timestamp, tid, lbrs, counters);
+        if (res != 0) {
+            return res;
+        }
+    }
+    return 0;
 }
 int CXLController::insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr, int index) {
     auto index_ = policy->compute_once(this);

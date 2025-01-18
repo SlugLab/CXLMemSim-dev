@@ -18,12 +18,12 @@
 #include <cstdlib>
 #include <ctime>
 #include <cxxopts.hpp>
+#include <iostream>
 #include <spdlog/cfg/env.h>
 #include <sys/poll.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
-#include <iostream>
 
 Helper helper{};
 int main(int argc, char *argv[]) {
@@ -232,8 +232,10 @@ int main(int argc, char *argv[]) {
     }
 
     uint32_t diff_nsec = 0;
-    struct timespec start_ts{}, end_ts{};
-    struct timespec sleep_start_ts{}, sleep_end_ts{};
+    struct timespec start_ts {
+    }, end_ts{};
+    struct timespec sleep_start_ts {
+    }, sleep_end_ts{};
 
     /** Wait all the target processes until emulation process initialized. */
     monitors.run_all(cur_processes);
@@ -289,10 +291,6 @@ int main(int argc, char *argv[]) {
                 /*** read CPU params */
                 uint64_t read_config = 0;
                 uint64_t target_l2stall = 0, target_llcmiss = 0, target_llchits = 0;
-                // for (int j = 0; j < ncpu; ++j) {
-                //     pmu.cpus[j].read_cpu_elems(&mon.after->cpus[j]);
-                //     read_config += mon.after->cpus[j].cha[1] - mon.before->cpus[j].cha[1];
-                // }
                 /* read PEBS sample */
                 if (mon.lbr_ctx->read(controller, &mon.after->lbr) < 0) {
                     SPDLOG_ERROR("[{}:{}:{}] Warning: Failed LBR read\n", i, mon.tgid, mon.tid);
@@ -311,8 +309,7 @@ int main(int argc, char *argv[]) {
                 for (int j = 0; j < helper.used_cpu.size(); j++) {
                     for (auto const &[idx, value] : pmu.cpus | std::views::enumerate) {
                         value.read_cpu_elems(&mon.after->cpus[j]);
-                        //                        wb_cnt = mon.after->cpus[j].cpu[idx] -
-                        //                        mon.before->cpus[j].cpu[idx];
+                        wb_cnt = mon.after->cpus[j].cpu[idx] - mon.before->cpus[j].cpu[idx];
                         cpu_vec.emplace_back(mon.after->cpus[j].cpu[idx] - mon.before->cpus[j].cpu[idx]);
                     }
                 }
@@ -325,7 +322,6 @@ int main(int argc, char *argv[]) {
                 // of the LLC misses of all the CPU cores and the
                 // prefetchers (cpus_dram_rds).
                 llcmiss_wb = wb_cnt * std::lround(((double)target_llcmiss) / ((double)read_config));
-                // TODO Calculate through the vector !!! target latency
                 uint64_t llcmiss_ro = 0;
                 if (target_llcmiss < llcmiss_wb) { // tunning
                     SPDLOG_ERROR("[{}:{}:{}] cpus_dram_rds {}, llcmiss_wb {}, target_llcmiss {}\n", i, mon.tgid,
@@ -383,7 +379,7 @@ int main(int argc, char *argv[]) {
                 clock_gettime(CLOCK_MONOTONIC, &start_ts);
                 uint64_t sleep_diff = (sleep_end_ts.tv_sec - sleep_start_ts.tv_sec) * 1000000000 +
                                       (sleep_end_ts.tv_nsec - sleep_start_ts.tv_nsec);
-                struct timespec sleep_time{};
+                struct timespec sleep_time {};
                 sleep_time.tv_sec = std::lround(sleep_diff / 1000000000);
                 sleep_time.tv_nsec = std::lround(sleep_diff % 1000000000);
                 mon.wasted_delay.tv_sec += sleep_time.tv_sec;

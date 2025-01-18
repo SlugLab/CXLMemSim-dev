@@ -62,7 +62,7 @@ public:
     std::tuple<int, int> get_all_access() override;
     double calculate_latency(LatencyPass elem) override; // traverse the tree to calculate the latency
     double calculate_bandwidth(BandwidthPass elem) override;
-    int insert(uint64_t timestamp, uint64_t call_chain[4], lbr lbrs[4], cntr counters[4]) override;
+    int insert(uint64_t timestamp, uint64_t tid, struct lbr *lbrs, struct cntr *counters) override;
     int insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr, int index) override;
     void delete_entry(uint64_t addr, uint64_t length) override;
     std::string output() override;
