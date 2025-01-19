@@ -87,6 +87,13 @@ struct LBRElem {
     uint64_t branch_stack[96];
 };
 
+struct BPFTimeRuntimeElem {
+    uint64_t va;
+    uint64_t pa;
+    uint64_t pid;
+    uint64_t tid;
+};
+
 struct CPUInfo {
     uint32_t max_cpuid;
     uint32_t cpu_family;
@@ -100,6 +107,7 @@ struct Elem {
     std::vector<CPUElem> cpus;
     struct PEBSElem pebs;
     struct LBRElem lbr;
+    struct BPFTimeRuntimeElem bpftime;
 };
 
 class PMUInfo {

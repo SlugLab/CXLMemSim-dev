@@ -180,7 +180,10 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
     if (t_process == 0) {
-        execv(filename, args); // taskset in lpace
+        std::vector<char *> envp;
+        envp.push_back("LD_PRELOAD=/root/.bpftime/libbpftime-agent.so");
+        envp.push_back(nullptr);
+        execve(filename, args, envp.data()); // taskset in lpace
         SPDLOG_ERROR("Exec: failed to create target process\n");
         exit(1);
     }
@@ -291,10 +294,16 @@ int main(int argc, char *argv[]) {
                 /*** read CPU params */
                 uint64_t read_config = 0;
                 uint64_t target_l2stall = 0, target_llcmiss = 0, target_llchits = 0;
-                /* read PEBS sample */
+
+                /* read BPFTIMERUNTIME sample */
+                if (mon.bpftime_ctx->read(controller, &mon.after->bpftime) < 0) {
+                    SPDLOG_ERROR("[{}:{}:{}] Warning: Failed BPFTIMERUNTIME read\n", i, mon.tgid, mon.tid);
+                }
+                /* read LBR sample */
                 if (mon.lbr_ctx->read(controller, &mon.after->lbr) < 0) {
                     SPDLOG_ERROR("[{}:{}:{}] Warning: Failed LBR read\n", i, mon.tgid, mon.tid);
                 }
+                /* read PEBS sample */
                 if (mon.pebs_ctx->read(controller, &mon.after->pebs) < 0) {
                     SPDLOG_ERROR("[{}:{}:{}] Warning: Failed PEBS read\n", i, mon.tgid, mon.tid);
                 }

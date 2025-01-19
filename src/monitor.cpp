@@ -9,8 +9,9 @@
  */
 
 #include "monitor.h"
-#include <iostream>
+#include "bpftimeruntime.h"
 #include <csignal>
+#include <iostream>
 Monitors::Monitors(int tnum, cpu_set_t *use_cpuset) : print_flag(true) {
     mon = std::vector<Monitor>(tnum, Monitor());
     /** Init mon */
@@ -94,6 +95,7 @@ int Monitors::enable(const uint32_t tgid, const uint32_t tid, bool is_process, u
     mon[target].tgid = tgid;
     mon[target].tid = tid; // We can setup the process here
     mon[target].is_process = is_process;
+    mon[target].bpftime_ctx = new BpfTimeRuntime("../src/cxlmemsim.json", tgid, "/usr/lib/libcxlmemsim_agent.so", "1");
 
     if (pebs_sample_period) {
         /* pebs start */
@@ -230,7 +232,7 @@ void Monitor::stop() { // thread create and proecess create get the pmu
         } else if (errno == EPERM) {
             this->status = MONITOR_NOPERMISSION;
             SPDLOG_ERROR("Failed to signal to any of the target processes. Due to does not have permission. \n It "
-                          "might have wrong result.");
+                         "might have wrong result.");
         }
     } else {
         this->status = MONITOR_OFF;
@@ -250,11 +252,10 @@ void Monitor::run() {
             this->status = MONITOR_NOPERMISSION;
             SPDLOG_ERROR("Failed to signal to any of the target processes. Due to does not have permission. \n It "
                          "might have wrong result.");
-        }
-	else{
-		this->status = 10000;
+        } else {
+            this->status = 10000;
             SPDLOG_ERROR("I'm dying\n");
-	}
+        }
     } else {
         this->status = MONITOR_ON;
         SPDLOG_DEBUG("Process [{}:{}] is running.\n", this->tgid, this->tid);

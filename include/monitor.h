@@ -12,6 +12,7 @@
 #ifndef CXLMEMSIM_MONITOR_H
 #define CXLMEMSIM_MONITOR_H
 
+#include "bpftimeruntime.h"
 #include "cxlcontroller.h"
 #include "helper.h"
 #include "pebs.h"
@@ -64,6 +65,7 @@ public:
     bool is_process;
     PEBS *pebs_ctx;
     LBR *lbr_ctx;
+    BpfTimeRuntime *bpftime_ctx;
     explicit Monitor();
 
     void stop();
