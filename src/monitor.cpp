@@ -95,7 +95,7 @@ int Monitors::enable(const uint32_t tgid, const uint32_t tid, bool is_process, u
     mon[target].tgid = tgid;
     mon[target].tid = tid; // We can setup the process here
     mon[target].is_process = is_process;
-    mon[target].bpftime_ctx = new BpfTimeRuntime("../src/cxlmemsim.json", tgid, "/usr/lib/libcxlmemsim_agent.so", "1");
+    mon[target].bpftime_ctx = new BpfTimeRuntime(tid,"../src/cxlmemsim.json");
 
     if (pebs_sample_period) {
         /* pebs start */

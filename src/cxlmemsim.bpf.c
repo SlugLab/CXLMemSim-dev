@@ -10,25 +10,10 @@
  */
 
 #include "vmlinux.h"
-
+#include "../include/bpftimeruntime.h"
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
-
-// 定义内存统计结构体
-struct mem_stats {
-    u64 total_allocated;    // 总分配量
-    u64 total_freed;        // 总释放量
-    u64 current_usage;      // 当前使用量
-    u64 allocation_count;   // 分配次数
-    u64 free_count;        // 释放次数
-};
-
-// 定义分配信息结构体
-struct alloc_info {
-    u64 size;      // 分配的大小
-    u64 address;   // 分配的地址
-};
 
 // 定义 maps
 struct {
@@ -44,6 +29,29 @@ struct {
     __type(key, u32);  
     __type(value, struct mem_stats);
 } stats_map SEC(".maps");
+
+// 存储线程信息的 map
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 102400);
+	__type(key, u32); // tid as key
+	__type(value, struct proc_info);
+} thread_map SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 10240);
+	__type(key, u32);
+	__type(value, struct proc_info);
+} process_map SEC(".maps");
+
+// 用于处理多线程同步的自旋锁映射
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 10240);
+	__type(key, u32);
+	__type(value, u32);
+} locks SEC(".maps");
 
 SEC("uprobe//lib/x86_64-linux-gnu/libc.so.6:malloc")
 int malloc_entry(struct pt_regs *ctx) {
@@ -124,35 +132,6 @@ int free_entry(struct pt_regs *ctx) {
     
     return 0;
 }
-// 进程退出时清理数据
-
-struct mem_info {
-	u64 current_brk; // 当前 brk 位置
-	u64 total_allocated; // 总分配量
-	u64 total_freed; // 总释放量
-};
-struct proc_info {
-	u32 parent_pid; // 父进程 ID
-	u64 create_time; // 创建时间
-	u64 thread_count; // 线程数量（仅对进程有效）
-    struct mem_info mem_info;
-};
-
-
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 10240);
-	__type(key, u32);
-	__type(value, struct proc_info);
-} process_map SEC(".maps");
-
-// 用于处理多线程同步的自旋锁映射
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 10240);
-	__type(key, u32);
-	__type(value, u32);
-} locks SEC(".maps");
 
 // 辅助函数：获取或创建 mem_info
 static struct mem_info *get_or_create_mem_info(u32 pid)
@@ -259,13 +238,6 @@ int brk_return(struct pt_regs *ctx) {
     
     return 0;
 }
-// 存储线程信息的 map
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 102400);
-	__type(key, u32); // tid as key
-	__type(value, struct proc_info);
-} thread_map SEC(".maps");
 
 // 辅助函数：获取当前时间戳
 static u64 get_timestamp()

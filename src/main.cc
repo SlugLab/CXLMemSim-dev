@@ -181,6 +181,7 @@ int main(int argc, char *argv[]) {
     }
     if (t_process == 0) {
         std::vector<char *> envp;
+        sleep(1);
         envp.push_back("LD_PRELOAD=/root/.bpftime/libbpftime-agent.so");
         envp.push_back(nullptr);
         execve(filename, args, envp.data()); // taskset in lpace

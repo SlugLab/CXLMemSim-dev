@@ -7,7 +7,6 @@
  *  Copyright 2025 Regents of the University of California
  *  UC Santa Cruz Sluglab.
  */
-#include "bpftimeruntime.h"
 #include "bpftime_config.hpp"
 #include "bpftime_logger.hpp"
 #include "bpftime_shm.hpp"
@@ -18,7 +17,6 @@
 #include <cstring>
 #include <exception>
 #include <filesystem>
-#include <frida-core.h>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -27,26 +25,50 @@
 #include <unistd.h>
 #include <utility>
 #include <vector>
+#include "bpftimeruntime.h"
 
-BpfTimeRuntime::BpfTimeRuntime(std::string program_location, pid_t pid, std::string inject_path, std::string arg)
-    : program_location(program_location), pid(pid), inject_path(inject_path), arg(arg) {
-    bpftime_initialize_global_shm(bpftime::shm_open_type::SHM_CREATE_OR_OPEN);
+BpfTimeRuntime::BpfTimeRuntime(pid_t tid, std::string program_location) : tid(tid) {
+    bpftime_initialize_global_shm(bpftime::shm_open_type::SHM_REMOVE_AND_CREATE);
     SPDLOG_INFO("GLOBAL memory initialized ");
     // load json program to shm
     bpftime_import_global_shm_from_json(program_location.c_str());
+    SPDLOG_INFO("Program loaded to shm");
 }
 
 BpfTimeRuntime::~BpfTimeRuntime() { bpftime_remove_global_shm(); }
 
 int BpfTimeRuntime::read(CXLController *controller, BPFTimeRuntimeElem *elem) {
     SPDLOG_INFO("Attaching runtime");
-    auto item = bpftime_map_lookup_elem(10, &pid); // thread map
-    if (item == nullptr) {
-        SPDLOG_ERROR("Failed to find thread map");
-        return -1;
+    auto item = bpftime_map_lookup_elem(10, &tid); // thread map
+    for (int i = 0; i < 11; i++) {
+        int key = 0;
+        int key1 = 0;
+        auto item1 = bpftime_map_get_next_key(i, &key1, &key); // process map
+        SPDLOG_INFO("Process map key: {} {} {}", key1, key, tid);
+        auto item2 = bpftime_map_lookup_elem(i, &key); // allocs map
+        SPDLOG_INFO("Allocs map key: {}", item2);
     }
-    // auto *thread_map = (bpftime::thread_map *)item;
-    // bpftime_map_update_elem(fd, &pid, &res, 0);
+    // if (item == nullptr) {
+    //     SPDLOG_ERROR("Failed to find thread map");
+    //     return -1;
+    // }
+    // bpftime::bpf_map_attr attr;
+    // bpftime_map_get_info(10, &attr, nullptr, nullptr);
+    auto item_stats = bpftime_map_lookup_elem(6, &tid); // stats map
+    if (item_stats != nullptr) {
+        SPDLOG_INFO("Allocs map key: {}", ((mem_stats *)item_stats)->total_allocated);
+    }
+    auto item_alloc = bpftime_map_lookup_elem(7, &tid); // allocs map
+    if (item_alloc != nullptr) {
+        SPDLOG_INFO("Allocs map key: {}", ((alloc_info *)item_alloc)->size);
+    }
+    auto item_process = bpftime_map_lookup_elem(9, &tid); // process map
+    if (item_process != nullptr) {
+        SPDLOG_INFO("Allocs map key: {}", ((proc_info *)item_process)->mem_info.current_brk);
+    }
+    auto item_thread = bpftime_map_lookup_elem(10, &tid); // thread map
+    if (item_thread != nullptr) {
+        SPDLOG_INFO("Allocs map key: {}", ((proc_info *)item_thread)->mem_info.current_brk);
+    }
     return 0;
 }
-
