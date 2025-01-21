@@ -40,35 +40,53 @@ BpfTimeRuntime::~BpfTimeRuntime() { bpftime_remove_global_shm(); }
 int BpfTimeRuntime::read(CXLController *controller, BPFTimeRuntimeElem *elem) {
     SPDLOG_INFO("Attaching runtime");
     auto item = bpftime_map_lookup_elem(10, &tid); // thread map
+    mem_stats stats;
+    alloc_info alloc_info1;
+    proc_info proc_info1;
+    proc_info thread_info1;
     for (int i = 0; i < 11; i++) {
         int key = 0;
         int key1 = 0;
         auto item1 = bpftime_map_get_next_key(i, &key1, &key); // process map
-        SPDLOG_INFO("Process map key: {} {} {}", key1, key, tid);
+        // SPDLOG_INFO("Process map key: {} {} {}", key1, key, tid);
         auto item2 = bpftime_map_lookup_elem(i, &key); // allocs map
+        if (i == 6 && item2 != nullptr){
+            stats = *((mem_stats *)item2);
+        }
+        if (i == 7 && item2 != nullptr){
+            alloc_info1 = *((alloc_info *)item2);
+        }
+        if (i == 9 && item2 != nullptr){
+            proc_info1 = *((proc_info *)item2);
+        }
+        if (i == 10 && item2 != nullptr){
+            thread_info1 = *((proc_info *)item2);
+        }
         SPDLOG_INFO("Allocs map key: {}", item2);
     }
-    // if (item == nullptr) {
-    //     SPDLOG_ERROR("Failed to find thread map");
-    //     return -1;
+    printf("stats: %llu %llu %llu %llu %llu\n", stats.total_allocated, stats.total_freed, stats.current_usage, stats.allocation_count, stats.free_count);
+    printf("alloc_info1: %llu %llu\n", alloc_info1.size, alloc_info1.address);
+    controller->set_stats(stats);
+    controller->set_alloc_info(alloc_info1);
+    // auto item_alloc = bpftime_map_lookup_elem(7, &tid); // allocs map
+    // if (item_alloc != nullptr) {
+    //     SPDLOG_INFO("Allocs map key: {}", ((alloc_info *)item_alloc)->size);
     // }
-    // bpftime::bpf_map_attr attr;
-    // bpftime_map_get_info(10, &attr, nullptr, nullptr);
-    auto item_stats = bpftime_map_lookup_elem(6, &tid); // stats map
-    if (item_stats != nullptr) {
-        SPDLOG_INFO("Allocs map key: {}", ((mem_stats *)item_stats)->total_allocated);
-    }
-    auto item_alloc = bpftime_map_lookup_elem(7, &tid); // allocs map
-    if (item_alloc != nullptr) {
-        SPDLOG_INFO("Allocs map key: {}", ((alloc_info *)item_alloc)->size);
-    }
-    auto item_process = bpftime_map_lookup_elem(9, &tid); // process map
-    if (item_process != nullptr) {
-        SPDLOG_INFO("Allocs map key: {}", ((proc_info *)item_process)->mem_info.current_brk);
-    }
-    auto item_thread = bpftime_map_lookup_elem(10, &tid); // thread map
-    if (item_thread != nullptr) {
-        SPDLOG_INFO("Allocs map key: {}", ((proc_info *)item_thread)->mem_info.current_brk);
-    }
+    // auto item_stats = bpftime_map_lookup_elem(6, &tid); // stats map
+    // if (item_stats != nullptr) {
+    //     SPDLOG_INFO("Allocs map key: {}", ((mem_stats *)item_stats)->total_allocated);
+    // }
+
+    controller->set_process_info(proc_info1);
+    controller->set_thread_info(thread_info1);
+    // auto item_process = bpftime_map_lookup_elem(9, &tid); // process map
+    // if (item_process != nullptr) {
+    //     SPDLOG_INFO("Allocs map key: {}", ((proc_info *)item_process)->mem_info.current_brk);
+    // }
+    // auto item_thread = bpftime_map_lookup_elem(10, &tid); // thread map
+    // if (item_thread != nullptr) {
+    //     SPDLOG_INFO("Allocs map key: {}", ((proc_info *)item_thread)->mem_info.current_brk);
+    // }
     return 0;
 }
+

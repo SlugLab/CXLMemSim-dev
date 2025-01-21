@@ -39,8 +39,8 @@ void CXLController::construct_topo(std::string_view newick_tree) {
     }
 }
 
-CXLController::CXLController(AllocationPolicy *p, int capacity, enum page_type page_type_, int epoch)
-    : CXLSwitch(0), capacity(capacity), policy(p), page_type_(static_cast<page_type>(page_type_)) {
+CXLController::CXLController(AllocationPolicy *p, int capacity, enum page_type page_type_, int epoch, Monitors *monitors)
+    : CXLSwitch(0), capacity(capacity), policy(p), page_type_(static_cast<page_type>(page_type_)), monitors(monitors) {
     for (auto switch_ : this->switches) {
         switch_->set_epoch(epoch);
     }
@@ -78,6 +78,14 @@ std::string CXLController::output() {
         res += ")";
     }
     return res;
+}
+
+void CXLController::set_stats(mem_stats stats) {
+    monitors->set_stats(stats);
+}
+
+void CXLController::set_alloc_info(alloc_info alloc_info) {
+    monitors->set_alloc_info(alloc_info);
 }
 
 void CXLController::delete_entry(uint64_t addr, uint64_t length) { CXLSwitch::delete_entry(addr, length); }

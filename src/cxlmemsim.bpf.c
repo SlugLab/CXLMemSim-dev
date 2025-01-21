@@ -244,7 +244,70 @@ static u64 get_timestamp()
 {
 	return bpf_ktime_get_ns();
 }
+SEC("uprobe//lib/x86_64-linux-gnu/libc.so.6:execve")
+int execve_entry(struct pt_regs *ctx) {
+    u64 pid_tgid = bpf_get_current_pid_tgid();
+    bpf_printk("execve_entry: %llu\n\n\n\n\n", pid_tgid);
+    u32 pid = pid_tgid >> 32;
+    u32 tid = (u32)pid_tgid;
+    
+    // 读取 execve 的参数
+    const char *filename;
+    char **argv;
+    char **envp;
+    
+    bpf_probe_read(&filename, sizeof(filename), (void *)&PT_REGS_PARM1(ctx));
+    bpf_probe_read(&argv, sizeof(argv), (void *)&PT_REGS_PARM2(ctx));
+    bpf_probe_read(&envp, sizeof(envp), (void *)&PT_REGS_PARM3(ctx));
+    
+    // 创建新的进程信息
+    struct proc_info proc_info = {
+        .parent_pid = pid,
+        .create_time = get_timestamp(),
+        .thread_count = 1,  // execve 创建新进程时只有主线程
+        .mem_info = {
+            .total_allocated = 0,
+            .total_freed = 0,
+            .current_brk = 0
+        }
+    };
+    
+    // 保存进程信息
+    bpf_map_update_elem(&process_map, &pid, &proc_info, BPF_ANY);
+    
+    // 清理旧的统计信息
+    bpf_map_delete_elem(&stats_map, &pid);
+    
+    // 初始化新的统计信息
+    struct mem_stats new_stats = {};
+    bpf_map_update_elem(&stats_map, &pid, &new_stats, BPF_ANY);
+    
+    return 0;
+}
 
+// execve 的返回点探针
+SEC("uretprobe//lib/x86_64-linux-gnu/libc.so.6:execve")
+int execve_return(struct pt_regs *ctx) {
+    int ret = PT_REGS_RC(ctx);
+    u64 pid_tgid = bpf_get_current_pid_tgid();
+    u32 pid = pid_tgid >> 32;
+    
+    // execve 成功返回 0
+    if (ret == 0) {
+        // 获取进程信息
+        struct proc_info *proc_info = bpf_map_lookup_elem(&process_map, &pid);
+        if (proc_info) {
+            // 更新执行时间
+            proc_info->create_time = get_timestamp();
+        }
+    } else {
+        // execve 失败，清理之前创建的信息
+        bpf_map_delete_elem(&process_map, &pid);
+        bpf_map_delete_elem(&stats_map, &pid);
+    }
+    
+    return 0;
+}
 SEC("uprobe//lib/x86_64-linux-gnu/libc.so.6:pthread_create")
 int pthread_create_probe(struct pt_regs *ctx)
 {
