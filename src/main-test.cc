@@ -114,11 +114,12 @@ int main(int argc, char *argv[]) {
     for (auto const &[idx, value] : weight | std::views::enumerate) {
         SPDLOG_DEBUG("weight[{}]:{}\n", weight_vec[idx], value);
     }
+    Monitors monitors{tnum, &use_cpuset};
 
     for (auto const &[idx, value] : capacity | std::views::enumerate) {
         if (idx == 0) {
             SPDLOG_DEBUG("local_memory_region capacity:{}\n", value);
-            controller = new CXLController(policy, capacity[0], mode, interval);
+            controller = new CXLController(policy, capacity[0], mode, interval, &monitors);
         } else {
             SPDLOG_DEBUG("memory_region:{}\n", (idx - 1) + 1);
             SPDLOG_DEBUG(" capacity:{}\n", capacity[(idx - 1) + 1]);
@@ -141,7 +142,6 @@ int main(int argc, char *argv[]) {
         helper.used_cpu.push_back(cpuset[j]);
         helper.used_cha.push_back(cpuset[j]);
     }
-    Monitors monitors{tnum, &use_cpuset};
 
     /** Reinterpret the input for the argv argc */
     char cmd_buf[1024] = {0};
@@ -229,9 +229,9 @@ int main(int argc, char *argv[]) {
         clock_gettime(CLOCK_MONOTONIC, &monitors.mon[i].start_exec_ts);
     }
 
-    LBR lbr(t_process, 1);
-    LBRElem data;
-    lbr.start();
+    PEBS pebs(t_process, 1);
+    PEBSElem data;
+    pebs.start();
     while (true) {
         /** Get from the CXLMemSimHook */
         int n;
@@ -256,13 +256,13 @@ int main(int argc, char *argv[]) {
                 exit(0);
             }
         }
-        lbr.read(controller, &data);
+        pebs.read(controller, &data);
         monitors.stop_all(cur_processes);
         monitors.run_all(cur_processes);
         if (monitors.check_all_terminated(cur_processes)) {
             break;
         }
     } // End while-loop for emulation
-    lbr.stop();
+    pebs.stop();
     return 0;
 }

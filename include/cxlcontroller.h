@@ -13,9 +13,12 @@
 
 #include "cxlendpoint.h"
 #include "lbr.h"
-#include "monitor.h"
 #include <string_view>
 
+class Monitors;
+struct mem_stats;
+struct alloc_info;
+struct proc_info;
 enum page_type { CACHELINE, PAGE, HUGEPAGE_2M, HUGEPAGE_1G };
 
 class AllocationPolicy {

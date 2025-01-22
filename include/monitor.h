@@ -12,10 +12,10 @@
 #ifndef CXLMEMSIM_MONITOR_H
 #define CXLMEMSIM_MONITOR_H
 
-#include "bpftimeruntime.h"
 #include "cxlcontroller.h"
 #include "helper.h"
 #include "pebs.h"
+#include "bpftimeruntime.h"
 #include <sched.h>
 #include <vector>
 
