@@ -51,11 +51,11 @@ int main(int argc, char *argv[]) {
         cxxopts::value<std::vector<int>>()->default_value("50,50,50,50,50,50"))(
         "x,pmu_name", "The input for Collected PMU",
         cxxopts::value<std::vector<std::string>>()->default_value(
-            "total_stall,all_dram_rds,l2stall,snoop_fw_wb,llcl_hits,llcl_miss,null,null"))(
+            "total_stall,all_dram_rds,l2stall,null,llcl_hits,llcl_miss,snoop_fwd_wb,null"))(
         "y,pmu_config1", "The config0 for Collected PMU",
-        cxxopts::value<std::vector<uint64_t>>()->default_value("0x04004a3,0x01b7,0x05005a3,0x205c,0x08d2,0x01d3,0,0"))(
+        cxxopts::value<std::vector<uint64_t>>()->default_value("0x04004a3,0x0022,0x0449,0,0xd104,0x7834,0x01b7,0"))(
         "z,pmu_config2", "The config1 for Collected PMU",
-        cxxopts::value<std::vector<uint64_t>>()->default_value("0,0x63FC00491,0,0,0,0,0,0"))(
+        cxxopts::value<std::vector<uint64_t>>()->default_value("0,0,0,0,0,0,0x1a610008,0"))(
         "w,weight", "The weight for Linear Regression",
         cxxopts::value<std::vector<double>>()->default_value("88, 88, 88, 88, 88, 88, 88"))(
         "v,weight_vec", "The weight vector for Linear Regression",
@@ -225,10 +225,8 @@ int main(int argc, char *argv[]) {
     }
 
     uint32_t diff_nsec = 0;
-    struct timespec start_ts {
-    }, end_ts{};
-    struct timespec sleep_start_ts {
-    }, sleep_end_ts{};
+    struct timespec start_ts{}, end_ts{};
+    struct timespec sleep_start_ts{}, sleep_end_ts{};
 
     /** Wait all the target processes until emulation process initialized. */
     monitors->run_all(cur_processes);
@@ -378,7 +376,7 @@ int main(int argc, char *argv[]) {
                 clock_gettime(CLOCK_MONOTONIC, &start_ts);
                 uint64_t sleep_diff = (sleep_end_ts.tv_sec - sleep_start_ts.tv_sec) * 1000000000 +
                                       (sleep_end_ts.tv_nsec - sleep_start_ts.tv_nsec);
-                struct timespec sleep_time {};
+                struct timespec sleep_time{};
                 sleep_time.tv_sec = std::lround(sleep_diff / 1000000000);
                 sleep_time.tv_nsec = std::lround(sleep_diff % 1000000000);
                 mon.wasted_delay.tv_sec += sleep_time.tv_sec;

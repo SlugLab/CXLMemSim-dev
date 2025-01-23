@@ -229,9 +229,10 @@ int main(int argc, char *argv[]) {
         clock_gettime(CLOCK_MONOTONIC, &monitors.mon[i].start_exec_ts);
     }
 
-    PEBS pebs(t_process, 1);
-    PEBSElem data;
-    pebs.start();
+    LBR lbr(t_process, 1);
+    LBRElem data;
+    uint64_t last_frame;
+    lbr.start();
     while (true) {
         /** Get from the CXLMemSimHook */
         int n;
@@ -239,6 +240,11 @@ int main(int argc, char *argv[]) {
 
         timespec req = waittime;
         timespec rem = {0};
+	timeval cur_time = {0};
+	timeval last_time = {0};
+
+	gettimeofday(&last_time, NULL);
+        monitors.stop_all(cur_processes);
         while (true) {
             auto ret = nanosleep(&req, &rem);
             if (ret == 0) { // success
@@ -256,13 +262,30 @@ int main(int argc, char *argv[]) {
                 exit(0);
             }
         }
-        pebs.read(controller, &data);
-        monitors.stop_all(cur_processes);
         monitors.run_all(cur_processes);
+
+	gettimeofday(&cur_time, NULL);
+        if (1 == lbr.read(controller, &data)){
+		int miss_total = 0, cycle_total = 0;
+		//calc_time(&data, &waittime, &last_frame);
+		for(int i = 2; i <96; i+=3){
+			int miss_count = (data.branch_stack[i] >> 30) & 0x3;
+			int cycle_count = (data.branch_stack[i]>> 4 ) & 0xffff; // todo check offset
+			SPDLOG_INFO("Entry {} has {:x} {:x} info {:x}, counter {}", i/3, data.branch_stack[i-2], data.branch_stack[i-1], data.branch_stack[i], miss_count);
+			miss_total += miss_count;
+			cycle_total += cycle_count;
+		}
+		int elapsed = (cur_time.tv_sec-last_time.tv_sec) * 1000000 + (cur_time.tv_usec - last_time.tv_usec);
+		int factor = 333 * elapsed / cycle_total; //todo actual frequency calc instead of 333
+    		waittime.tv_sec = 0
+    		waittime.tv_nsec = miss_total * 250 * factor;
+		last_time = curr_time; // should also add in waittime
+	}
+	
         if (monitors.check_all_terminated(cur_processes)) {
             break;
         }
     } // End while-loop for emulation
-    pebs.stop();
+    lbr.stop();
     return 0;
 }

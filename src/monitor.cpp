@@ -97,12 +97,12 @@ int Monitors::enable(const uint32_t tgid, const uint32_t tid, bool is_process, u
     mon[target].is_process = is_process;
     mon[target].bpftime_ctx = new BpfTimeRuntime(tid,"../src/cxlmemsim.json");
 
-    if (pebs_sample_period) {
-        /* pebs start */
-        mon[target].pebs_ctx = new PEBS(tgid, pebs_sample_period);
-        SPDLOG_DEBUG("{}Process [tgid={}, tid={}]: enable to pebs.\n", target, mon[target].tgid,
-                     mon[target].tid); // multiple tid multiple pid
-    }
+    // if (pebs_sample_period) {
+    //     /* pebs start */
+    //     mon[target].pebs_ctx = new PEBS(tgid, pebs_sample_period);
+    //     SPDLOG_DEBUG("{}Process [tgid={}, tid={}]: enable to pebs.\n", target, mon[target].tgid,
+    //                  mon[target].tid); // multiple tid multiple pid
+    // }
     mon[target].lbr_ctx = new LBR(tgid, 1);
 
     SPDLOG_INFO("pid {}[tgid={}, tid={}] monitoring start\n", target, mon[target].tgid, mon[target].tid);

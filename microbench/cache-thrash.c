@@ -1,12 +1,15 @@
+#define stride 201326592
+#define line 64
+#define nway 8
 int main(){
-	volatile char buf[16*1024*3];
+	volatile char buf[line * stride * 2 * nway];
 	for(int i = 0; i< 0xffffffff; i++){
-		int j = 1024*3 * (i%16);
+		int j = line * stride * (i%(2*nway));
 		buf[j] += 1;
 	}
 	for(int i = 0; i< 0xffffffff; i+=2){
-		int j = 1024*3 * (i%16);
-		int k = 1024*3 * (i+1%16);
+		int j = line * stride * (i%(2*nway));
+		int k = line * stride * (i+1%(2*nway));
 
 		buf[j] += 1;
 		buf[k] += 1;

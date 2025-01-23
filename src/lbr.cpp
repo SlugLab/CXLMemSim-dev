@@ -62,36 +62,36 @@
 
 LBR::LBR(pid_t pid, uint64_t sample_period) : pid(pid), sample_period(sample_period) {
     // Configure perf_event_attr struct
-    // perf_event_attr pe = {
-    //     .type = PERF_TYPE_RAW,
-    //     .size = sizeof(perf_event_attr),
-    //     .config = 0x00D3, // mem_load_retired.l3_miss
-    //     .sample_period = sample_period,
-    //     .sample_type = PERF_SAMPLE_TID | PERF_SAMPLE_CPU | PERF_SAMPLE_TIME | PERF_SAMPLE_BRANCH_STACK,
+     perf_event_attr pe = {
+         .type = PERF_TYPE_RAW,
+         .size = sizeof(perf_event_attr),
+         .config = 0x00D3, // mem_load_retired.l3_miss
+         .sample_period = sample_period,
+         .sample_type = PERF_SAMPLE_TID | PERF_SAMPLE_CPU | PERF_SAMPLE_TIME | PERF_SAMPLE_BRANCH_STACK,
 
-    //     .read_format = PERF_FORMAT_TOTAL_TIME_ENABLED,
-    //     .disabled = 1, // Event is initially disabled
-	//     .exclude_user = 0,
-    //     .exclude_kernel = 1,
-    //     .exclude_hv = 1,
-    //     .precise_ip = 1,
-    //     .branch_sample_type = PERF_SAMPLE_BRANCH_USER | PERF_SAMPLE_BRANCH_ANY |PERF_SAMPLE_BRANCH_COUNTERS,
-    //     //.config1 = 3,
-    // };
-    perf_event_attr pe = {
-        .type = PERF_TYPE_HARDWARE,
+         .read_format = PERF_FORMAT_TOTAL_TIME_ENABLED,
+         .disabled = 1, // Event is initially disabled
+         .exclude_user = 0,
+         .exclude_kernel = 1,
+         .exclude_hv = 1,
+         .precise_ip = 1,
+         .branch_sample_type = PERF_SAMPLE_BRANCH_USER | PERF_SAMPLE_BRANCH_ANY |PERF_SAMPLE_BRANCH_COUNTERS,
+         //.config1 = 3,
+     };
+    /*perf_event_attr pe = {
+        .type = PERF_TYPE_RAW,
         .size = sizeof(perf_event_attr),
-        .config = 0x0a<<32|PERF_COUNT_HW_BRANCH_INSTRUCTIONS, // mem_load_retired.l3_miss
+        .config = 0x20d1, // mem_load_retired.l3_miss
         .sample_freq = 4000,
         .sample_type = PERF_SAMPLE_TID | PERF_SAMPLE_CPU | PERF_SAMPLE_TIME | PERF_SAMPLE_BRANCH_STACK,
         .read_format = PERF_FORMAT_TOTAL_TIME_ENABLED,
         .disabled = 1, // Event is initially disabled
-	    .exclude_user = 0,
+	.exclude_user = 0,
         .exclude_kernel = 1,
         .exclude_hv = 1,
         .precise_ip = 3,
         .branch_sample_type = PERF_SAMPLE_BRANCH_USER | PERF_SAMPLE_BRANCH_ANY |PERF_SAMPLE_BRANCH_COUNTERS,
-    };
+    };*/
 
     int cpu = -1; // measure on any cpu
     int group_fd = -1;
@@ -114,7 +114,7 @@ LBR::LBR(pid_t pid, uint64_t sample_period) : pid(pid), sample_period(sample_per
 
 int LBR::read(CXLController *controller, LBRElem *elem) {
     if (this->fd < 0) {
-        return 0;
+        return -1;
     }
 
     if (mp == MAP_FAILED)
@@ -142,17 +142,19 @@ int LBR::read(CXLController *controller, LBRElem *elem) {
                 if (header->size < sizeof(*data)) {
                     SPDLOG_DEBUG("size too small. size:{}\n", header->size);
                     r = -1;
-                    continue;
+                    return r;
                 }
 		if(header->size > sizeof(*data)){
 			SPDLOG_DEBUG("size too big. size:{} / {}\n", header->size, sizeof(*data));
 		}
                 if (this->pid == data->pid) {
                     SPDLOG_ERROR("pid:{} tid:{} size:{} nr2:{} data-size:{} cpu:{} timestamp:{} hw_idx: lbrs:{} counters:{} {} {}\n",
-                                 data->pid, data->tid, header->size,/*data->nr,*/ data->nr2, sizeof(*data)/*data->ips[0],*/ data->cpu,
+                                 data->pid, data->tid, header->size,/*data->nr,*/ data->nr2, sizeof(*data),/*data->ips[0],*/ data->cpu,
                                  data->timestamp, /* data->hw_idx,*/ data->lbrs[0].from, data->counters[0].counters, data->counters[1].counters, data->counters[2].counters);
                     // controller->insert(data->timestamp, data->ips, data->lbrs, data->counters);
                     elem->tid = data->tid;
+		    memcpy(&elem->branch_stack, (32*8)+(void*)&data->counters, 92 * 8);
+		    r = 1;
                 }
                 break;
             case PERF_RECORD_THROTTLE:
