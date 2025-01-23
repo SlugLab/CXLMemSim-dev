@@ -26,6 +26,7 @@
 #include <unistd.h>
 
 Helper helper{};
+Monitors *monitors;
 int main(int argc, char *argv[]) {
     spdlog::cfg::load_env_levels();
     cxxopts::Options options("CXLMemSim", "For simulation of CXL.mem Type 3 on Sapphire Rapids");
@@ -50,7 +51,7 @@ int main(int argc, char *argv[]) {
         cxxopts::value<std::vector<int>>()->default_value("50,50,50,50,50,50"))(
         "x,pmu_name", "The input for Collected PMU",
         cxxopts::value<std::vector<std::string>>()->default_value(
-            "tatal_stall,all_dram_rds,l2stall,snoop_fw_wb,llcl_hits,llcl_miss,null,null"))(
+            "total_stall,all_dram_rds,l2stall,snoop_fw_wb,llcl_hits,llcl_miss,null,null"))(
         "y,pmu_config1", "The config0 for Collected PMU",
         cxxopts::value<std::vector<uint64_t>>()->default_value("0x04004a3,0x01b7,0x05005a3,0x205c,0x08d2,0x01d3,0,0"))(
         "z,pmu_config2", "The config1 for Collected PMU",
@@ -113,12 +114,11 @@ int main(int argc, char *argv[]) {
     for (auto const &[idx, value] : weight | std::views::enumerate) {
         SPDLOG_DEBUG("weight[{}]:{}\n", weight_vec[idx], value);
     }
-    Monitors monitors{tnum, &use_cpuset};
 
     for (auto const &[idx, value] : capacity | std::views::enumerate) {
         if (idx == 0) {
             SPDLOG_DEBUG("local_memory_region capacity:{}\n", value);
-            controller = new CXLController(policy, capacity[0], mode, interval, &monitors);
+            controller = new CXLController(policy, capacity[0], mode, interval, monitors);
         } else {
             SPDLOG_DEBUG("memory_region:{}\n", (idx - 1) + 1);
             SPDLOG_DEBUG(" capacity:{}\n", capacity[(idx - 1) + 1]);
@@ -135,18 +135,6 @@ int main(int argc, char *argv[]) {
     SPDLOG_INFO("{}", controller->output());
 
     /** Hove been got by socket if it's not main thread and synchro */
-    // sock = socket(AF_UNIX, SOCK_DGRAM, 0);
-    // addr.sun_family = AF_UNIX;
-    // strcpy(addr.sun_path, SOCKET_PATH);
-    // remove(addr.sun_path);
-    // if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) == -1) { // can be blocked for multi thread
-    //     SPDLOG_ERROR("Failed to execute. Can't bind to a socket.\n";
-    //     exit(1);
-    // }
-    //
-    // size_t sock_buf_size = sizeof(op_data) + 1;
-    // char *sock_buf = (char *)malloc(sock_buf_size);
-
     SPDLOG_DEBUG("cpu_freq:{}\n", frequency);
     SPDLOG_DEBUG("num_of_cha:{}\n", ncha);
     SPDLOG_DEBUG("num_of_cpu:{}\n", ncpu);
@@ -154,6 +142,7 @@ int main(int argc, char *argv[]) {
         helper.used_cpu.push_back(cpuset[j]);
         helper.used_cha.push_back(cpuset[j]);
     }
+    monitors = new Monitors{tnum, &use_cpuset};
 
     /** Reinterpret the input for the argv argc */
     char cmd_buf[1024] = {0};
@@ -189,7 +178,7 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
     /** In case of process, use SIGSTOP. */
-    if (auto res = monitors.enable(t_process, t_process, true, pebsperiod, tnum); res == -1) {
+    if (auto res = monitors->enable(t_process, t_process, true, pebsperiod, tnum); res == -1) {
         SPDLOG_ERROR("Failed to enable monitor\n");
         exit(0);
     } else if (res < 0) {
@@ -205,14 +194,14 @@ int main(int argc, char *argv[]) {
     }
 
     /** Wait all the target processes until emulation process initialized. */
-    monitors.stop_all(cur_processes);
+    monitors->stop_all(cur_processes);
 
     /** Get CPU information */
-    if (!get_cpu_info(&monitors.mon[0].before->cpuinfo)) {
+    if (!get_cpu_info(&monitors->mon[0].before->cpuinfo)) {
         SPDLOG_DEBUG("Failed to obtain CPU information.\n");
     }
     auto perf_config =
-        helper.detect_model(monitors.mon[0].before->cpuinfo.cpu_model, pmu_name, pmu_config1, pmu_config2);
+        helper.detect_model(monitors->mon[0].before->cpuinfo.cpu_model, pmu_name, pmu_config1, pmu_config2);
     PMUInfo pmu{t_process, &helper, &perf_config};
 
     /*% Caculate epoch time */
@@ -223,10 +212,10 @@ int main(int argc, char *argv[]) {
     SPDLOG_DEBUG("The target process starts running.\n");
     SPDLOG_DEBUG("set nano sec = {}\n", waittime.tv_nsec);
     SPDLOG_TRACE("{}\n", monitors);
-    monitors.print_flag = false;
+    monitors->print_flag = false;
 
     /* read CHA params */
-    for (const auto &mon : monitors.mon) {
+    for (const auto &mon : monitors->mon) {
         for (auto const &[idx, value] : pmu.chas | std::views::enumerate) {
             pmu.chas[idx].read_cha_elems(&mon.before->chas[idx]);
         }
@@ -242,9 +231,9 @@ int main(int argc, char *argv[]) {
     }, sleep_end_ts{};
 
     /** Wait all the target processes until emulation process initialized. */
-    monitors.run_all(cur_processes);
+    monitors->run_all(cur_processes);
     for (int i = 0; i < cur_processes; i++) {
-        clock_gettime(CLOCK_MONOTONIC, &monitors.mon[i].start_exec_ts);
+        clock_gettime(CLOCK_MONOTONIC, &monitors->mon[i].start_exec_ts);
     }
 
     while (true) {
@@ -272,7 +261,7 @@ int main(int argc, char *argv[]) {
         }
 
         uint64_t calibrated_delay;
-        for (auto const &[i, mon] : monitors.mon | std::views::enumerate) {
+        for (auto const &[i, mon] : monitors->mon | std::views::enumerate) {
             // check other process
             if (mon.status == MONITOR_DISABLE) {
                 continue;
@@ -397,7 +386,7 @@ int main(int argc, char *argv[]) {
                 SPDLOG_DEBUG("[{}:{}:{}][OFF] total: {}| wasted : {}| waittime : {}| squabble : {}\n", i, mon.tgid,
                              mon.tid, mon.injected_delay.tv_nsec, mon.wasted_delay.tv_nsec, waittime.tv_nsec,
                              mon.squabble_delay.tv_nsec);
-                if (monitors.check_continue(i, sleep_time)) {
+                if (monitors->check_continue(i, sleep_time)) {
                     Monitor::clear_time(&mon.wasted_delay);
                     Monitor::clear_time(&mon.injected_delay);
                     mon.run();
@@ -426,7 +415,7 @@ int main(int argc, char *argv[]) {
             }
         } // End for-loop for all target processes
         SPDLOG_TRACE("%s\n", monitors);
-        for (auto mon : monitors.mon) {
+        for (auto mon : monitors->mon) {
             if (mon.status == MONITOR_ON) {
                 auto swap = mon.before;
                 mon.before = mon.after;
@@ -442,7 +431,7 @@ int main(int argc, char *argv[]) {
                 }
             }
         }
-        if (monitors.check_all_terminated(tnum)) {
+        if (monitors->check_all_terminated(tnum)) {
             break;
         }
     } // End while-loop for emulation

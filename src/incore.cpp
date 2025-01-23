@@ -48,8 +48,7 @@ ssize_t Incore::read_cpu_elems(struct CPUElem *elem) {
     for (auto const &[idx, value] : this->perf |  std::views::enumerate) {
         r = value->read_pmu(&elem->cpu[idx]);
         if (r < 0) {
-            SPDLOG_ERROR("read cpu_elems[{}] failed.\n", std::get<0>(helper.perf_conf.cha[idx]));
-            return r;
+            SPDLOG_ERROR("read cpu_elems[{}] failed.\n", std::get<0>(helper.perf_conf.cpu[idx]));
         }
         SPDLOG_DEBUG("read cpu_elems[{}]:{}\n", std::get<0>(helper.perf_conf.cpu[idx]), elem->cpu[idx]);
     }
