@@ -62,7 +62,6 @@ int BpfTimeRuntime::read(CXLController *controller, BPFTimeRuntimeElem *elem) {
         if (i == 10 && item2 != nullptr){
             thread_info1 = *((proc_info *)item2);
         }
-        SPDLOG_INFO("Allocs map key: {}", item2);
     }
     printf("stats: %llu %llu %llu %llu %llu\n", stats.total_allocated, stats.total_freed, stats.current_usage, stats.allocation_count, stats.free_count);
     printf("alloc_info1: %llu %llu\n", alloc_info1.size, alloc_info1.address);

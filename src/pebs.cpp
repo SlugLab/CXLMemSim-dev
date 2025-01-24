@@ -24,16 +24,15 @@ struct perf_sample {
 
 PEBS::PEBS(pid_t pid, uint64_t sample_period) : pid(pid), sample_period(sample_period) {
     // Configure perf_event_attr struct
-    perf_event_attr pe = {
+    struct perf_event_attr pe = {
         .type = PERF_TYPE_RAW,
-        .size = sizeof(perf_event_attr),
-        .config = 0x7835, // mem_load_retired.l3_miss
+        .size = sizeof(struct perf_event_attr),
+        .config = 0x20d1, // mem_load_retired.l3_miss
         .sample_period = sample_period,
         .sample_type = PERF_SAMPLE_TID | PERF_SAMPLE_TIME | PERF_SAMPLE_ADDR | PERF_SAMPLE_READ | PERF_SAMPLE_PHYS_ADDR,
         .read_format = PERF_FORMAT_TOTAL_TIME_ENABLED,
         .disabled = 1, // Event is initially disabled
         .exclude_kernel = 1,
-        .exclude_hv = 1,
         .precise_ip = 1,
         .config1 = 3,
     }; // excluding events that happen in the kernel-space

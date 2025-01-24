@@ -277,9 +277,9 @@ int main(int argc, char *argv[]) {
 		}
 		int elapsed = (cur_time.tv_sec-last_time.tv_sec) * 1000000 + (cur_time.tv_usec - last_time.tv_usec);
 		int factor = 333 * elapsed / cycle_total; //todo actual frequency calc instead of 333
-    		waittime.tv_sec = 0
+    		waittime.tv_sec = 0;
     		waittime.tv_nsec = miss_total * 250 * factor;
-		last_time = curr_time; // should also add in waittime
+		last_time = cur_time; // should also add in waittime
 	}
 	
         if (monitors.check_all_terminated(cur_processes)) {

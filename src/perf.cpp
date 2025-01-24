@@ -33,7 +33,6 @@ PerfInfo::~PerfInfo() {
  *   This can be avoided by executing nanosleep with 0.
  */
 ssize_t PerfInfo::read_pmu(uint64_t *value) {
-    SPDLOG_INFO("read_pmu: {}", this->fd);
     ssize_t r = read(this->fd, value, sizeof(*value));
     if (r < 0) {
         SPDLOG_ERROR("read failed\n");
