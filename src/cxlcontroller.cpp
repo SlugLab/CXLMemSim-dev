@@ -3,7 +3,8 @@
  *
  *  By: Andrew Quinn
  *      Yiwei Yang
- *
+ *      Brian Zhao
+ *  SPDX-License-Identifier: (LGPL-2.1 OR BSD-2-Clause)
  *  Copyright 2025 Regents of the University of California
  *  UC Santa Cruz Sluglab.
  */
@@ -11,6 +12,7 @@
 #include "cxlcontroller.h"
 #include "bpftimeruntime.h"
 #include "lbr.h"
+#include "monitor.h"
 
 void CXLController::insert_end_point(CXLMemExpander *end_point) { this->cur_expanders.emplace_back(end_point); }
 
@@ -40,9 +42,8 @@ void CXLController::construct_topo(std::string_view newick_tree) {
     }
 }
 
-CXLController::CXLController(AllocationPolicy *p, int capacity, enum page_type page_type_, int epoch,
-                             Monitors *monitors)
-    : CXLSwitch(0), capacity(capacity), policy(p), page_type_(static_cast<page_type>(page_type_)), monitors(monitors) {
+CXLController::CXLController(AllocationPolicy *p, int capacity, enum page_type page_type_, int epoch)
+    : CXLSwitch(0), capacity(capacity), policy(p), page_type_(static_cast<page_type>(page_type_)) {
     for (auto switch_ : this->switches) {
         switch_->set_epoch(epoch);
     }
@@ -82,13 +83,38 @@ std::string CXLController::output() {
     return res;
 }
 
-void CXLController::set_stats(mem_stats stats) {}
+void CXLController::set_stats(mem_stats stats) {
+    SPDLOG_INFO("stats: {} {} {} {} {}", stats.total_allocated, stats.total_freed, stats.current_usage,
+                stats.allocation_count, stats.free_count);
+    if (stats.total_allocated < 100000000000) {
+        for (auto switch_ : this->switches) {
+            // switch_->set_stats(stats);
+        }
+        for (auto expander_ : this->expanders) {
+            // expander_->set_stats(stats);
+        }
+    }
+    // TODO: topology map
+}
 
-void CXLController::set_alloc_info(alloc_info alloc_info) {}
+void CXLController::set_alloc_info(alloc_info alloc_info) {
+    if (alloc_info.size < 100000000000) {
+        for (auto switch_ : this->switches) {
+            // switch_->set_alloc_info(stats);
+        }
+        for (auto expander_ : this->expanders) {
+            // expander_->set_alloc_info(stats);
+        }
+    }
+}
 
-void CXLController::set_process_info(proc_info process_info) {}
+void CXLController::set_process_info(proc_info process_info) {
+    monitors->enable(process_info.current_pid, process_info.current_tid, true, 1000, 0);
+}
 
-void CXLController::set_thread_info(proc_info thread_info) {}
+void CXLController::set_thread_info(proc_info thread_info) {
+    monitors->enable(thread_info.current_pid, thread_info.current_tid, false, 0, 0);
+}
 
 void CXLController::delete_entry(uint64_t addr, uint64_t length) { CXLSwitch::delete_entry(addr, length); }
 

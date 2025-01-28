@@ -3,11 +3,11 @@
  *
  *  By: Andrew Quinn
  *      Yiwei Yang
- *
+ *      Brian Zhao
+ *  SPDX-License-Identifier: (LGPL-2.1 OR BSD-2-Clause)
  *  Copyright 2025 Regents of the University of California
  *  UC Santa Cruz Sluglab.
  */
-
 
 #include "cxlendpoint.h"
 
@@ -291,8 +291,8 @@ int CXLMemExpander::insert(uint64_t timestamp, uint64_t tid, struct lbr *lbrs, s
 
 int CXLSwitch::insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr, int index) {
     // 简单示例：依次调用下属的 expander 和 switch
-    SPDLOG_DEBUG("CXLSwitch insert phys_addr={}, virt_addr={}, index={} for switch id:{}",
-                 phys_addr, virt_addr, index, this->id);
+    SPDLOG_DEBUG("CXLSwitch insert phys_addr={}, virt_addr={}, index={} for switch id:{}", phys_addr, virt_addr, index,
+                 this->id);
 
     for (auto &expander : this->expanders) {
         // 在每个 expander 上尝试插入

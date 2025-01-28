@@ -3,7 +3,8 @@
  *
  *  By: Andrew Quinn
  *      Yiwei Yang
- *
+ *      Brian Zhao
+ *  SPDX-License-Identifier: (LGPL-2.1 OR BSD-2-Clause)
  *  Copyright 2025 Regents of the University of California
  *  UC Santa Cruz Sluglab.
  */
@@ -16,9 +17,9 @@
 #include <cstdint>
 #include <filesystem>
 #include <linux/perf_event.h>
-#include <vector>
-#include <spdlog/spdlog.h>
 #include <ranges>
+#include <spdlog/spdlog.h>
+#include <vector>
 #include <x86intrin.h>
 
 #define PAGE_SIZE 4096
@@ -28,7 +29,14 @@
 #define barrier() _mm_mfence()
 
 /* CPU Models */
-enum { CPU_MDL_BDX = 63, CPU_MDL_SKX = 85, CPU_MDL_SPR = 143, CPU_MDL_ADL = 151, CPU_MDL_LNL = 189, CPU_MDL_END = 0x0ffff };
+enum {
+    CPU_MDL_BDX = 63,
+    CPU_MDL_SKX = 85,
+    CPU_MDL_SPR = 143,
+    CPU_MDL_ADL = 151,
+    CPU_MDL_LNL = 189,
+    CPU_MDL_END = 0x0ffff
+};
 class Incore;
 class Uncore;
 class Helper;
@@ -80,9 +88,9 @@ struct PEBSElem {
 };
 
 struct LBRElem {
-    //uint64_t ip[4];
+    // uint64_t ip[4];
     uint64_t tid;
-    //uint64_t cpu;
+    // uint64_t cpu;
     uint64_t time;
     uint64_t branch_stack[96];
 };

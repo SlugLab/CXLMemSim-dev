@@ -3,7 +3,8 @@
  *
  *  By: Andrew Quinn
  *      Yiwei Yang
- *
+ *      Brian Zhao
+ *  SPDX-License-Identifier: (LGPL-2.1 OR BSD-2-Clause)
  *  Copyright 2025 Regents of the University of California
  *  UC Santa Cruz Sluglab.
  */
@@ -101,7 +102,7 @@ Helper::Helper() {
 }
 void Helper::noop_handler(int) { ; }
 void Helper::detach_children() {
-    struct sigaction sa{};
+    struct sigaction sa {};
 
     sa.sa_handler = noop_handler;
     sigemptyset(&sa.sa_mask);

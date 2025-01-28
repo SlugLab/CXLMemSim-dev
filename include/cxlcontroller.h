@@ -3,7 +3,8 @@
  *
  *  By: Andrew Quinn
  *      Yiwei Yang
- *
+ *      Brian Zhao
+ *  SPDX-License-Identifier: (LGPL-2.1 OR BSD-2-Clause)
  *  Copyright 2025 Regents of the University of California
  *  UC Santa Cruz Sluglab.
  */
@@ -56,9 +57,9 @@ public:
     std::map<uint64_t, uint64_t> va_pa_map;
     page_type page_type_; // percentage
     int num_switches = 0;
-    Monitors *monitors;
+    // Monitors<M> *monitors;
 
-    CXLController(AllocationPolicy *p, int capacity, page_type page_type_, int epoch, Monitors *monitors);
+    CXLController(AllocationPolicy *p, int capacity, page_type page_type_, int epoch);
     void construct_topo(std::string_view newick_tree);
     void insert_end_point(CXLMemExpander *end_point);
     std::vector<std::string> tokenize(const std::string_view &s);
@@ -77,4 +78,5 @@ public:
     void set_thread_info(proc_info thread_info);
 };
 
+extern CXLController *controller;
 #endif // CXLMEMSIM_CXLCONTROLLER_H

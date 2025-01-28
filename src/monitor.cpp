@@ -3,7 +3,8 @@
  *
  *  By: Andrew Quinn
  *      Yiwei Yang
- *
+ *      Brian Zhao
+ *  SPDX-License-Identifier: (LGPL-2.1 OR BSD-2-Clause)
  *  Copyright 2025 Regents of the University of California
  *  UC Santa Cruz Sluglab.
  */
@@ -11,11 +12,13 @@
 #include "monitor.h"
 #include "bpftimeruntime.h"
 #include <csignal>
+#include <ctime>
 #include <iostream>
-Monitors::Monitors(int tnum, cpu_set_t *use_cpuset) : print_flag(true) {
-    mon = std::vector<Monitor>(tnum, Monitor());
+
+Monitors::Monitors(int cpu_count, cpu_set_t *use_cpuset) : print_flag(true) {
+    mon = std::vector<Monitor>(cpu_count);
     /** Init mon */
-    for (int i = 0; i < tnum; i++) {
+    for (int i = 0; i < cpu_count; i++) {
         disable(i);
         int cpucnt = 0;
         for (int cpuid = 0; cpuid < helper.num_of_cpu(); cpuid++) {
@@ -43,13 +46,13 @@ void Monitors::run_all(const int processes) {
         }
     }
 }
-Monitor Monitors::get_mon(const int tgid, const int tid) {
+Monitor *Monitors::get_mon(const int tgid, const int tid) {
     for (auto &i : mon) {
         if (i.tgid == tgid && i.tid == tid) {
-            return i;
+            return &i;
         }
     }
-    return Monitor();
+    return new Monitor();
 }
 int Monitors::enable(const uint32_t tgid, const uint32_t tid, bool is_process, uint64_t pebs_sample_period,
                      const int32_t tnum) {
@@ -95,18 +98,20 @@ int Monitors::enable(const uint32_t tgid, const uint32_t tid, bool is_process, u
     mon[target].tgid = tgid;
     mon[target].tid = tid; // We can setup the process here
     mon[target].is_process = is_process;
-    mon[target].bpftime_ctx = new BpfTimeRuntime(tid,"../src/cxlmemsim.json");
 
     if (pebs_sample_period) {
+        mon[target].bpftime_ctx = new BpfTimeRuntime(tid, "../src/cxlmemsim.json");
         /* pebs start */
         mon[target].pebs_ctx = new PEBS(tgid, pebs_sample_period);
         SPDLOG_DEBUG("{}Process [tgid={}, tid={}]: enable to pebs.\n", target, mon[target].tgid,
                      mon[target].tid); // multiple tid multiple pid
+        mon[target].lbr_ctx = new LBR(tgid, 1);
     }
-    mon[target].lbr_ctx = new LBR(tgid, 1);
+    sleep(1);
 
     SPDLOG_INFO("pid {}[tgid={}, tid={}] monitoring start\n", target, mon[target].tgid, mon[target].tid);
 
+    new std::thread(Monitor::wait, &mon, target);
     return target;
 }
 void Monitors::disable(const uint32_t target) {
@@ -196,17 +201,6 @@ int Monitors::terminate(const uint32_t tgid, const uint32_t tid, const int32_t t
 
     return target;
 }
-bool Monitors::check_continue(const uint32_t target, const struct timespec w) const {
-    // This equation for original one. but it causes like 45ms-> 60ms
-    // calculated delay : 45ms
-    // actual elapsed time : 60ms (default epoch: 20ms)
-    if (mon[target].wasted_delay.tv_sec > mon[target].injected_delay.tv_sec ||
-        (mon[target].wasted_delay.tv_sec >= mon[target].injected_delay.tv_sec &&
-         mon[target].wasted_delay.tv_nsec >= mon[target].injected_delay.tv_nsec)) {
-        return true;
-    }
-    return false;
-}
 
 void Monitor::stop() { // thread create and proecess create get the pmu
     int ret;
@@ -253,6 +247,7 @@ void Monitor::run() {
                          "might have wrong result.");
         } else {
             this->status = 10000;
+            perror("Failed to signal to any of the target processes");
             SPDLOG_ERROR("I'm dying\n");
         }
     } else {
@@ -269,10 +264,94 @@ void Monitor::clear_time(struct timespec *time) {
 Monitor::Monitor() // which one to hook
     : tgid(0), tid(0), cpu_core(0), status(0), injected_delay({0}), wasted_delay({0}), squabble_delay({0}),
       before(nullptr), after(nullptr), total_delay(0), start_exec_ts({0}), end_exec_ts({0}), is_process(false),
-      pebs_ctx(nullptr) {
+      bpftime_ctx(nullptr) {
 
     for (auto &j : this->elem) {
         j.cpus = std::vector<CPUElem>(helper.used_cpu.size());
         j.chas = std::vector<CHAElem>(helper.used_cha.size());
     }
+}
+
+static bool check_continue(const struct timespec wasted_delay, const struct timespec injected_delay) {
+    // This equation for original one. but it causes like 45ms-> 60ms
+    // calculated delay : 45ms
+    // actual elapsed time : 60ms (default epoch: 20ms)
+    if (wasted_delay.tv_sec > injected_delay.tv_sec ||
+        (wasted_delay.tv_sec >= injected_delay.tv_sec && wasted_delay.tv_nsec >= injected_delay.tv_nsec)) {
+        return true;
+    }
+    return false;
+}
+
+uint64_t operator-(const struct timespec &lhs, const struct timespec &rhs) {
+    return (lhs.tv_sec - rhs.tv_sec) * 1000000000 + (lhs.tv_nsec - rhs.tv_nsec);
+}
+
+struct timespec operator+(const struct timespec &lhs, const struct timespec &rhs) {
+    struct timespec result;
+
+    if (lhs.tv_nsec + rhs.tv_nsec >= 1000000000L) {
+        result.tv_sec = lhs.tv_sec + rhs.tv_sec + 1;
+        result.tv_nsec = lhs.tv_nsec - 1000000000L + rhs.tv_nsec;
+    } else {
+        result.tv_sec = lhs.tv_sec + rhs.tv_sec;
+        result.tv_nsec = lhs.tv_nsec + rhs.tv_nsec;
+    }
+
+    return result;
+}
+struct timespec operator*(const struct timespec &lhs, const struct timespec &rhs) {
+    struct timespec result;
+
+    if (lhs.tv_nsec < rhs.tv_nsec) {
+        result.tv_sec = lhs.tv_sec - rhs.tv_sec - 1;
+        result.tv_nsec = lhs.tv_nsec + 1000000000L - rhs.tv_nsec;
+    } else {
+        result.tv_sec = lhs.tv_sec - rhs.tv_sec;
+        result.tv_nsec = lhs.tv_nsec - rhs.tv_nsec;
+    }
+
+    return result;
+}
+
+void Monitor::wait(std::vector<Monitor> *mons, int target) {
+    auto &mon = (*mons)[target];
+    uint64_t diff_nsec, target_nsec;
+    SPDLOG_ERROR("[{}:{}][OFF] total:", mon.tgid, mon.tid);
+    struct timespec start_ts {
+    }, end_ts{};
+    struct timespec sleep_target {};
+    struct timespec wanted_delay;
+    struct timespec prev_wanted_delay = mon.wanted_delay.load();
+    // while we're alive
+    while ((mon.status == MONITOR_ON || mon.status == MONITOR_OFF)) {
+        // figure out our delay
+        wanted_delay = mon.wanted_delay.load();
+        sleep_target = start_ts + wanted_delay * prev_wanted_delay;
+        target_nsec = wanted_delay - prev_wanted_delay;
+
+        // start time before we ask them to sleep
+        clock_gettime(CLOCK_MONOTONIC, &start_ts);
+        mon.stop();
+        diff_nsec = 0;
+
+        // until we've waited enough time...
+        while (diff_nsec < target_nsec) {
+            SPDLOG_DEBUG("[{}:{}][OFF] total: {}\n", mon.tgid, mon.tid, wanted_delay.tv_nsec);
+            // SPDLOG_INFO("target: {}:{}\n", sleep_target.tv_sec, sleep_target.tv_nsec);
+            // SPDLOG_INFO("start: {}:{}\n", start_ts.tv_sec, start_ts.tv_nsec);
+            //  sleep to the target
+            clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &sleep_target, nullptr);
+            clock_gettime(CLOCK_MONOTONIC, &end_ts);
+            diff_nsec = end_ts - start_ts;
+            // SPDLOG_INFO("diff: {}:{}\n", diff_nsec, target_nsec);
+        }
+        mon.run();
+        // keep track of how much we've delayed them for
+        // TODO: use the diff_nsec to help calculate the prev_wanted_delay, to avoid timing errors building up from over
+        // waiting
+        prev_wanted_delay = wanted_delay;
+        // break;
+    }
+    SPDLOG_INFO("{}:{}\n", prev_wanted_delay.tv_sec, prev_wanted_delay.tv_nsec);
 }

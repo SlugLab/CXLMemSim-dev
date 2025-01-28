@@ -3,11 +3,12 @@
  *
  *  By: Andrew Quinn
  *      Yiwei Yang
- *
+ *      Brian Zhao
+ *  SPDX-License-Identifier: (LGPL-2.1 OR BSD-2-Clause)
  *  Copyright 2025 Regents of the University of California
  *  UC Santa Cruz Sluglab.
  */
-
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
 #include "cxlendpoint.h"
 #include "helper.h"
 #include "monitor.h"
@@ -24,14 +25,14 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
-
 Helper helper{};
+CXLController *controller;
 Monitors *monitors;
 int main(int argc, char *argv[]) {
     spdlog::cfg::load_env_levels();
     cxxopts::Options options("CXLMemSim", "For simulation of CXL.mem Type 3 on Sapphire Rapids");
     options.add_options()("t,target", "The script file to execute",
-                          cxxopts::value<std::string>()->default_value("./microbench/many_malloc"))(
+                          cxxopts::value<std::string>()->default_value("./microbench/malloc"))(
         "h,help", "Help for CXLMemSim", cxxopts::value<bool>()->default_value("false"))(
         "i,interval", "The value for epoch value", cxxopts::value<int>()->default_value("1"))(
         "s,source", "Collection Phase or Validation Phase", cxxopts::value<bool>()->default_value("false"))(
@@ -94,7 +95,6 @@ int main(int argc, char *argv[]) {
     }
 
     auto *policy = new InterleavePolicy();
-    CXLController *controller;
 
     uint64_t use_cpus = 0;
     cpu_set_t use_cpuset;
@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
     for (auto i : cpuset) {
         if (!use_cpus || use_cpus & 1UL << i) {
             CPU_SET(i, &use_cpuset);
-            SPDLOG_DEBUG("use cpuid: {}{}\n", i, use_cpus);
+            SPDLOG_DEBUG("use cpuid: {}{}", i, use_cpus);
         }
     }
 
@@ -110,22 +110,22 @@ int main(int argc, char *argv[]) {
     auto cur_processes = 0;
     auto ncpu = helper.num_of_cpu();
     auto ncha = helper.num_of_cha();
-    SPDLOG_DEBUG("tnum:{}, intrval:{}\n", tnum, interval);
+    SPDLOG_DEBUG("tnum:{}, intrval:{}", tnum, interval);
     for (auto const &[idx, value] : weight | std::views::enumerate) {
-        SPDLOG_DEBUG("weight[{}]:{}\n", weight_vec[idx], value);
+        SPDLOG_DEBUG("weight[{}]:{}", weight_vec[idx], value);
     }
 
     for (auto const &[idx, value] : capacity | std::views::enumerate) {
         if (idx == 0) {
-            SPDLOG_DEBUG("local_memory_region capacity:{}\n", value);
-            controller = new CXLController(policy, capacity[0], mode, interval, monitors);
+            SPDLOG_DEBUG("local_memory_region capacity:{}", value);
+            controller = new CXLController(policy, capacity[0], mode, interval);
         } else {
-            SPDLOG_DEBUG("memory_region:{}\n", (idx - 1) + 1);
-            SPDLOG_DEBUG(" capacity:{}\n", capacity[(idx - 1) + 1]);
-            SPDLOG_DEBUG(" read_latency:{}\n", latency[(idx - 1) * 2]);
-            SPDLOG_DEBUG(" write_latency:{}\n", latency[(idx - 1) * 2 + 1]);
-            SPDLOG_DEBUG(" read_bandwidth:{}\n", bandwidth[(idx - 1) * 2]);
-            SPDLOG_DEBUG(" write_bandwidth:{}\n", bandwidth[(idx - 1) * 2 + 1]);
+            SPDLOG_DEBUG("memory_region:{}", (idx - 1) + 1);
+            SPDLOG_DEBUG(" capacity:{}", capacity[(idx - 1) + 1]);
+            SPDLOG_DEBUG(" read_latency:{}", latency[(idx - 1) * 2]);
+            SPDLOG_DEBUG(" write_latency:{}", latency[(idx - 1) * 2 + 1]);
+            SPDLOG_DEBUG(" read_bandwidth:{}", bandwidth[(idx - 1) * 2]);
+            SPDLOG_DEBUG(" write_bandwidth:{}", bandwidth[(idx - 1) * 2 + 1]);
             auto *ep = new CXLMemExpander(bandwidth[(idx - 1) * 2], bandwidth[(idx - 1) * 2 + 1],
                                           latency[(idx - 1) * 2], latency[(idx - 1) * 2 + 1], (idx - 1), capacity[idx]);
             controller->insert_end_point(ep);
@@ -135,9 +135,9 @@ int main(int argc, char *argv[]) {
     SPDLOG_INFO("{}", controller->output());
 
     /** Hove been got by socket if it's not main thread and synchro */
-    SPDLOG_DEBUG("cpu_freq:{}\n", frequency);
-    SPDLOG_DEBUG("num_of_cha:{}\n", ncha);
-    SPDLOG_DEBUG("num_of_cpu:{}\n", ncpu);
+    SPDLOG_DEBUG("cpu_freq:{}", frequency);
+    SPDLOG_DEBUG("num_of_cha:{}", ncha);
+    SPDLOG_DEBUG("num_of_cpu:{}", ncpu);
     for (auto j : cpuset) {
         helper.used_cpu.push_back(cpuset[j]);
         helper.used_cha.push_back(cpuset[j]);
@@ -158,7 +158,7 @@ int main(int argc, char *argv[]) {
             break;
         }
         args[current_arg_idx] = current_arg;
-        SPDLOG_INFO("args[{}] = {}\n", current_arg_idx, args[current_arg_idx]);
+        SPDLOG_INFO("args[{}] = {}", current_arg_idx, args[current_arg_idx]);
     }
 
     /** Create target process */
@@ -169,27 +169,26 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
     if (t_process == 0) {
-        std::vector<char *> envp;
-        sleep(1);
-        envp.push_back("LD_PRELOAD=~/.bpftime/libbpftime-agent.so");
+        std::vector<const char *> envp;
+        envp.push_back("LD_PRELOAD=/root/.bpftime/libbpftime-agent.so");
         envp.push_back(nullptr);
-        execve(filename, args, envp.data()); // taskset in lpace
-        SPDLOG_ERROR("Exec: failed to create target process\n");
+        execve(filename, args, const_cast<char *const *>(envp.data()));
+        SPDLOG_ERROR("Exec: failed to create target process");
         exit(1);
     }
     /** In case of process, use SIGSTOP. */
     if (auto res = monitors->enable(t_process, t_process, true, pebsperiod, tnum); res == -1) {
-        SPDLOG_ERROR("Failed to enable monitor\n");
+        SPDLOG_ERROR("Failed to enable monitor");
         exit(0);
     } else if (res < 0) {
-        SPDLOG_DEBUG("pid({}) not found. might be already terminated.\n", t_process);
+        SPDLOG_DEBUG("pid({}) not found. might be already terminated.", t_process);
     }
     cur_processes++;
-    SPDLOG_DEBUG("pid of CXLMemSim = {}, cur process={}\n", t_process, cur_processes);
+    SPDLOG_DEBUG("pid of CXLMemSim = {}, cur process={}", t_process, cur_processes);
 
     if (cur_processes >= ncpu) {
         SPDLOG_ERROR("Failed to execute. The number of processes/threads of the target application is more than "
-                     "physical CPU cores.\n");
+                     "physical CPU cores.");
         exit(0);
     }
 
@@ -198,7 +197,7 @@ int main(int argc, char *argv[]) {
 
     /** Get CPU information */
     if (!get_cpu_info(&monitors->mon[0].before->cpuinfo)) {
-        SPDLOG_DEBUG("Failed to obtain CPU information.\n");
+        SPDLOG_DEBUG("Failed to obtain CPU information.");
     }
     auto perf_config =
         helper.detect_model(monitors->mon[0].before->cpuinfo.cpu_model, pmu_name, pmu_config1, pmu_config2);
@@ -209,9 +208,9 @@ int main(int argc, char *argv[]) {
     waittime.tv_sec = interval / 1000;
     waittime.tv_nsec = (interval % 1000) * 1000000;
 
-    SPDLOG_DEBUG("The target process starts running.\n");
-    SPDLOG_DEBUG("set nano sec = {}\n", waittime.tv_nsec);
-    SPDLOG_TRACE("{}\n", monitors);
+    SPDLOG_DEBUG("The target process starts running.");
+    SPDLOG_DEBUG("set nano sec = {}", waittime.tv_nsec);
+    SPDLOG_TRACE("{}", *monitors);
     monitors->print_flag = false;
 
     /* read CHA params */
@@ -225,8 +224,10 @@ int main(int argc, char *argv[]) {
     }
 
     uint32_t diff_nsec = 0;
-    struct timespec start_ts{}, end_ts{};
-    struct timespec sleep_start_ts{}, sleep_end_ts{};
+    struct timespec start_ts {
+    }, end_ts{};
+    struct timespec sleep_start_ts {
+    }, sleep_end_ts{};
 
     /** Wait all the target processes until emulation process initialized. */
     monitors->run_all(cur_processes);
@@ -246,9 +247,9 @@ int main(int argc, char *argv[]) {
                 break;
             }
             if (errno == EINTR) {
-                SPDLOG_INFO("nanosleep: remain time {}.{}(sec)\n", (long)rem.tv_sec, (long)rem.tv_nsec);
-                // if the milisecs was set below 5, will trigger stop before the target process stop.
-                // The pause has been interrupted by a signal that was delivered to the thread.
+                // SPDLOG_INFO("nanosleep: remain time {}.{}(sec)", (long)rem.tv_sec, (long)rem.tv_nsec);
+                //  if the milisecs was set below 5, will trigger stop before the target process stop.
+                //  The pause has been interrupted by a signal that was delivered to the thread.
                 req = rem; // call nanosleep() again with the remain time.
                 break;
             } else {
@@ -266,12 +267,11 @@ int main(int argc, char *argv[]) {
             }
             if (mon.status == MONITOR_ON || mon.status == MONITOR_SUSPEND) {
                 clock_gettime(CLOCK_MONOTONIC, &start_ts);
-                SPDLOG_DEBUG("[{}:{}:{}] start_ts: {}.{}\n", i, mon.tgid, mon.tid, start_ts.tv_sec, start_ts.tv_nsec);
-                mon.stop();
+                SPDLOG_DEBUG("[{}:{}:{}] start_ts: {}.{}", i, mon.tgid, mon.tid, start_ts.tv_sec, start_ts.tv_nsec);
                 /** Read CHA values */
                 uint64_t wb_cnt = 0;
                 std::vector<uint64_t> cha_vec, cpu_vec{};
-                SPDLOG_INFO("[{}:{}:{}] LLC_WB = {}\n", i, mon.tgid, mon.tid, wb_cnt);
+                SPDLOG_INFO("[{}:{}:{}] LLC_WB = {}", i, mon.tgid, mon.tid, wb_cnt);
 
                 for (int j = 0; j < helper.used_cha.size(); j++) {
                     for (auto const &[idx, value] : pmu.chas | std::views::enumerate) {
@@ -285,15 +285,15 @@ int main(int argc, char *argv[]) {
 
                 /* read BPFTIMERUNTIME sample */
                 if (mon.bpftime_ctx->read(controller, &mon.after->bpftime) < 0) {
-                    SPDLOG_ERROR("[{}:{}:{}] Warning: Failed BPFTIMERUNTIME read\n", i, mon.tgid, mon.tid);
+                    SPDLOG_ERROR("[{}:{}:{}] Warning: Failed BPFTIMERUNTIME read", i, mon.tgid, mon.tid);
                 }
                 /* read LBR sample */
                 if (mon.lbr_ctx->read(controller, &mon.after->lbr) < 0) {
-                    SPDLOG_ERROR("[{}:{}:{}] Warning: Failed LBR read\n", i, mon.tgid, mon.tid);
+                    SPDLOG_ERROR("[{}:{}:{}] Warning: Failed LBR read", i, mon.tgid, mon.tid);
                 }
                 /* read PEBS sample */
                 if (mon.pebs_ctx->read(controller, &mon.after->pebs) < 0) {
-                    SPDLOG_ERROR("[{}:{}:{}] Warning: Failed PEBS read\n", i, mon.tgid, mon.tid);
+                    SPDLOG_ERROR("[{}:{}:{}] Warning: Failed PEBS read", i, mon.tgid, mon.tid);
                 }
                 target_llcmiss = mon.after->pebs.total - mon.before->pebs.total;
 
@@ -321,18 +321,18 @@ int main(int argc, char *argv[]) {
                 llcmiss_wb = wb_cnt * std::lround(((double)target_llcmiss) / ((double)read_config));
                 uint64_t llcmiss_ro = 0;
                 if (target_llcmiss < llcmiss_wb) { // tunning
-                    SPDLOG_ERROR("[{}:{}:{}] cpus_dram_rds {}, llcmiss_wb {}, target_llcmiss {}\n", i, mon.tgid,
-                                 mon.tid, read_config, llcmiss_wb, target_llcmiss);
+                    SPDLOG_ERROR("[{}:{}:{}] cpus_dram_rds {}, llcmiss_wb {}, target_llcmiss {}", i, mon.tgid, mon.tid,
+                                 read_config, llcmiss_wb, target_llcmiss);
                     llcmiss_wb = target_llcmiss;
                     llcmiss_ro = 0;
                 } else {
                     llcmiss_ro = target_llcmiss - llcmiss_wb;
                 }
-                SPDLOG_DEBUG("[{}:{}:{}]llcmiss_wb={}, llcmiss_ro={}\n", i, mon.tgid, mon.tid, llcmiss_wb, llcmiss_ro);
+                SPDLOG_DEBUG("[{}:{}:{}]llcmiss_wb={}, llcmiss_ro={}", i, mon.tgid, mon.tid, llcmiss_wb, llcmiss_ro);
 
-                uint64_t emul_delay = 0;
+                uint64_t emul_delay = 150;
 
-                SPDLOG_DEBUG("[{}:{}:{}] pebs: total={}, \n", i, mon.tgid, mon.tid, mon.after->pebs.total);
+                SPDLOG_DEBUG("[{}:{}:{}] pebs: total={}, ", i, mon.tgid, mon.tid, mon.after->pebs.total);
 
                 /** TODO: calculate latency construct the passing value and use interleaving policy and counter to
                  * get the sample_prop */
@@ -354,12 +354,12 @@ int main(int argc, char *argv[]) {
 
                 mon.before->pebs.total = mon.after->pebs.total;
 
-                SPDLOG_DEBUG("delay={}\n", emul_delay);
+                SPDLOG_DEBUG("delay={}", emul_delay);
 
                 /* compensation of delay END(1) */
                 clock_gettime(CLOCK_MONOTONIC, &end_ts);
                 diff_nsec += (end_ts.tv_sec - start_ts.tv_sec) * 1000000000 + (end_ts.tv_nsec - start_ts.tv_nsec);
-                SPDLOG_DEBUG("dif:{}\n", diff_nsec);
+                SPDLOG_DEBUG("dif:{}", diff_nsec);
 
                 calibrated_delay = (diff_nsec > emul_delay) ? 0 : emul_delay - diff_nsec;
                 mon.total_delay += (double)calibrated_delay / 1000000000;
@@ -368,67 +368,20 @@ int main(int argc, char *argv[]) {
                 /* insert emulated NVM latency */
                 mon.injected_delay.tv_sec += std::lround(calibrated_delay / 1000000000);
                 mon.injected_delay.tv_nsec += std::lround(calibrated_delay % 1000000000);
-                SPDLOG_DEBUG("[{}:{}:{}]delay:{} , total delay:{}\n", i, mon.tgid, mon.tid, calibrated_delay,
+                SPDLOG_DEBUG("[{}:{}:{}]delay:{} , total delay:{}", i, mon.tgid, mon.tid, calibrated_delay,
                              mon.total_delay);
+                struct timespec new_wanted = mon.wanted_delay.load();
+                emul_delay += new_wanted.tv_nsec;
+                new_wanted.tv_nsec = emul_delay % 1000000000;
+                new_wanted.tv_sec += emul_delay / 1000000000;
+                mon.wanted_delay.store(new_wanted);
 
-            } else if (mon.status == MONITOR_OFF) {
-                // Wasted epoch time
-                clock_gettime(CLOCK_MONOTONIC, &start_ts);
-                uint64_t sleep_diff = (sleep_end_ts.tv_sec - sleep_start_ts.tv_sec) * 1000000000 +
-                                      (sleep_end_ts.tv_nsec - sleep_start_ts.tv_nsec);
-                struct timespec sleep_time{};
-                sleep_time.tv_sec = std::lround(sleep_diff / 1000000000);
-                sleep_time.tv_nsec = std::lround(sleep_diff % 1000000000);
-                mon.wasted_delay.tv_sec += sleep_time.tv_sec;
-                mon.wasted_delay.tv_nsec += sleep_time.tv_nsec;
-                SPDLOG_DEBUG("[{}:{}:{}][OFF] total: {}| wasted : {}| waittime : {}| squabble : {}\n", i, mon.tgid,
-                             mon.tid, mon.injected_delay.tv_nsec, mon.wasted_delay.tv_nsec, waittime.tv_nsec,
-                             mon.squabble_delay.tv_nsec);
-                if (monitors->check_continue(i, sleep_time)) {
-                    Monitor::clear_time(&mon.wasted_delay);
-                    Monitor::clear_time(&mon.injected_delay);
-                    mon.run();
-                }
-                clock_gettime(CLOCK_MONOTONIC, &end_ts);
-                diff_nsec += (end_ts.tv_sec - start_ts.tv_sec) * 1000000000 + (end_ts.tv_nsec - start_ts.tv_nsec);
+                SPDLOG_INFO("{}:{}", new_wanted.tv_sec, new_wanted.tv_nsec);
             }
+            // SPDLOG_TRACE("{}", *monitors);
 
-            if (mon.status == MONITOR_OFF && mon.injected_delay.tv_nsec != 0) {
-                long remain_time = mon.injected_delay.tv_nsec - mon.wasted_delay.tv_nsec;
-                /* do we need to get squabble time ? */
-                if (mon.wasted_delay.tv_sec >= waittime.tv_sec && remain_time < waittime.tv_nsec) {
-                    mon.squabble_delay.tv_nsec += remain_time;
-                    if (mon.squabble_delay.tv_nsec < 40000000) {
-                        SPDLOG_DEBUG("[SQ]total: {}| wasted : {}| waittime : {}| squabble : {}\n",
-                                     mon.injected_delay.tv_nsec, mon.wasted_delay.tv_nsec, waittime.tv_nsec,
-                                     mon.squabble_delay.tv_nsec);
-                        Monitor::clear_time(&mon.wasted_delay);
-                        Monitor::clear_time(&mon.injected_delay);
-                        mon.run();
-                    } else {
-                        mon.injected_delay.tv_nsec += mon.squabble_delay.tv_nsec;
-                        Monitor::clear_time(&mon.squabble_delay);
-                    }
-                }
-            }
         } // End for-loop for all target processes
-        SPDLOG_TRACE("%s\n", monitors);
-        for (auto mon : monitors->mon) {
-            if (mon.status == MONITOR_ON) {
-                auto swap = mon.before;
-                mon.before = mon.after;
-                mon.after = swap;
 
-                /* continue suspended processes: send SIGCONT */
-                // mon.unfreeze_counters_cha_all(fds.msr[0]);
-                // start_pmc(&fds, i);
-                if (calibrated_delay == 0) {
-                    Monitor::clear_time(&mon.wasted_delay);
-                    Monitor::clear_time(&mon.injected_delay);
-                    mon.run();
-                }
-            }
-        }
         if (monitors->check_all_terminated(tnum)) {
             break;
         }
