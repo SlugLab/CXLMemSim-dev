@@ -52,11 +52,11 @@ int main(int argc, char *argv[]) {
         cxxopts::value<std::vector<int>>()->default_value("50,50,50,50,50,50"))(
         "x,pmu_name", "The input for Collected PMU",
         cxxopts::value<std::vector<std::string>>()->default_value(
-            "total_stall,all_dram_rds,l2stall,null,llcl_hits,llcl_miss,snoop_fwd_wb,null"))(
+            "clflush,l2hit,l2miss,l3miss,llcl_hits,snoop_fwd_wb,total_stall,l2stall"))(
         "y,pmu_config1", "The config0 for Collected PMU",
-        cxxopts::value<std::vector<uint64_t>>()->default_value("0x04004a3,0x0022,0x0449,0,0xd104,0x7834,0x01b7,0"))(
+        cxxopts::value<std::vector<uint64_t>>()->default_value("0xff0e,0x0134,0x7e35,0x7834,0xd104,0x01b7,0x04004a3,0x0449"))(
         "z,pmu_config2", "The config1 for Collected PMU",
-        cxxopts::value<std::vector<uint64_t>>()->default_value("0,0,0,0,0,0,0x1a610008,0"))(
+        cxxopts::value<std::vector<uint64_t>>()->default_value("0,0,0,0,0,0x1a610008,0,0"))(
         "w,weight", "The weight for Linear Regression",
         cxxopts::value<std::vector<double>>()->default_value("88, 88, 88, 88, 88, 88, 88"))(
         "v,weight_vec", "The weight vector for Linear Regression",
@@ -352,9 +352,9 @@ int main(int argc, char *argv[]) {
                     new_wanted.tv_nsec = new_wanted.tv_nsec % 1000000000;
                     mon.wanted_delay = new_wanted;
                     SPDLOG_INFO("{}:{}", new_wanted.tv_sec, new_wanted.tv_nsec);
+                    SPDLOG_TRACE("{}", *monitors);
                 }
             }
-            // SPDLOG_TRACE("{}", *monitors);
 
         } // End for-loop for all target processes
 
