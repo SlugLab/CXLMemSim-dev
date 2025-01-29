@@ -3,7 +3,8 @@
  *
  *  By: Andrew Quinn
  *      Yiwei Yang
- *
+ *      Brian Zhao
+ *  SPDX-License-Identifier: (LGPL-2.1 OR BSD-2-Clause)
  *  Copyright 2025 Regents of the University of California
  *  UC Santa Cruz Sluglab.
  */
@@ -154,9 +155,12 @@ int LBR::read(CXLController *controller, LBRElem *elem) {
                                  data->pid, data->tid, header->size, /*data->nr,*/ data->nr2, sizeof(*data),
                                  /*data->ips[0],*/ data->cpu, data->timestamp, /* data->hw_idx,*/ data->lbrs[0].from,
                                  data->counters[0].counters, data->counters[1].counters, data->counters[2].counters);
-                    // controller->insert(data->timestamp, data->ips, data->lbrs, data->counters);
+                    controller->insert(data->timestamp, data->tid, data->lbrs, data->counters);
                     elem->tid = data->tid;
-                    memcpy(&elem->branch_stack, (32 * 8) + (void *)&data->counters, 92 * 8);
+                    memcpy(&elem->branch_stack,
+                           (char *)&data->counters + (32 * 8), // Cast to char* before arithmetic
+                           92 * 8);
+                    elem->total++;
                     r = 1;
                 }
                 break;

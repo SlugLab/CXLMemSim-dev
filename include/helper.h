@@ -88,14 +88,14 @@ struct PEBSElem {
 };
 
 struct LBRElem {
-    // uint64_t ip[4];
+    uint64_t total;
     uint64_t tid;
-    // uint64_t cpu;
     uint64_t time;
     uint64_t branch_stack[96];
 };
 
 struct BPFTimeRuntimeElem {
+    uint64_t total;
     uint64_t va;
     uint64_t pa;
     uint64_t pid;

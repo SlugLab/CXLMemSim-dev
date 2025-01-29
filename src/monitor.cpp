@@ -84,7 +84,7 @@ int Monitors::enable(const uint32_t tgid, const uint32_t tid, bool is_process, u
     s = sched_setaffinity(tid, sizeof(cpu_set_t), &cpuset);
     if (s != 0) {
         if (errno == ESRCH) {
-            SPDLOG_DEBUG("Process [{}:{}] is terminated.\n", tgid, tid);
+            SPDLOG_DEBUG("Process [{}:{}] is terminated.", tgid, tid);
             return -2;
         } else {
             SPDLOG_ERROR("Failed to setaffinity");
@@ -103,13 +103,13 @@ int Monitors::enable(const uint32_t tgid, const uint32_t tid, bool is_process, u
         mon[target].bpftime_ctx = new BpfTimeRuntime(tid, "../src/cxlmemsim.json");
         /* pebs start */
         mon[target].pebs_ctx = new PEBS(tgid, pebs_sample_period);
-        SPDLOG_DEBUG("{}Process [tgid={}, tid={}]: enable to pebs.\n", target, mon[target].tgid,
+        SPDLOG_DEBUG("{}Process [tgid={}, tid={}]: enable to pebs.", target, mon[target].tgid,
                      mon[target].tid); // multiple tid multiple pid
         mon[target].lbr_ctx = new LBR(tgid, 1);
     }
     sleep(1);
 
-    SPDLOG_INFO("pid {}[tgid={}, tid={}] monitoring start\n", target, mon[target].tgid, mon[target].tid);
+    SPDLOG_INFO("pid {}[tgid={}, tid={}] monitoring start", target, mon[target].tgid, mon[target].tid);
 
     new std::thread(Monitor::wait, &mon, target);
     return target;
@@ -193,6 +193,8 @@ int Monitors::terminate(const uint32_t tgid, const uint32_t tid, const int32_t t
         std::cout << std::format("total delay   ={}\n", mon[target].total_delay);
 
         std::cout << std::format("PEBS sample total {}\n", mon[target].before->pebs.total);
+        std::cout << std::format("LBR sample total {}\n", mon[target].before->lbr.total);
+        std::cout << std::format("bpftime sample llcmiss {}\n", mon[target].before->bpftime.llcmiss);
 
         /* init */
         disable(target);
@@ -207,12 +209,12 @@ void Monitor::stop() { // thread create and proecess create get the pmu
 
     if (this->is_process) {
         // In case of process, use SIGSTOP.
-        SPDLOG_DEBUG("Send SIGSTOP to pid={}\n", this->tid);
+        SPDLOG_DEBUG("Send SIGSTOP to pid={}", this->tid);
         ret = kill(this->tid, SIGSTOP);
     } else {
         // Use SIGUSR1 instead of SIGSTOP.
         // When the target thread receives SIGUSR1, it must stop until it receives SIGCONT.
-        SPDLOG_DEBUG("Send SIGUSR1 to tid={}(tgid={})\n", this->tid, this->tgid);
+        SPDLOG_DEBUG("Send SIGUSR1 to tid={}(tgid={})", this->tid, this->tgid);
         ret = syscall(SYS_tgkill, this->tgid, this->tid, SIGUSR1);
     }
 
@@ -221,38 +223,38 @@ void Monitor::stop() { // thread create and proecess create get the pmu
             // in this case process or process group does not exist.
             // It might be a zombie or has terminated execution.
             this->status = MONITOR_TERMINATED;
-            SPDLOG_ERROR("Process [{}:{}] is terminated.\n", this->tgid, this->tid);
+            SPDLOG_ERROR("Process [{}:{}] is terminated.", this->tgid, this->tid);
         } else if (errno == EPERM) {
             this->status = MONITOR_NOPERMISSION;
-            SPDLOG_ERROR("Failed to signal to any of the target processes. Due to does not have permission. \n It "
+            SPDLOG_ERROR("Failed to signal to any of the target processes. Due to does not have permission.  It "
                          "might have wrong result.");
         }
     } else {
         this->status = MONITOR_OFF;
-        SPDLOG_DEBUG("Process [{}:{}] is stopped.\n", this->tgid, this->tid);
+        SPDLOG_DEBUG("Process [{}:{}] is stopped.", this->tgid, this->tid);
     }
 }
 
 void Monitor::run() {
-    SPDLOG_DEBUG("Send SIGCONT to tid={}(tgid={})\n", this->tid, this->tgid);
+    SPDLOG_DEBUG("Send SIGCONT to tid={}(tgid={})", this->tid, this->tgid);
     if (syscall(SYS_tgkill, this->tgid, this->tid, SIGCONT) == -1) {
         if (errno == ESRCH) {
             // in this case process or process group does not exist.
             // It might be a zombie or has terminated execution.
             this->status = MONITOR_TERMINATED;
-            SPDLOG_DEBUG("Process [{}:{}] is terminated.\n", this->tgid, this->tid);
+            SPDLOG_DEBUG("Process [{}:{}] is terminated.", this->tgid, this->tid);
         } else if (errno == EPERM) {
             this->status = MONITOR_NOPERMISSION;
-            SPDLOG_ERROR("Failed to signal to any of the target processes. Due to does not have permission. \n It "
+            SPDLOG_ERROR("Failed to signal to any of the target processes. Due to does not have permission.  It "
                          "might have wrong result.");
         } else {
             this->status = 10000;
             perror("Failed to signal to any of the target processes");
-            SPDLOG_ERROR("I'm dying\n");
+            SPDLOG_ERROR("I'm dying");
         }
     } else {
         this->status = MONITOR_ON;
-        SPDLOG_DEBUG("Process [{}:{}] is running.\n", this->tgid, this->tid);
+        SPDLOG_DEBUG("Process [{}:{}] is running.", this->tgid, this->tid);
     }
 }
 
@@ -337,14 +339,14 @@ void Monitor::wait(std::vector<Monitor> *mons, int target) {
 
         // until we've waited enough time...
         while (diff_nsec < target_nsec) {
-            SPDLOG_DEBUG("[{}:{}][OFF] total: {}\n", mon.tgid, mon.tid, wanted_delay.tv_nsec);
-            // SPDLOG_INFO("target: {}:{}\n", sleep_target.tv_sec, sleep_target.tv_nsec);
-            // SPDLOG_INFO("start: {}:{}\n", start_ts.tv_sec, start_ts.tv_nsec);
+            SPDLOG_DEBUG("[{}:{}][OFF] total: {}", mon.tgid, mon.tid, wanted_delay.tv_nsec);
+            // SPDLOG_INFO("target: {}:{}", sleep_target.tv_sec, sleep_target.tv_nsec);
+            // SPDLOG_INFO("start: {}:{}", start_ts.tv_sec, start_ts.tv_nsec);
             //  sleep to the target
             clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &sleep_target, nullptr);
             clock_gettime(CLOCK_MONOTONIC, &end_ts);
             diff_nsec = end_ts - start_ts;
-            // SPDLOG_INFO("diff: {}:{}\n", diff_nsec, target_nsec);
+            // SPDLOG_INFO("diff: {}:{}", diff_nsec, target_nsec);
         }
         mon.run();
         // keep track of how much we've delayed them for
@@ -353,5 +355,5 @@ void Monitor::wait(std::vector<Monitor> *mons, int target) {
         prev_wanted_delay = wanted_delay;
         // break;
     }
-    SPDLOG_INFO("{}:{}\n", prev_wanted_delay.tv_sec, prev_wanted_delay.tv_nsec);
+    SPDLOG_INFO("{}:{}", prev_wanted_delay.tv_sec, prev_wanted_delay.tv_nsec);
 }

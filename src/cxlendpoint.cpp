@@ -39,14 +39,14 @@ double CXLMemExpander::calculate_latency(LatencyPass lat) {
      *     Stall by LLC misses is 0.
      *     choose by vector */
 
-    //    mastall_wb = (double)(target_l2stall / frequency) *
-    //                 ((double)(weight * llcmiss_wb) / (double)(target_llchits + (weight * target_llcmiss))) * 1000;
-    //    // weight is a delay specific value current pro
-    //    mastall_ro = (double)(target_l2stall / frequency) *
-    //                 ((double)(weight * llcmiss_ro) / (double)(target_llchits + (weight * target_llcmiss))) *
-    //                 1000; // weight is a delay specific value
-    //    SPDLOG_DEBUG("l2stall={}, mastall_wb={}, mastall_ro={}, target_llchits={}, target_llcmiss={}\n",
-    //                              target_l2stall, mastall_wb, mastall_ro, target_llchits, target_llcmiss);
+    // mastall_wb = (double)(target_l2stall / frequency) *
+    //              ((double)(weight * llcmiss_wb) / (double)(target_llchits + (weight * target_llcmiss))) * 1000;
+    // // weight is a delay specific value current pro
+    // mastall_ro = (double)(target_l2stall / frequency) *
+    //              ((double)(weight * llcmiss_ro) / (double)(target_llchits + (weight * target_llcmiss))) *
+    //              1000; // weight is a delay specific value
+    // SPDLOG_DEBUG("l2stall={}, mastall_wb={}, mastall_ro={}, target_llchits={}, target_llcmiss={}\n", target_l2stall,
+    //              mastall_wb, mastall_ro, target_llchits, target_llcmiss);
 
     auto writeback = (double)mastall_wb / dramlatency;
     auto readonly = (double)mastall_ro / dramlatency;
