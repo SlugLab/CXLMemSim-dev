@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
         cxxopts::value<std::vector<std::string>>()->default_value(
             "clflush,l2hit,l2miss,l3miss,llcl_hits,snoop_fwd_wb,total_stall,l2stall"))(
         "y,pmu_config1", "The config0 for Collected PMU",
-        cxxopts::value<std::vector<uint64_t>>()->default_value("0xff0e,0x0134,0x7e35,0x7834,0xd104,0x01b7,0x04004a3,0x0449"))(
+        cxxopts::value<std::vector<uint64_t>>()->default_value("0xff0e,0x0134,0x7e35,0x7834,0x04d1,0x01b7,0x04004a3,0x0449"))(
         "z,pmu_config2", "The config1 for Collected PMU",
         cxxopts::value<std::vector<uint64_t>>()->default_value("0,0,0,0,0,0x1a610008,0,0"))(
         "w,weight", "The weight for Linear Regression",
