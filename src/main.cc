@@ -52,9 +52,10 @@ int main(int argc, char *argv[]) {
         cxxopts::value<std::vector<int>>()->default_value("50,50,50,50,50,50"))(
         "x,pmu_name", "The input for Collected PMU",
         cxxopts::value<std::vector<std::string>>()->default_value(
-            "clflush,l2hit,l2miss,l3miss,llcl_hits,snoop_fwd_wb,total_stall,l2stall"))(
+            "clflush,l2hit,l2miss,cpus_dram_rds,llcl_hits,snoop_fwd_wb,total_stall,l2stall"))(
         "y,pmu_config1", "The config0 for Collected PMU",
-        cxxopts::value<std::vector<uint64_t>>()->default_value("0xff0e,0x0134,0x7e35,0x7834,0x04d1,0x01b7,0x04004a3,0x0449"))(
+        cxxopts::value<std::vector<uint64_t>>()->default_value(
+            "0xff0e,0x0134,0x7e35,0x01d3,0x04d1,0x01b7,0x04004a3,0x0449"))(
         "z,pmu_config2", "The config1 for Collected PMU",
         cxxopts::value<std::vector<uint64_t>>()->default_value("0,0,0,0,0,0x1a610008,0,0"))(
         "w,weight", "The weight for Linear Regression",
@@ -240,20 +241,13 @@ int main(int argc, char *argv[]) {
                 clock_gettime(CLOCK_MONOTONIC, &start_ts);
                 SPDLOG_DEBUG("[{}:{}:{}] start_ts: {}.{}", i, mon.tgid, mon.tid, start_ts.tv_sec, start_ts.tv_nsec);
                 /** Read CHA values */
-                uint64_t wb_cnt = 0;
                 std::vector<uint64_t> cha_vec, cpu_vec{};
-                SPDLOG_INFO("[{}:{}:{}] LLC_WB = {}", i, mon.tgid, mon.tid, wb_cnt);
 
-                for (int j = 0; j < helper.used_cha.size(); j++) {
-                    for (auto const &[idx, value] : pmu.chas | std::views::enumerate) {
-                        value.read_cha_elems(&mon.after->chas[j]);
-                        cha_vec.emplace_back(mon.after->chas[j].cha[idx] - mon.before->chas[j].cha[idx]);
-                    }
-                }
                 /*** read CPU params */
-                uint64_t read_config = 0;
+                uint64_t wb_cnt = 0;
                 uint64_t target_l2stall = 0, target_llcmiss = 0, target_llchits = 0;
-
+                uint64_t target_l2miss = 0, target_l3miss = 0;
+                uint64_t clflush = 0, read_config = 0;
                 /* read BPFTIMERUNTIME sample */
                 if (mon.bpftime_ctx->read(controller, &mon.after->bpftime) < 0) {
                     SPDLOG_ERROR("[{}:{}:{}] Warning: Failed BPFTIMERUNTIME read", i, mon.tgid, mon.tid);
@@ -268,19 +262,27 @@ int main(int argc, char *argv[]) {
                 }
                 target_llcmiss = mon.after->pebs.total - mon.before->pebs.total;
 
-                target_l2stall = mon.after->cpus[mon.cpu_core].cpu[1] - mon.before->cpus[mon.cpu_core].cpu[1];
-                target_llchits = mon.after->cpus[mon.cpu_core].cpu[2] - mon.before->cpus[mon.cpu_core].cpu[2];
-                for (auto const &[idx, value] : pmu.cpus | std::views::enumerate) {
-                    target_l2stall += mon.after->cpus[idx].cpu[1] - mon.before->cpus[idx].cpu[1];
-                    target_llchits += mon.after->cpus[idx].cpu[2] - mon.before->cpus[idx].cpu[2];
-                }
                 for (int j = 0; j < helper.used_cpu.size(); j++) {
                     for (auto const &[idx, value] : pmu.cpus | std::views::enumerate) {
                         value.read_cpu_elems(&mon.after->cpus[j]);
-                        wb_cnt = mon.after->cpus[j].cpu[idx] - mon.before->cpus[j].cpu[idx];
                         cpu_vec.emplace_back(mon.after->cpus[j].cpu[idx] - mon.before->cpus[j].cpu[idx]);
                     }
                 }
+
+                for (int j = 0; j < helper.used_cha.size(); j++) {
+                    for (auto const &[idx, value] : pmu.chas | std::views::enumerate) {
+                        value.read_cha_elems(&mon.after->chas[j]);
+                        cha_vec.emplace_back(mon.after->chas[j].cha[idx] - mon.before->chas[j].cha[idx]);
+                    }
+                }
+                target_llchits = cpu_vec[0];
+                wb_cnt = cpu_vec[1];
+                target_l2stall = cpu_vec[3];
+
+                clflush = cha_vec[0];
+                target_l2miss = cha_vec[2];
+                SPDLOG_INFO("[{}:{}:{}] LLC_WB = {}", i, mon.tgid, mon.tid, wb_cnt);
+
                 uint64_t llcmiss_wb = 0;
                 // To estimate the number of the writeback-involving LLC
                 // misses of the CPU core (llcmiss_wb), the total number of
@@ -292,8 +294,8 @@ int main(int argc, char *argv[]) {
                 llcmiss_wb = wb_cnt * std::lround(((double)target_llcmiss) / ((double)read_config));
                 uint64_t llcmiss_ro = 0;
                 if (target_llcmiss < llcmiss_wb) { // tunning
-                    SPDLOG_ERROR("[{}:{}:{}] cpus_dram_rds {}, llcmiss_wb {}, target_llcmiss {}", i, mon.tgid, mon.tid,
-                                 read_config, llcmiss_wb, target_llcmiss);
+                    SPDLOG_ERROR("[{}:{}:{}] clflush {}, llcmiss_wb {}, target_llcmiss {}", i, mon.tgid, mon.tid,
+                                 clflush, llcmiss_wb, target_llcmiss);
                     llcmiss_wb = target_llcmiss;
                     llcmiss_ro = 0;
                 } else {
@@ -319,9 +321,9 @@ int main(int argc, char *argv[]) {
                     .read_config = read_config,
                     .write_config = read_config,
                 };
-                // emul_delay += std::lround(controller->calculate_latency(lat_pass));
-                // emul_delay += controller->calculate_bandwidth(bw_pass);
-                // emul_delay += std::get<0>(controller->calculate_congestion());
+                emul_delay += std::lround(controller->calculate_latency(lat_pass));
+                emul_delay += controller->calculate_bandwidth(bw_pass);
+                emul_delay += std::get<0>(controller->calculate_congestion());
 
                 mon.before->pebs.total = mon.after->pebs.total;
                 mon.before->lbr.total = mon.after->lbr.total;
