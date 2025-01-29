@@ -91,7 +91,7 @@ int PEBS::read(CXLController *controller, struct PEBSElem *elem) {
                     continue;
                 }
                 if (this->pid == data->pid) {
-                    SPDLOG_ERROR("pid:{} tid:{} time:{} addr:{} phys_addr:{} llc_miss:{} timestamp={}\n", data->pid,
+                    SPDLOG_TRACE("pid:{} tid:{} time:{} addr:{} phys_addr:{} llc_miss:{} timestamp={}\n", data->pid,
                                  data->tid, data->time_enabled, data->addr, data->phys_addr, data->value,
                                  data->timestamp);
                     controller->insert(data->timestamp, data->phys_addr, data->addr, 0);

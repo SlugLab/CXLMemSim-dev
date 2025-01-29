@@ -53,18 +53,22 @@ int BpfTimeRuntime::read(CXLController *controller, BPFTimeRuntimeElem *elem) {
         if (i == 6 && item2 != nullptr) {
             stats = *((mem_stats *)item2);
             controller->set_stats(stats);
+            elem->total++;
         }
         if (i == 7 && item2 != nullptr) {
             alloc_info1 = *((alloc_info *)item2);
             controller->set_alloc_info(alloc_info1);
+            elem->total++;
         }
         if (i == 9 && item2 != nullptr) {
             proc_info1 = *((proc_info *)item2);
             controller->set_process_info(proc_info1);
+            elem->total++;
         }
         if (i == 10 && item2 != nullptr) {
             thread_info1 = *((proc_info *)item2);
             controller->set_thread_info(thread_info1);
+            elem->total++;
         }
     }
     return 0;

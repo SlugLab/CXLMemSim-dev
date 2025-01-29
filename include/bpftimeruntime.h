@@ -25,7 +25,6 @@ public:
 
     int read(CXLController *, BPFTimeRuntimeElem *);
 
-private:
     pid_t tid;
 };
 #define u64 unsigned long long

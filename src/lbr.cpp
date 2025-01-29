@@ -92,7 +92,7 @@ LBR::LBR(pid_t pid, uint64_t sample_period) : pid(pid), sample_period(sample_per
         .exclude_hv = 1,
         .precise_ip = 3,
         .config1 = 3,
-        .branch_sample_type = PERF_SAMPLE_BRANCH_USER | PERF_SAMPLE_BRANCH_ANY | PERF_SAMPLE_BRANCH_COUNTERS,
+        .branch_sample_type = PERF_SAMPLE_BRANCH_USER | PERF_SAMPLE_BRANCH_ANY | (1<<19),
     };
 
     int cpu = -1; // measure on any cpu

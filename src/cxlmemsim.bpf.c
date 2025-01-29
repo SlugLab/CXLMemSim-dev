@@ -17,7 +17,7 @@ struct {
     __uint(max_entries, 100000);
     __type(key, u64);
     __type(value, struct alloc_info);
-} allocs_ringbuf SEC(".maps");
+} allocs_map SEC(".maps");
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
@@ -72,7 +72,7 @@ int malloc_entry(struct pt_regs *ctx) {
     struct alloc_info info = {
         .size = size,
     };
-    bpf_map_update_elem(&allocs_ringbuf, &pid_tgid, &info, BPF_ANY);
+    bpf_map_update_elem(&allocs_map, &pid_tgid, &info, BPF_ANY);
     return 0;
 }
 
@@ -84,7 +84,7 @@ int BPF_KRETPROBE(malloc_return, void *address) {
 
     // 2. 添加调试日志
 
-    struct alloc_info *info = bpf_map_lookup_elem(&allocs_ringbuf, &pid_tgid);
+    struct alloc_info *info = bpf_map_lookup_elem(&allocs_map, &pid_tgid);
     if (!info) {
         bpf_printk("alloc info not found for pid_tgid: %llu\n", pid_tgid);
         return 0;
@@ -102,9 +102,58 @@ int BPF_KRETPROBE(malloc_return, void *address) {
             // __sync_fetch_and_add(&stats->allocation_count, 1);
 
             info->address = (u64)address;
-            bpf_map_update_elem(&allocs_ringbuf, &address, info, BPF_ANY);
+            bpf_map_update_elem(&allocs_map, &address, info, BPF_ANY);
         }
     }
+
+    return 0;
+}
+SEC("uprobe//lib/x86_64-linux-gnu/libc.so.6:calloc")
+int calloc_entry(struct pt_regs *ctx) {
+    u64 size;
+    u32 pid = bpf_get_current_pid_tgid();
+    u64 pid_tgid = bpf_get_current_pid_tgid();
+
+    bpf_probe_read_user(&size, sizeof(size), (void *)&PT_REGS_PARM1(ctx));
+   // 更新统计信息
+    struct mem_stats *stats, zero_stats = {};
+    stats = bpf_map_lookup_elem(&stats_map, &pid);
+    if (!stats) {
+        bpf_map_update_elem(&stats_map, &pid, &zero_stats, BPF_ANY);
+        stats = bpf_map_lookup_elem(&stats_map, &pid);
+        if (!stats)
+            return 0;
+    }
+
+    // 记录请求的大小
+    struct alloc_info info = {
+        .size = size,
+    };
+    bpf_map_update_elem(&allocs_map, &pid_tgid, &info, BPF_ANY);
+    return 0;
+}
+
+SEC("uretprobe//lib/x86_64-linux-gnu/libc.so.6:calloc")
+int calloc_return(struct pt_regs *ctx) {
+    u32 pid = bpf_get_current_pid_tgid();
+    u64 pid_tgid = bpf_get_current_pid_tgid();
+
+    struct alloc_info *info = bpf_map_lookup_elem(&allocs_map, &pid_tgid);
+    if (!info) {
+        bpf_printk("alloc info not found for pid_tgid: %llu\n", pid_tgid);
+        return 0;
+    }
+
+    if (info->address) {
+        struct mem_stats *stats = bpf_map_lookup_elem(&stats_map, &pid);
+        if (stats) {
+            stats->total_freed += info->size;
+            stats->current_usage -= info->size;
+            stats->free_count += 1;
+        }
+    }
+
+    bpf_map_delete_elem(&allocs_map, &pid_tgid);
 
     return 0;
 }
@@ -119,7 +168,7 @@ int free_entry(struct pt_regs *ctx) {
     if (!address)
         return 0;
 
-    struct alloc_info *info = bpf_map_lookup_elem(&allocs_ringbuf, &address);
+    struct alloc_info *info = bpf_map_lookup_elem(&allocs_map, &address);
     if (!info)
         return 0;
 
@@ -133,7 +182,7 @@ int free_entry(struct pt_regs *ctx) {
         stats->free_count += 1;
     }
 
-    bpf_map_delete_elem(&allocs_ringbuf, &address);
+    bpf_map_delete_elem(&allocs_map, &address);
 
     return 0;
 }

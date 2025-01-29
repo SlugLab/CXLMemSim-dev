@@ -122,7 +122,7 @@ int CXLMemExpander::insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt
                 this->va_pa_map.emplace(virt_addr, phys_addr);
             } else {
                 this->va_pa_map[virt_addr] = phys_addr;
-                SPDLOG_INFO("virt:{} phys:{} conflict insertion detected\n", virt_addr, phys_addr);
+                SPDLOG_DEBUG("virt:{} phys:{} conflict insertion detected\n", virt_addr, phys_addr);
             }
             for (auto it = this->occupation.cbegin(); it != this->occupation.cend(); it++) {
                 if ((*it).second == phys_addr) {

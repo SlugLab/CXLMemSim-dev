@@ -128,28 +128,29 @@ int CXLController::insert(uint64_t timestamp, uint64_t tid, lbr lbrs[4], cntr co
     return 0;
 }
 int CXLController::insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr, int index) {
-    auto index_ = policy->compute_once(this);
-    if (index_ == -1) {
-        this->occupation.emplace(timestamp, phys_addr);
-        this->va_pa_map.emplace(virt_addr, phys_addr);
-        this->counter.inc_local();
-        return true;
-    } else {
-        this->counter.inc_remote();
-        for (auto switch_ : this->switches) {
-            auto res = switch_->insert(timestamp, phys_addr, virt_addr, index_);
-            if (res != 0) {
-                return res;
-            };
-        }
-        for (auto expander_ : this->expanders) {
-            auto res = expander_->insert(timestamp, phys_addr, virt_addr, index_);
-            if (res != 0) {
-                return res;
-            };
-        }
-        return false;
-    }
+    // auto index_ = policy->compute_once(this);
+    // if (index_ == -1) {
+    //     this->occupation.emplace(timestamp, phys_addr);
+    //     this->va_pa_map.emplace(virt_addr, phys_addr);
+    //     this->counter.inc_local();
+    //     return true;
+    // } else {
+    //     this->counter.inc_remote();
+    //     for (auto switch_ : this->switches) {
+    //         auto res = switch_->insert(timestamp, phys_addr, virt_addr, index_);
+    //         if (res != 0) {
+    //             return res;
+    //         };
+    //     }
+    //     for (auto expander_ : this->expanders) {
+    //         auto res = expander_->insert(timestamp, phys_addr, virt_addr, index_);
+    //         if (res != 0) {
+    //             return res;
+    //         };
+    //     }
+    //     return false;
+    // }
+    return true;
 }
 
 std::vector<std::string> CXLController::tokenize(const std::string_view &s) {

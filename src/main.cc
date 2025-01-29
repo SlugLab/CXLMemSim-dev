@@ -176,6 +176,7 @@ int main(int argc, char *argv[]) {
         SPDLOG_ERROR("Exec: failed to create target process");
         exit(1);
     }
+    // sleep(1);
     /** In case of process, use SIGSTOP. */
     if (auto res = monitors->enable(t_process, t_process, true, pebsperiod, tnum); res == -1) {
         SPDLOG_ERROR("Failed to enable monitor");
@@ -203,16 +204,11 @@ int main(int argc, char *argv[]) {
         helper.detect_model(monitors->mon[0].before->cpuinfo.cpu_model, pmu_name, pmu_config1, pmu_config2);
     PMUInfo pmu{t_process, &helper, &perf_config};
 
-    /*% Caculate epoch time */
-    timespec waittime{};
-    waittime.tv_sec = interval / 1000;
-    waittime.tv_nsec = (interval % 1000) * 1000000;
-
     SPDLOG_DEBUG("The target process starts running.");
-    SPDLOG_DEBUG("set nano sec = {}", waittime.tv_nsec);
     SPDLOG_TRACE("{}", *monitors);
     monitors->print_flag = false;
-
+    monitors->mon[0].wanted_delay.tv_sec = interval / 1000;
+    monitors->mon[0].wanted_delay.tv_nsec = (interval % 1000) * 1000000;
     /* read CHA params */
     for (const auto &mon : monitors->mon) {
         for (auto const &[idx, value] : pmu.chas | std::views::enumerate) {
@@ -224,10 +220,8 @@ int main(int argc, char *argv[]) {
     }
 
     uint32_t diff_nsec = 0;
-    struct timespec start_ts {
-    }, end_ts{};
-    struct timespec sleep_start_ts {
-    }, sleep_end_ts{};
+    struct timespec start_ts{}, end_ts{};
+    struct timespec sleep_start_ts{}, sleep_end_ts{};
 
     /** Wait all the target processes until emulation process initialized. */
     monitors->run_all(cur_processes);
@@ -236,29 +230,6 @@ int main(int argc, char *argv[]) {
     }
 
     while (true) {
-        /** Get from the CXLMemSimHook */
-        int n;
-        /** Here was a definition for the multi process and thread to enable multiple monitor */
-        timespec req = waittime;
-        timespec rem = {0};
-        while (true) {
-            auto ret = nanosleep(&req, &rem);
-            if (ret == 0) { // success
-                break;
-            }
-            if (errno == EINTR) {
-                // SPDLOG_INFO("nanosleep: remain time {}.{}(sec)", (long)rem.tv_sec, (long)rem.tv_nsec);
-                //  if the milisecs was set below 5, will trigger stop before the target process stop.
-                //  The pause has been interrupted by a signal that was delivered to the thread.
-                req = rem; // call nanosleep() again with the remain time.
-                break;
-            } else {
-                // fatal error
-                SPDLOG_ERROR("Failed to wait nanotime");
-                exit(0);
-            }
-        }
-
         uint64_t calibrated_delay;
         for (auto const &[i, mon] : monitors->mon | std::views::enumerate) {
             // check other process
@@ -348,11 +319,13 @@ int main(int argc, char *argv[]) {
                     .read_config = read_config,
                     .write_config = read_config,
                 };
-                emul_delay += std::lround(controller->calculate_latency(lat_pass));
-                emul_delay += controller->calculate_bandwidth(bw_pass);
-                emul_delay += std::get<0>(controller->calculate_congestion());
+                // emul_delay += std::lround(controller->calculate_latency(lat_pass));
+                // emul_delay += controller->calculate_bandwidth(bw_pass);
+                // emul_delay += std::get<0>(controller->calculate_congestion());
 
                 mon.before->pebs.total = mon.after->pebs.total;
+                mon.before->lbr.total = mon.after->lbr.total;
+                mon.before->bpftime.total = mon.after->bpftime.total;
 
                 SPDLOG_DEBUG("delay={}", emul_delay);
 
@@ -370,13 +343,16 @@ int main(int argc, char *argv[]) {
                 mon.injected_delay.tv_nsec += std::lround(calibrated_delay % 1000000000);
                 SPDLOG_DEBUG("[{}:{}:{}]delay:{} , total delay:{}", i, mon.tgid, mon.tid, calibrated_delay,
                              mon.total_delay);
-                struct timespec new_wanted = mon.wanted_delay.load();
-                emul_delay += new_wanted.tv_nsec;
-                new_wanted.tv_nsec = emul_delay % 1000000000;
-                new_wanted.tv_sec += emul_delay / 1000000000;
-                mon.wanted_delay.store(new_wanted);
 
-                SPDLOG_INFO("{}:{}", new_wanted.tv_sec, new_wanted.tv_nsec);
+                {
+                    std::lock_guard<std::mutex> lock(mon.wanted_delay_mutex);
+                    struct timespec new_wanted = mon.wanted_delay;
+                    new_wanted.tv_nsec += emul_delay;
+                    new_wanted.tv_sec += new_wanted.tv_nsec / 1000000000;
+                    new_wanted.tv_nsec = new_wanted.tv_nsec % 1000000000;
+                    mon.wanted_delay = new_wanted;
+                    SPDLOG_INFO("{}:{}", new_wanted.tv_sec, new_wanted.tv_nsec);
+                }
             }
             // SPDLOG_TRACE("{}", *monitors);
 

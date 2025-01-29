@@ -137,18 +137,29 @@ void Monitors::disable(const uint32_t target) {
         mon[target].pebs_ctx->mp = nullptr;
         mon[target].pebs_ctx->sample_period = 0;
     }
-    // if (mon[target].lbr_ctx != nullptr) {
-    //     mon[target].lbr_ctx->fd = -1;
-    //     mon[target].lbr_ctx->pid = -1;
-    //     mon[target].lbr_ctx->seq = 0;
-    //     mon[target].lbr_ctx->rdlen = 0;
-    //     mon[target].lbr_ctx->seq = 0;
-    //     mon[target].lbr_ctx->mp = nullptr;
-    //     mon[target].lbr_ctx->sample_period = 0;
-    // }
+    if (mon[target].lbr_ctx != nullptr) {
+        mon[target].lbr_ctx->fd = -1;
+        mon[target].lbr_ctx->pid = -1;
+        mon[target].lbr_ctx->seq = 0;
+        mon[target].lbr_ctx->rdlen = 0;
+        mon[target].lbr_ctx->seq = 0;
+        mon[target].lbr_ctx->mp = nullptr;
+        mon[target].lbr_ctx->sample_period = 0;
+    }
+    if (mon[target].bpftime_ctx != nullptr) {
+        mon[target].bpftime_ctx->tid = -1;
+    }
     for (auto &j : mon[target].elem) {
         j.pebs.total = 0;
         j.pebs.llcmiss = 0;
+        j.lbr.total = 0;
+        j.lbr.tid = 0;
+        j.lbr.time = 0;
+        j.bpftime.total = 0;
+        j.bpftime.va = 0;
+        j.bpftime.pa = 0;
+        j.bpftime.pid = 0;
+        j.bpftime.tid = 0;
     }
 }
 bool Monitors::check_all_terminated(const uint32_t processes) {
@@ -178,6 +189,8 @@ int Monitors::terminate(const uint32_t tgid, const uint32_t tid, const int32_t t
         target = i;
         /* pebs stop */
         delete mon[target].pebs_ctx;
+        delete mon[target].lbr_ctx;
+        delete mon[target].bpftime_ctx;
 
         /* Save end time */
         if (mon[target].end_exec_ts.tv_sec == 0 && mon[target].end_exec_ts.tv_nsec == 0) {
@@ -194,10 +207,8 @@ int Monitors::terminate(const uint32_t tgid, const uint32_t tid, const int32_t t
 
         std::cout << std::format("PEBS sample total {}\n", mon[target].before->pebs.total);
         std::cout << std::format("LBR sample total {}\n", mon[target].before->lbr.total);
-        std::cout << std::format("bpftime sample llcmiss {}\n", mon[target].before->bpftime.llcmiss);
+        std::cout << std::format("bpftime sample total {}\n", mon[target].before->bpftime.total);
 
-        /* init */
-        disable(target);
         break;
     }
 
@@ -236,6 +247,7 @@ void Monitor::stop() { // thread create and proecess create get the pmu
 }
 
 void Monitor::run() {
+    setuid(0);
     SPDLOG_DEBUG("Send SIGCONT to tid={}(tgid={})", this->tid, this->tgid);
     if (syscall(SYS_tgkill, this->tgid, this->tid, SIGCONT) == -1) {
         if (errno == ESRCH) {
@@ -248,9 +260,9 @@ void Monitor::run() {
             SPDLOG_ERROR("Failed to signal to any of the target processes. Due to does not have permission.  It "
                          "might have wrong result.");
         } else {
-            this->status = 10000;
+            this->status = MONITOR_UNKNOWN;
             perror("Failed to signal to any of the target processes");
-            SPDLOG_ERROR("I'm dying");
+            SPDLOG_ERROR("I'm dying{} {}", this->tgid, this->tid);
         }
     } else {
         this->status = MONITOR_ON;
@@ -320,15 +332,15 @@ void Monitor::wait(std::vector<Monitor> *mons, int target) {
     auto &mon = (*mons)[target];
     uint64_t diff_nsec, target_nsec;
     SPDLOG_ERROR("[{}:{}][OFF] total:", mon.tgid, mon.tid);
-    struct timespec start_ts {
-    }, end_ts{};
-    struct timespec sleep_target {};
+    struct timespec start_ts{}, end_ts{};
+    struct timespec sleep_target{};
+    // struct timespec wanted_delay;
     struct timespec wanted_delay;
-    struct timespec prev_wanted_delay = mon.wanted_delay.load();
+    struct timespec prev_wanted_delay = mon.wanted_delay;
     // while we're alive
     while ((mon.status == MONITOR_ON || mon.status == MONITOR_OFF)) {
         // figure out our delay
-        wanted_delay = mon.wanted_delay.load();
+        wanted_delay = mon.wanted_delay;
         sleep_target = start_ts + wanted_delay * prev_wanted_delay;
         target_nsec = wanted_delay - prev_wanted_delay;
 
@@ -350,8 +362,8 @@ void Monitor::wait(std::vector<Monitor> *mons, int target) {
         }
         mon.run();
         // keep track of how much we've delayed them for
-        // TODO: use the diff_nsec to help calculate the prev_wanted_delay, to avoid timing errors building up from over
-        // waiting
+        // TODO: use the diff_nsec to help calculate the prev_wanted_delay, to avoid timing errors building up from
+        // over waiting
         prev_wanted_delay = wanted_delay;
         // break;
     }
