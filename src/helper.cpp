@@ -35,6 +35,9 @@ struct ModelContext model_ctx[] = {{CPU_MDL_BDX,
                                     {
                                         "/sys/bus/event_source/devices/uncore_cbox_%u/type",
                                     }},
+                                    {CPU_MDL_ARL,{
+                                        "/sys/bus/event_source/devices/uncore_cbox_%u/type",
+                                    }},
                                    {CPU_MDL_END, {""}}};
 
 long perf_event_open(struct perf_event_attr *event_attr, pid_t pid, int cpu, int group_fd, unsigned long flags) {
@@ -79,7 +82,7 @@ double Helper::cpu_frequency() {
 PerfConfig Helper::detect_model(uint32_t model, const std::vector<std::string> &perf_name,
                                 const std::vector<uint64_t> &perf_conf1, const std::vector<uint64_t> &perf_conf2) {
     int i = 0;
-    SPDLOG_INFO("Detecting model...{}\n", model);
+    SPDLOG_INFO("Detecting model...{}", model);
     while (model_ctx[i].model != CPU_MDL_END) {
         if (model_ctx[i].model == model) {
             this->perf_conf = model_ctx[i].perf_conf;

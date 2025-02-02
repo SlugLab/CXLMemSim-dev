@@ -35,6 +35,7 @@ enum {
     CPU_MDL_SPR = 143,
     CPU_MDL_ADL = 151,
     CPU_MDL_LNL = 189,
+    CPU_MDL_ARL = 198,
     CPU_MDL_END = 0x0ffff
 };
 class Incore;
