@@ -170,6 +170,7 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
     if (t_process == 0) {
+        sleep(1);
         std::vector<const char *> envp;
         envp.push_back("LD_PRELOAD=/root/.bpftime/libbpftime-agent.so");
         envp.push_back(nullptr);
@@ -177,7 +178,6 @@ int main(int argc, char *argv[]) {
         SPDLOG_ERROR("Exec: failed to create target process");
         exit(1);
     }
-    // sleep(1);
     /** In case of process, use SIGSTOP. */
     if (auto res = monitors->enable(t_process, t_process, true, pebsperiod, tnum); res == -1) {
         SPDLOG_ERROR("Failed to enable monitor");
@@ -208,8 +208,7 @@ int main(int argc, char *argv[]) {
     SPDLOG_DEBUG("The target process starts running.");
     SPDLOG_TRACE("{}", *monitors);
     monitors->print_flag = false;
-    monitors->mon[0].wanted_delay.tv_sec = interval / 1000;
-    monitors->mon[0].wanted_delay.tv_nsec = (interval % 1000) * 1000000;
+    
     /* read CHA params */
     for (const auto &mon : monitors->mon) {
         for (auto const &[idx, value] : pmu.chas | std::views::enumerate) {
@@ -281,7 +280,7 @@ int main(int argc, char *argv[]) {
 
                 clflush = cha_vec[0];
                 target_l2miss = cha_vec[2];
-                SPDLOG_INFO("[{}:{}:{}] LLC_WB = {}", i, mon.tgid, mon.tid, wb_cnt);
+                SPDLOG_DEBUG("[{}:{}:{}] LLC_WB = {}", i, mon.tgid, mon.tid, wb_cnt);
 
                 uint64_t llcmiss_wb = 0;
                 // To estimate the number of the writeback-involving LLC
@@ -334,7 +333,7 @@ int main(int argc, char *argv[]) {
                 /* compensation of delay END(1) */
                 clock_gettime(CLOCK_MONOTONIC, &end_ts);
                 diff_nsec += (end_ts.tv_sec - start_ts.tv_sec) * 1000000000 + (end_ts.tv_nsec - start_ts.tv_nsec);
-                SPDLOG_DEBUG("dif:{}", diff_nsec);
+                SPDLOG_DEBUG("diff_nsec:{}", diff_nsec);
 
                 calibrated_delay = (diff_nsec > emul_delay) ? 0 : emul_delay - diff_nsec;
                 mon.total_delay += (double)calibrated_delay / 1000000000;
@@ -353,7 +352,7 @@ int main(int argc, char *argv[]) {
                     new_wanted.tv_sec += new_wanted.tv_nsec / 1000000000;
                     new_wanted.tv_nsec = new_wanted.tv_nsec % 1000000000;
                     mon.wanted_delay = new_wanted;
-                    SPDLOG_INFO("{}:{}", new_wanted.tv_sec, new_wanted.tv_nsec);
+                    SPDLOG_DEBUG("{}:{}", new_wanted.tv_sec, new_wanted.tv_nsec);
                     SPDLOG_TRACE("{}", *monitors);
                 }
             }

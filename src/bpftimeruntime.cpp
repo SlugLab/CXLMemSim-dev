@@ -39,7 +39,6 @@ BpfTimeRuntime::BpfTimeRuntime(pid_t tid, std::string program_location) : tid(ti
 BpfTimeRuntime::~BpfTimeRuntime() { bpftime_remove_global_shm(); }
 
 int BpfTimeRuntime::read(CXLController *controller, BPFTimeRuntimeElem *elem) {
-    auto item = bpftime_map_lookup_elem(10, &tid); // thread map
     mem_stats stats;
     alloc_info alloc_info1;
     proc_info proc_info1;

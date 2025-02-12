@@ -84,8 +84,8 @@ std::string CXLController::output() {
 }
 
 void CXLController::set_stats(mem_stats stats) {
-    SPDLOG_INFO("stats: {} {} {} {} {}", stats.total_allocated, stats.total_freed, stats.current_usage,
-                stats.allocation_count, stats.free_count);
+    // SPDLOG_INFO("stats: {} {} {} {} {}", stats.total_allocated, stats.total_freed, stats.current_usage,
+                // stats.allocation_count, stats.free_count);
     if (stats.total_allocated < 100000000000) {
         for (auto switch_ : this->switches) {
             // switch_->set_stats(stats);

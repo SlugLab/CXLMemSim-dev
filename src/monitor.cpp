@@ -173,6 +173,7 @@ bool Monitors::check_all_terminated(const uint32_t processes) {
                 exit(1);
             }
         }
+        SPDLOG_INFO("mon[i].status {}",mon[i].status);
     }
     return _terminated;
 }
@@ -246,15 +247,17 @@ void Monitor::stop() { // thread create and proecess create get the pmu
     }
 }
 
-void Monitor::run() {
+void Monitor::run() {   
     setuid(0);
-    SPDLOG_DEBUG("Send SIGCONT to tid={}(tgid={})", this->tid, this->tgid);
+    // SPDLOG_INFO("Send SIGCONT to tid={}(tgid={})", this->tid, this->tgid);
+    // usleep(10);
+
     if (syscall(SYS_tgkill, this->tgid, this->tid, SIGCONT) == -1) {
         if (errno == ESRCH) {
             // in this case process or process group does not exist.
             // It might be a zombie or has terminated execution.
             this->status = MONITOR_TERMINATED;
-            SPDLOG_DEBUG("Process [{}:{}] is terminated.", this->tgid, this->tid);
+            SPDLOG_INFO("Process [{}:{}] is terminated.", this->tgid, this->tid);
         } else if (errno == EPERM) {
             this->status = MONITOR_NOPERMISSION;
             SPDLOG_ERROR("Failed to signal to any of the target processes. Due to does not have permission.  It "
@@ -266,7 +269,7 @@ void Monitor::run() {
         }
     } else {
         this->status = MONITOR_ON;
-        SPDLOG_DEBUG("Process [{}:{}] is running.", this->tgid, this->tid);
+        SPDLOG_INFO("Process [{}:{}] {} is running.", this->tgid, this->tid, this->status);
     }
 }
 
