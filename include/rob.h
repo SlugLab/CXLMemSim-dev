@@ -18,13 +18,24 @@
 #include <vector>
 #include "cxlcontroller.h"
 
+// Structure holding the minimal info we want.
+struct InstructionGroup {
+    unsigned long long address;  // optional
+    unsigned long long cycleCount = 0;
+    unsigned long long fetchTimestamp = 0;
+    unsigned long long retireTimestamp = 0;
+    std::string instruction; // combined opcode and text
+};
+
 class Rob {
     public:
         Rob();
         ~Rob();
         void add_request(uint64_t addr, bool is_write);
         void evict_lru();
-        CXLMemController *controller;
+        void issue(InstructionGroup ins);
+        CXLController *controller;
+
         std::deque<uint64_t> lru;
         std::unordered_map<uint64_t, uint64_t> addr_to_lru_idx;
         std::unordered_map<uint64_t, uint64_t> lru_idx_to_addr;

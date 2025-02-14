@@ -34,7 +34,6 @@ int main(int argc, char *argv[]) {
     options.add_options()("t,target", "The script file to execute",
                           cxxopts::value<std::string>()->default_value("./microbench/malloc"))(
         "h,help", "Help for CXLMemSim", cxxopts::value<bool>()->default_value("false"))(
-        "i,interval", "The value for epoch value", cxxopts::value<int>()->default_value("1"))(
         "s,source", "Collection Phase or Validation Phase", cxxopts::value<bool>()->default_value("false"))(
         "c,cpuset", "The CPUSET for CPU to set affinity on and only run the target process on those CPUs",
         cxxopts::value<std::vector<int>>()->default_value("0"))("d,dramlatency", "The current platform's dram latency",
@@ -69,7 +68,6 @@ int main(int argc, char *argv[]) {
         exit(0);
     }
     auto target = result["target"].as<std::string>();
-    auto interval = result["interval"].as<int>();
     auto cpuset = result["cpuset"].as<std::vector<int>>();
     auto pebsperiod = result["pebsperiod"].as<int>();
     auto latency = result["latency"].as<std::vector<int>>();
@@ -111,7 +109,7 @@ int main(int argc, char *argv[]) {
     auto cur_processes = 0;
     auto ncpu = helper.num_of_cpu();
     auto ncha = helper.num_of_cha();
-    SPDLOG_DEBUG("tnum:{}, intrval:{}", tnum, interval);
+    SPDLOG_DEBUG("tnum:{}", tnum);
     for (auto const &[idx, value] : weight | std::views::enumerate) {
         SPDLOG_DEBUG("weight[{}]:{}", weight_vec[idx], value);
     }
@@ -119,7 +117,7 @@ int main(int argc, char *argv[]) {
     for (auto const &[idx, value] : capacity | std::views::enumerate) {
         if (idx == 0) {
             SPDLOG_DEBUG("local_memory_region capacity:{}", value);
-            controller = new CXLController(policy, capacity[0], mode, interval);
+            controller = new CXLController(policy, capacity[0], mode, 100);
         } else {
             SPDLOG_DEBUG("memory_region:{}", (idx - 1) + 1);
             SPDLOG_DEBUG(" capacity:{}", capacity[(idx - 1) + 1]);
