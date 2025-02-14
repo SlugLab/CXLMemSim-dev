@@ -47,6 +47,13 @@ public:
     // paging related
 };
 
+class CachingPolicy {
+public:
+    CachingPolicy();
+    virtual int compute_once(CXLController *) = 0; // reader writer
+    // paging related
+};
+
 class CXLController : public CXLSwitch {
 public:
     std::vector<CXLMemExpander *> cur_expanders{};
@@ -58,6 +65,7 @@ public:
     page_type page_type_; // percentage
     int num_switches = 0;
     // Monitors<M> *monitors;
+    std::map<uint64_t, uint64_t> cache;
 
     CXLController(AllocationPolicy *p, int capacity, page_type page_type_, int epoch);
     void construct_topo(std::string_view newick_tree);

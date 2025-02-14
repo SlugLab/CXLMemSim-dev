@@ -33,8 +33,8 @@ double CXLMemExpander::calculate_latency(LatencyPass lat) {
     if (all_write != 0) {
         write_sample = ((double)last_write / all_write);
     }
-    uint64_t mastall_wb = 0;
-    uint64_t mastall_ro = 0;
+    // uint64_t mastall_wb = 0;
+    // uint64_t mastall_ro = 0;
     /**     If both target_llchits and target_llcmiss are 0, it means that hit in L2.
      *     Stall by LLC misses is 0.
      *     choose by vector */
@@ -48,8 +48,8 @@ double CXLMemExpander::calculate_latency(LatencyPass lat) {
     // SPDLOG_DEBUG("l2stall={}, mastall_wb={}, mastall_ro={}, target_llchits={}, target_llcmiss={}\n", target_l2stall,
     //              mastall_wb, mastall_ro, target_llchits, target_llcmiss);
 
-    auto writeback = (double)mastall_wb / dramlatency;
-    auto readonly = (double)mastall_ro / dramlatency;
+    // auto writeback = (double)mastall_wb / dramlatency;
+    // auto readonly = (double)mastall_ro / dramlatency;
     this->last_latency =
         ma_ro * read_sample * (latency.read - dramlatency) + ma_wb * write_sample * (latency.write - dramlatency);
     return this->last_latency;

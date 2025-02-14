@@ -56,9 +56,9 @@ CXLController::CXLController(AllocationPolicy *p, int capacity, enum page_type p
     // deferentiate R/W for multireader multi writer
 }
 
-double CXLController::calculate_latency(LatencyPass elem) { return CXLSwitch::calculate_latency(elem) * 1000; }
+double CXLController::calculate_latency(LatencyPass elem) { return CXLSwitch::calculate_latency(elem); }
 
-double CXLController::calculate_bandwidth(BandwidthPass elem) { return CXLSwitch::calculate_bandwidth(elem) * 1000; }
+double CXLController::calculate_bandwidth(BandwidthPass elem) { return CXLSwitch::calculate_bandwidth(elem); }
 
 std::string CXLController::output() {
     std::string res;
@@ -85,13 +85,13 @@ std::string CXLController::output() {
 
 void CXLController::set_stats(mem_stats stats) {
     // SPDLOG_INFO("stats: {} {} {} {} {}", stats.total_allocated, stats.total_freed, stats.current_usage,
-                // stats.allocation_count, stats.free_count);
+    // stats.allocation_count, stats.free_count);
     if (stats.total_allocated < 100000000000) {
         for (auto switch_ : this->switches) {
-            // switch_->set_stats(stats);
+            switch_->set_stats(stats);
         }
         for (auto expander_ : this->expanders) {
-            // expander_->set_stats(stats);
+            expander_->set_stats(stats);
         }
     }
     // TODO: topology map
@@ -100,10 +100,10 @@ void CXLController::set_stats(mem_stats stats) {
 void CXLController::set_alloc_info(alloc_info alloc_info) {
     if (alloc_info.size < 100000000000) {
         for (auto switch_ : this->switches) {
-            // switch_->set_alloc_info(stats);
+            switch_->set_alloc_info(alloc_info);
         }
         for (auto expander_ : this->expanders) {
-            // expander_->set_alloc_info(stats);
+            expander_->set_alloc_info(alloc_info);
         }
     }
 }
@@ -128,28 +128,28 @@ int CXLController::insert(uint64_t timestamp, uint64_t tid, lbr lbrs[4], cntr co
     return 0;
 }
 int CXLController::insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr, int index) {
-    // auto index_ = policy->compute_once(this);
-    // if (index_ == -1) {
-    //     this->occupation.emplace(timestamp, phys_addr);
-    //     this->va_pa_map.emplace(virt_addr, phys_addr);
-    //     this->counter.inc_local();
-    //     return true;
-    // } else {
-    //     this->counter.inc_remote();
-    //     for (auto switch_ : this->switches) {
-    //         auto res = switch_->insert(timestamp, phys_addr, virt_addr, index_);
-    //         if (res != 0) {
-    //             return res;
-    //         };
-    //     }
-    //     for (auto expander_ : this->expanders) {
-    //         auto res = expander_->insert(timestamp, phys_addr, virt_addr, index_);
-    //         if (res != 0) {
-    //             return res;
-    //         };
-    //     }
-    //     return false;
-    // }
+    auto index_ = policy->compute_once(this);
+    if (index_ == -1) {
+        this->occupation.emplace(timestamp, phys_addr);
+        this->va_pa_map.emplace(virt_addr, phys_addr);
+        this->counter.inc_local();
+        return true;
+    } else {
+        this->counter.inc_remote();
+        for (auto switch_ : this->switches) {
+            auto res = switch_->insert(timestamp, phys_addr, virt_addr, index_);
+            if (res != 0) {
+                return res;
+            };
+        }
+        for (auto expander_ : this->expanders) {
+            auto res = expander_->insert(timestamp, phys_addr, virt_addr, index_);
+            if (res != 0) {
+                return res;
+            };
+        }
+        return false;
+    }
     return true;
 }
 
@@ -176,6 +176,6 @@ std::tuple<double, std::vector<uint64_t>> CXLController::calculate_congestion() 
     return CXLSwitch::calculate_congestion();
 }
 void CXLController::set_epoch(int epoch) { CXLSwitch::set_epoch(epoch); }
-// TODO: impl me
 MigrationPolicy::MigrationPolicy() {}
 PagingPolicy::PagingPolicy() {}
+CachingPolicy::CachingPolicy() {}

@@ -14,9 +14,6 @@
 
 #include "cxlcontroller.h"
 #include <deque>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
 
 // Structure holding the minimal info we want.
 struct InstructionGroup {
@@ -29,35 +26,27 @@ struct InstructionGroup {
 
 class Rob {
 public:
-    explicit Rob(CXLController *controller, size_t max_size);
-    ~Rob();
+    explicit Rob(CXLController *controller, size_t size = 256, uint64_t cycle = 1687)
+        : controller_(controller), maxSize_(size), stallCount_(0), currentCycle_(cycle) {}
 
-    // Issue a new instruction. Returns true if issued, false if stalled (because full).
-    bool issue(const InstructionGroup &ins);
-
-    // Retire the oldest instruction. (In real usage, you'd call this when the 
-    // oldest instruction is actually completed; you can also just pop it to simulate.)
-    void retire();
-
-    // For demonstration, evict the LRU or oldest entry.
-    void evict_lru();
-
-    // The total number of stalls due to a full ROB
-    size_t stall_count() const { return stallCount_; }
-
-private:
-    // If you want to track requests, address mapping, etc.
-    // For now, we just maintain a queue of InstructionGroup.
-    std::deque<InstructionGroup> queue_;
-
-    // Max size of the ROB
-    size_t maxSize_;
-
-    // The CXL controller pointer, used to update topology when we issue an instruction
+    // 基本属性
     CXLController *controller_;
+    const size_t maxSize_;
+    std::deque<InstructionGroup> queue_; // ROB队列
+    uint64_t stallCount_ = 0; // 停顿计数
+    mutable uint64_t cur_latency = 0;
+    uint64_t totalLatency_ = 0;
+    uint64_t currentCycle_ = 0; // 当前周期
+    // 主要方法
+    bool issue(const InstructionGroup &ins);
+    bool canRetire(const InstructionGroup &ins);
+    void retire();
+    void tick(); // 新增:时钟周期推进
 
-    // Count how many times we stall because the ROB is full
-    size_t stallCount_ = 0;
+    // 性能统计
+    uint64_t getStallCount() const { return stallCount_; }
+    uint64_t getCurrentCycle() const { return currentCycle_; }
+    double getAverageLatency() const { return queue_.empty() ? 0 : static_cast<double>(totalLatency_) / queue_.size(); }
 };
 
 #endif // CXLMEMSIM_ROB_H

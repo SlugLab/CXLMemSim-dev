@@ -7,52 +7,71 @@
 #include <spdlog/cfg/env.h>
 #include <sstream>
 
-Rob::Rob(CXLController *controller, size_t max_size) : controller_(controller), maxSize_(max_size) {}
-
-Rob::~Rob() { controller_ = nullptr; }
-
-// Issue a new instruction (like dispatch/insert into the ROB).
-// If full, we stall and return false.
+// 发射指令到ROB
 bool Rob::issue(const InstructionGroup &ins) {
     if (queue_.size() >= maxSize_) {
-        // Stall
         stallCount_++;
-        // No new instruction is added to the ROB
-        return false;
+        return false; // ROB已满,停顿
     }
-    // There's space; push the instruction to the tail.
+
+    // 将指令加入ROB尾部
     queue_.push_back(ins);
 
-    // Call into the controller to update its topology regarding this new instruction.
-    // For example, if you have a method named insert(...), or update(...):
-    // (Adjust accordingly to match your actual function)
+    // 对于内存访问指令,通知控制器
     if (ins.address != 0) {
-        // For instance: controller_->insert(ins.retireTimestamp, 0, ins.address, ins.instruction);
-        // or a separate method in the controller: controller_->update_topology(ins.address);
-        controller_->insert(ins.retireTimestamp, 0, ins.address, 0 /*some index*/);
+        controller_->insert(ins.retireTimestamp, 0, ins.address, 0);
     }
 
     return true;
 }
 
-// Retire the oldest instruction. In a real pipeline, you'd check if the
-// oldest instruction is complete. Here, we just pop from the front.
-void Rob::retire() {
-    if (!queue_.empty()) {
-        // In-order commit: remove the oldest instruction from the head
-        queue_.pop_front();
-        if (queue_.front().address != 0) {
-            auto all_access = controller_->get_all_access();
-            // Stall
-            stallCount_ += controller_->calculate_latency(LatencyPass{all_access, 80}) - 1;
-        }
+// 检查指令是否可以提交
+bool Rob::canRetire(const InstructionGroup &ins) {
+    if (ins.address == 0) {
+        return true; // 非内存指令可以直接提交
     }
+
+    // 检查内存访问是否完成
+    if (cur_latency == 0) {
+        auto allAccess = controller_->get_all_access();
+        cur_latency = controller_->calculate_latency(LatencyPass{allAccess, 80, 1, 1});
+    }
+    if ((currentCycle_ - ins.cycleCount) >= cur_latency) {
+        cur_latency = 0;
+        return true;
+    }
+    return false;
 }
 
-// Evict the LRU, which in this simplified version is the same as retire the oldest
-// if you want separate logic, you can keep it separate. For now, let's just retire() or pop_front()
-void Rob::evict_lru() { retire(); }
+// 提交最老的指令
+void Rob::retire() {
+    if (queue_.empty()) {
+        return;
+    }
 
+    auto &oldestIns = queue_.front();
+    if (!canRetire(oldestIns)) {
+        stallCount_++; // 无法提交,增加停顿
+        return;
+    }
+
+    // 计算这条指令的实际延迟
+    if (oldestIns.address != 0) {
+        auto allAccess = controller_->get_all_access();
+        uint64_t latency = controller_->calculate_latency(LatencyPass{allAccess, 80, 1, 1}); // also delete the latency
+        totalLatency_ += latency;
+    }
+
+    // 提交指令
+    queue_.pop_front();
+}
+
+// 时钟周期推进
+void Rob::tick() {
+    currentCycle_++;
+    // 尝试提交指令
+    retire();
+}
 Helper helper{};
 CXLController *controller;
 Monitors *monitors;
@@ -180,7 +199,7 @@ int main(int argc, char *argv[]) {
         cxxopts::value<std::string>()->default_value("(1,(2,3))"))(
         "e,capacity", "The capacity vector of the CXL memory expander with the first local",
         cxxopts::value<std::vector<int>>()->default_value("0,20,20,20"))(
-        "m,mode", "Page mode or cacheline mode", cxxopts::value<std::string>()->default_value("p"))(
+        "m,mode", "Page mode or cacheline mode", cxxopts::value<std::string>()->default_value("cacheline"))(
         "f,frequency", "The frequency for the running thread", cxxopts::value<double>()->default_value("4000"))(
         "l,latency", "The simulated latency by epoch based calculation for injected latency",
         cxxopts::value<std::vector<int>>()->default_value("100,150,100,150,100,150"))(
@@ -194,6 +213,10 @@ int main(int argc, char *argv[]) {
     }
     auto target = result["target"].as<std::string>();
     auto capacity = result["capacity"].as<std::vector<int>>();
+    auto latency = result["latency"].as<std::vector<int>>();
+    auto bandwidth = result["bandwidth"].as<std::vector<int>>();
+    auto frequency = result["frequency"].as<double>();
+    auto topology = result["topology"].as<std::string>();
     enum page_type mode;
     if (result["mode"].as<std::string>() == "hugepage_2M") {
         mode = page_type::HUGEPAGE_2M;
@@ -207,12 +230,31 @@ int main(int argc, char *argv[]) {
     auto *policy = new InterleavePolicy();
 
     controller = new CXLController(policy, capacity[0], mode, 100);
+
+    for (auto const &[idx, value] : capacity | std::views::enumerate) {
+        if (idx == 0) {
+            SPDLOG_DEBUG("local_memory_region capacity:{}", value);
+            controller = new CXLController(policy, capacity[0], mode, 100);
+        } else {
+            SPDLOG_DEBUG("memory_region:{}", (idx - 1) + 1);
+            SPDLOG_DEBUG(" capacity:{}", capacity[(idx - 1) + 1]);
+            SPDLOG_DEBUG(" read_latency:{}", latency[(idx - 1) * 2]);
+            SPDLOG_DEBUG(" write_latency:{}", latency[(idx - 1) * 2 + 1]);
+            SPDLOG_DEBUG(" read_bandwidth:{}", bandwidth[(idx - 1) * 2]);
+            SPDLOG_DEBUG(" write_bandwidth:{}", bandwidth[(idx - 1) * 2 + 1]);
+            auto *ep = new CXLMemExpander(bandwidth[(idx - 1) * 2], bandwidth[(idx - 1) * 2 + 1],
+                                          latency[(idx - 1) * 2], latency[(idx - 1) * 2 + 1], (idx - 1), capacity[idx]);
+            controller->insert_end_point(ep);
+        }
+    }
+    controller->construct_topo(topology);
+    SPDLOG_INFO("{}", controller->output());
     Rob rob(controller, 512);
 
     // read from file
     std::ifstream file(target);
     if (!file) {
-        std::cerr << "Failed to open /trace.txt\n";
+        std::cerr << "Failed to open " << target << std::endl;
         return 1;
     }
 
@@ -249,22 +291,22 @@ int main(int argc, char *argv[]) {
     std::sort(instructions.begin(), instructions.end(),
               [](InstructionGroup &a, InstructionGroup &b) { return a.cycleCount < b.cycleCount; });
     // Now simulate issuing them into the ROB
-    for (auto &instruction : instructions) {
-        // If the ROB is full, we must stall until retire frees up space.
-        // In a real simulation, you'd do this by cycle, but here's a simple approach:
-        while (!rob.issue(instruction)) {
-            // The pipeline is stalled; we can pretend an instruction might retire
-            // each stall cycle. In real usage, you'd have more logic to see which
-            // instruction is done. For the sake of example, let's retire 1 instruction:
-            rob.retire();
+    for (const auto &instruction : instructions) {
+        bool issued = false;
+        while (!issued) {
+            issued = rob.issue(instruction);
+            if (!issued) {
+                rob.tick(); // 如果无法发射,推进时钟直到有空间
+            }
         }
+        rob.tick(); // 正常推进时钟
     }
 
-    // Optionally evict/retire anything left in the ROB
-    while (/* some condition to retire the rest */ false) {
-        rob.retire();
+    // 清空ROB
+    while (!rob.queue_.empty()) {
+        rob.tick();
     }
     // After processing all groups, call your ROB method.
-    rob.evict_lru();
+    std::cout << "Stalls: " << rob.getStallCount() << std::endl;
     return 0;
 }
