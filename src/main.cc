@@ -30,7 +30,7 @@ CXLController *controller;
 Monitors *monitors;
 int main(int argc, char *argv[]) {
     spdlog::cfg::load_env_levels();
-    cxxopts::Options options("CXLMemSim", "For simulation of CXL.mem Type 3 on Sapphire Rapids");
+    cxxopts::Options options("CXLMemSim", "For simulation of CXL.mem Type 3 on Xeon 6");
     options.add_options()("t,target", "The script file to execute",
                           cxxopts::value<std::string>()->default_value("./microbench/malloc"))(
         "h,help", "Help for CXLMemSim", cxxopts::value<bool>()->default_value("false"))(
@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
         "m,mode", "Page mode or cacheline mode", cxxopts::value<std::string>()->default_value("p"))(
         "o,topology", "The newick tree input for the CXL memory expander topology",
         cxxopts::value<std::string>()->default_value("(1,(2,3))"))(
-        "e,capacity", "The capacity vector of the CXL memory expander with the firsgt local",
+        "e,capacity", "The capacity vector of the CXL memory expander with the first local",
         cxxopts::value<std::vector<int>>()->default_value("0,20,20,20"))(
         "f,frequency", "The frequency for the running thread", cxxopts::value<double>()->default_value("4000"))(
         "l,latency", "The simulated latency by epoch based calculation for injected latency",
@@ -206,7 +206,7 @@ int main(int argc, char *argv[]) {
     SPDLOG_DEBUG("The target process starts running.");
     SPDLOG_TRACE("{}", *monitors);
     monitors->print_flag = false;
-    
+
     /* read CHA params */
     for (const auto &mon : monitors->mon) {
         for (auto const &[idx, value] : pmu.chas | std::views::enumerate) {
