@@ -35,15 +35,15 @@ void CXLController::construct_topo(std::string_view newick_tree) {
                 throw std::invalid_argument("Unbalanced number of parentheses");
             }
         } else if (token == ",") {
-            continue;
         } else {
             stk.back()->expanders.emplace_back(this->cur_expanders[atoi(token.c_str()) - 1]);
+            num_end_points++;
         }
     }
 }
 
-CXLController::CXLController(AllocationPolicy *p, int capacity, enum page_type page_type_, int epoch)
-    : CXLSwitch(0), capacity(capacity), policy(p), page_type_(static_cast<page_type>(page_type_)) {
+CXLController::CXLController(AllocationPolicy *p, int capacity, page_type page_type_, int epoch)
+    : CXLSwitch(0), capacity(capacity), policy(p), page_type_(page_type_) {
     for (auto switch_ : this->switches) {
         switch_->set_epoch(epoch);
     }
@@ -52,8 +52,9 @@ CXLController::CXLController(AllocationPolicy *p, int capacity, enum page_type p
     }
     // TODO get LRU wb
     // TODO BW type series
-
-    // deferentiate R/W for multireader multi writer
+    // TODO cache
+    // TODO back invalidation
+    // deferentiate R/W for multi reader multi writer
 }
 
 double CXLController::calculate_latency(LatencyPass elem) { return CXLSwitch::calculate_latency(elem); }
@@ -88,24 +89,14 @@ void CXLController::set_stats(mem_stats stats) {
     // stats.allocation_count, stats.free_count);
     if (stats.total_allocated < 100000000000) {
         for (auto switch_ : this->switches) {
-            switch_->set_stats(stats);
+            switch_->free_stats((stats.total_freed - this->freed) / num_end_points);
         }
         for (auto expander_ : this->expanders) {
-            expander_->set_stats(stats);
+            expander_->free_stats((stats.total_freed - this->freed) / num_end_points);
         }
     }
-    // TODO: topology map
-}
-
-void CXLController::set_alloc_info(alloc_info alloc_info) {
-    if (alloc_info.size < 100000000000) {
-        for (auto switch_ : this->switches) {
-            switch_->set_alloc_info(alloc_info);
-        }
-        for (auto expander_ : this->expanders) {
-            expander_->set_alloc_info(alloc_info);
-        }
-    }
+    if (stats.total_freed > this->freed)
+        this->freed = stats.total_freed;
 }
 
 void CXLController::set_process_info(proc_info process_info) {
@@ -150,7 +141,6 @@ int CXLController::insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_
         }
         return false;
     }
-    return true;
 }
 
 std::vector<std::string> CXLController::tokenize(const std::string_view &s) {

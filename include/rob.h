@@ -27,7 +27,7 @@ struct InstructionGroup {
 class Rob {
 public:
     explicit Rob(CXLController *controller, size_t size = 256, uint64_t cycle = 1687)
-        : controller_(controller), maxSize_(size), stallCount_(0), currentCycle_(cycle) {}
+        : controller_(controller), maxSize_(size), currentCycle_(cycle) {}
 
     // 基本属性
     CXLController *controller_;

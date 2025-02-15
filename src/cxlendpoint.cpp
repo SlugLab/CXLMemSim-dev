@@ -33,23 +33,6 @@ double CXLMemExpander::calculate_latency(LatencyPass lat) {
     if (all_write != 0) {
         write_sample = ((double)last_write / all_write);
     }
-    // uint64_t mastall_wb = 0;
-    // uint64_t mastall_ro = 0;
-    /**     If both target_llchits and target_llcmiss are 0, it means that hit in L2.
-     *     Stall by LLC misses is 0.
-     *     choose by vector */
-
-    // mastall_wb = (double)(target_l2stall / frequency) *
-    //              ((double)(weight * llcmiss_wb) / (double)(target_llchits + (weight * target_llcmiss))) * 1000;
-    // // weight is a delay specific value current pro
-    // mastall_ro = (double)(target_l2stall / frequency) *
-    //              ((double)(weight * llcmiss_ro) / (double)(target_llchits + (weight * target_llcmiss))) *
-    //              1000; // weight is a delay specific value
-    // SPDLOG_DEBUG("l2stall={}, mastall_wb={}, mastall_ro={}, target_llchits={}, target_llcmiss={}\n", target_l2stall,
-    //              mastall_wb, mastall_ro, target_llchits, target_llcmiss);
-
-    // auto writeback = (double)mastall_wb / dramlatency;
-    // auto readonly = (double)mastall_ro / dramlatency;
     this->last_latency =
         ma_ro * read_sample * (latency.read - dramlatency) + ma_wb * write_sample * (latency.write - dramlatency);
     return this->last_latency;
@@ -92,7 +75,7 @@ void CXLMemExpander::delete_entry(uint64_t addr, uint64_t length) {
                 if (it->second == addr) {
                     it = occupation.erase(it);
                 } else {
-                    it++;
+                    ++it;
                 }
             }
             it1 = va_pa_map.erase(it1);
@@ -105,7 +88,7 @@ void CXLMemExpander::delete_entry(uint64_t addr, uint64_t length) {
             if (it->second == addr) {
                 it = occupation.erase(it);
             } else {
-                it++;
+                ++it;
             }
         }
         this->counter.inc_load();
@@ -135,24 +118,21 @@ int CXLMemExpander::insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt
             this->occupation.emplace(timestamp, phys_addr);
             this->counter.inc_store();
             return 1;
-        } else { // kernel mode access
-            for (auto it = this->occupation.cbegin(); it != this->occupation.cend(); it++) {
-                if ((*it).second == virt_addr) {
-                    this->occupation.erase(it);
-                    this->occupation.emplace(timestamp, virt_addr);
-                    this->counter.inc_load();
-                    return 2;
-                }
+        } // kernel mode access
+        for (auto it = this->occupation.cbegin(); it != this->occupation.cend(); it++) {
+            if ((*it).second == virt_addr) {
+                this->occupation.erase(it);
+                this->occupation.emplace(timestamp, virt_addr);
+                this->counter.inc_load();
+                return 2;
             }
-
-            this->occupation.emplace(timestamp, virt_addr);
-            this->counter.inc_store();
-            return 1;
         }
 
-    } else {
-        return 0;
+        this->occupation.emplace(timestamp, virt_addr);
+        this->counter.inc_store();
+        return 1;
     }
+    return 0;
 }
 std::string CXLMemExpander::output() { return std::format("CXLMemExpander {}", this->id); }
 std::tuple<int, int> CXLMemExpander::get_all_access() {
@@ -222,12 +202,14 @@ int CXLSwitch::insert(uint64_t timestamp, uint64_t tid, struct lbr *lbrs, struct
         int ret = expander->insert(timestamp, tid, lbrs, counters);
         if (ret != 0) {
             // 如果需要，执行相应的 load/store 计数
+            this->counter.inc_load();
             return ret;
         }
     }
     for (auto &sw : this->switches) {
         int ret = sw->insert(timestamp, tid, lbrs, counters);
         if (ret != 0) {
+            this->counter.inc_load();
             return ret;
         }
     }

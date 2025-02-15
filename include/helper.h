@@ -36,6 +36,7 @@ enum {
     CPU_MDL_ADL = 151,
     CPU_MDL_LNL = 189,
     CPU_MDL_ARL = 198,
+    CPU_MDL_SRF = 201,
     CPU_MDL_END = 0x0ffff
 };
 class Incore;
@@ -111,12 +112,12 @@ struct CPUInfo {
 };
 
 struct Elem {
-    struct CPUInfo cpuinfo;
+    CPUInfo cpuinfo;
     std::vector<CHAElem> chas;
     std::vector<CPUElem> cpus;
-    struct PEBSElem pebs;
-    struct LBRElem lbr;
-    struct BPFTimeRuntimeElem bpftime;
+    PEBSElem pebs;
+    LBRElem lbr;
+    BPFTimeRuntimeElem bpftime;
 };
 
 class PMUInfo {
@@ -124,7 +125,7 @@ public:
     std::vector<Uncore> chas;
     std::vector<Incore> cpus;
     Helper *helper;
-    PMUInfo(pid_t pid, Helper *h, struct PerfConfig *perf_config);
+    PMUInfo(pid_t pid, Helper *h, PerfConfig *perf_config);
     ~PMUInfo();
     int start_all_pmcs();
     int stop_all_pmcs();
@@ -136,6 +137,7 @@ class Helper {
 public:
     PerfConfig perf_conf{};
     Helper();
+    std::string path;
     int cpu;
     int cha;
     std::vector<int> used_cpu;
@@ -144,6 +146,7 @@ public:
     int num_of_cha();
     static void detach_children();
     static void noop_handler(int);
+    static void suspend_handler(int);
     double cpu_frequency();
     PerfConfig detect_model(uint32_t model, const std::vector<std::string> &perf_name,
                             const std::vector<uint64_t> &perf_conf1, const std::vector<uint64_t> &perf_conf2);

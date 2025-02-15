@@ -107,8 +107,6 @@ int Monitors::enable(const uint32_t tgid, const uint32_t tid, bool is_process, u
                      mon[target].tid); // multiple tid multiple pid
         mon[target].lbr_ctx = new LBR(tgid, 1);
     }
-    sleep(1);
-
     SPDLOG_INFO("pid {}[tgid={}, tid={}] monitoring start", target, mon[target].tgid, mon[target].tid);
 
     new std::thread(Monitor::wait, &mon, target);
@@ -173,7 +171,7 @@ bool Monitors::check_all_terminated(const uint32_t processes) {
                 exit(1);
             }
         }
-        SPDLOG_INFO("mon[i].status {}",mon[i].status);
+        // SPDLOG_INFO("mon[i].status {}",mon[i].status);
     }
     return _terminated;
 }
@@ -203,13 +201,13 @@ int Monitors::terminate(const uint32_t tgid, const uint32_t tid, const int32_t t
         double emulated_time =
             (double)(mon[target].end_exec_ts.tv_sec - mon[target].start_exec_ts.tv_sec) +
             (double)(mon[target].end_exec_ts.tv_nsec - mon[target].start_exec_ts.tv_nsec) / 1000000000;
-        std::cout << std::format("emulated time ={}\n", emulated_time);
-        std::cout << std::format("total delay   ={}\n", mon[target].total_delay);
+        SPDLOG_INFO("emulated time ={}", emulated_time);
+        SPDLOG_INFO("total delay   ={}", mon[target].total_delay);
 
-        std::cout << std::format("PEBS sample total {}\n", mon[target].before->pebs.total);
-        std::cout << std::format("LBR sample total {}\n", mon[target].before->lbr.total);
-        std::cout << std::format("bpftime sample total {}\n", mon[target].before->bpftime.total);
-
+        SPDLOG_INFO("PEBS sample total {}", mon[target].before->pebs.total);
+        SPDLOG_INFO("LBR sample total {}", mon[target].before->lbr.total);
+        SPDLOG_INFO("bpftime sample total {}", mon[target].before->bpftime.total);
+        std::cout << "CXLCounter " << std::format("{}",*controller) << "\n";
         break;
     }
 
@@ -247,7 +245,7 @@ void Monitor::stop() { // thread create and proecess create get the pmu
     }
 }
 
-void Monitor::run() {   
+void Monitor::run() {
     setuid(0);
     // SPDLOG_INFO("Send SIGCONT to tid={}(tgid={})", this->tid, this->tgid);
     // usleep(10);
@@ -257,7 +255,7 @@ void Monitor::run() {
             // in this case process or process group does not exist.
             // It might be a zombie or has terminated execution.
             this->status = MONITOR_TERMINATED;
-            SPDLOG_INFO("Process [{}:{}] is terminated.", this->tgid, this->tid);
+            SPDLOG_ERROR("Process [{}:{}] is terminated.", this->tgid, this->tid);
         } else if (errno == EPERM) {
             this->status = MONITOR_NOPERMISSION;
             SPDLOG_ERROR("Failed to signal to any of the target processes. Due to does not have permission.  It "
@@ -273,7 +271,7 @@ void Monitor::run() {
     }
 }
 
-void Monitor::clear_time(struct timespec *time) {
+void Monitor::clear_time(timespec *time) {
     time->tv_sec = 0;
     time->tv_nsec = 0;
 }
@@ -289,7 +287,7 @@ Monitor::Monitor() // which one to hook
     }
 }
 
-static bool check_continue(const struct timespec wasted_delay, const struct timespec injected_delay) {
+static bool check_continue(const timespec wasted_delay, const timespec injected_delay) {
     // This equation for original one. but it causes like 45ms-> 60ms
     // calculated delay : 45ms
     // actual elapsed time : 60ms (default epoch: 20ms)
@@ -300,12 +298,12 @@ static bool check_continue(const struct timespec wasted_delay, const struct time
     return false;
 }
 
-uint64_t operator-(const struct timespec &lhs, const struct timespec &rhs) {
+uint64_t operator-(const timespec &lhs, const timespec &rhs) {
     return (lhs.tv_sec - rhs.tv_sec) * 1000000000 + (lhs.tv_nsec - rhs.tv_nsec);
 }
 
-struct timespec operator+(const struct timespec &lhs, const struct timespec &rhs) {
-    struct timespec result;
+timespec operator+(const timespec &lhs, const timespec &rhs) {
+    timespec result{};
 
     if (lhs.tv_nsec + rhs.tv_nsec >= 1000000000L) {
         result.tv_sec = lhs.tv_sec + rhs.tv_sec + 1;
@@ -317,8 +315,8 @@ struct timespec operator+(const struct timespec &lhs, const struct timespec &rhs
 
     return result;
 }
-struct timespec operator*(const struct timespec &lhs, const struct timespec &rhs) {
-    struct timespec result;
+timespec operator*(const timespec &lhs, const timespec &rhs) {
+    timespec result{};
 
     if (lhs.tv_nsec < rhs.tv_nsec) {
         result.tv_sec = lhs.tv_sec - rhs.tv_sec - 1;
@@ -335,11 +333,11 @@ void Monitor::wait(std::vector<Monitor> *mons, int target) {
     auto &mon = (*mons)[target];
     uint64_t diff_nsec, target_nsec;
     SPDLOG_ERROR("[{}:{}][OFF] total:", mon.tgid, mon.tid);
-    struct timespec start_ts{}, end_ts{};
-    struct timespec sleep_target{};
-    // struct timespec wanted_delay;
-    struct timespec wanted_delay;
-    struct timespec prev_wanted_delay = mon.wanted_delay;
+    timespec start_ts{}, end_ts{};
+    timespec sleep_target{};
+    // timespec wanted_delay;
+    timespec wanted_delay{};
+    timespec prev_wanted_delay = mon.wanted_delay;
     // while we're alive
     while ((mon.status == MONITOR_ON || mon.status == MONITOR_OFF)) {
         // figure out our delay
@@ -365,8 +363,8 @@ void Monitor::wait(std::vector<Monitor> *mons, int target) {
         }
         mon.run();
         // keep track of how much we've delayed them for
-        // TODO: use the diff_nsec to help calculate the prev_wanted_delay, to avoid timing errors building up from
-        // over waiting
+        // TODO: use the diff_nsec to help calculate the prev_wanted_delay, to avoid timing errors building up from over
+        // waiting
         prev_wanted_delay = wanted_delay;
         // break;
     }

@@ -37,7 +37,7 @@ public:
     int cpu;
     pid_t pid;
     unsigned long flags;
-    struct perf_event_attr attr;
+    perf_event_attr attr;
     PerfInfo() = default;
     PerfInfo(int group_fd, int cpu, pid_t pid, unsigned long flags, struct perf_event_attr attr);
     ~PerfInfo();

@@ -56,15 +56,15 @@ public:
     pid_t tid;
     uint32_t cpu_core;
     char status;
-    struct timespec wanted_delay; // how much time analyze thinks wait should wait for
+    timespec wanted_delay; // how much time analyze thinks wait should wait for
     std::mutex wanted_delay_mutex;
-    struct timespec injected_delay; // recorded time for injected
-    struct timespec wasted_delay; // recorded time for calling between continue and calculation
-    struct timespec squabble_delay; // inj-was
-    struct Elem elem[2]; // before & after
-    struct Elem *before, *after;
+    timespec injected_delay; // recorded time for injected
+    timespec wasted_delay; // recorded time for calling between continue and calculation
+    timespec squabble_delay; // inj-was
+    Elem elem[2]; // before & after
+    Elem *before, *after;
     double total_delay;
-    struct timespec start_exec_ts, end_exec_ts;
+    timespec start_exec_ts, end_exec_ts;
     bool is_process;
     PEBS *pebs_ctx;
     LBR *lbr_ctx;
@@ -72,8 +72,8 @@ public:
 
     Monitor(const Monitor &other)
         : tgid(other.tgid), tid(other.tid), cpu_core(other.cpu_core), status(other.status),
-          wanted_delay(other.wanted_delay), injected_delay(other.injected_delay),
-          squabble_delay(other.squabble_delay), before(nullptr), // Will be set after copying elements
+          wanted_delay(other.wanted_delay), injected_delay(other.injected_delay), squabble_delay(other.squabble_delay),
+          before(nullptr), // Will be set after copying elements
           after(nullptr), // Will be set after copying elements
           total_delay(other.total_delay), start_exec_ts(other.start_exec_ts), end_exec_ts(other.end_exec_ts),
           is_process(other.is_process), pebs_ctx(other.pebs_ctx ? new PEBS(*other.pebs_ctx) : nullptr),
@@ -89,12 +89,12 @@ public:
     void stop();
     void run();
     static void wait(std::vector<Monitor> *, int);
-    static void clear_time(struct timespec *);
+    static void clear_time(timespec *);
 };
 
-template <> struct fmt::formatter<Monitors> {
+template <> struct std::formatter<Monitors> {
     // Parse function to handle any format specifiers (if needed)
-    constexpr auto parse(fmt::format_parse_context &ctx) -> decltype(ctx.begin()) {
+    constexpr auto parse(std::format_parse_context &ctx) -> decltype(ctx.begin()) {
         // If you have specific format specifiers, parse them here
         // For simplicity, we'll ignore them and return the end iterator
         return ctx.end();
@@ -153,14 +153,6 @@ template <> struct fmt::formatter<Monitors> {
 
         // Write the accumulated result to the output iterator
         return std::copy(result.begin(), result.end(), ctx.out());
-    }
-};
-
-template <> struct fmt::formatter<Monitor> {
-    constexpr auto parse(fmt::format_parse_context &ctx) -> decltype(ctx.begin()) { return ctx.begin(); }
-
-    template <typename FormatContext> auto format(const Monitor &mon, FormatContext &ctx) {
-        return format_to(ctx.out(), "[Monitor pid={} tid={}]", mon.tgid, mon.tid);
     }
 };
 

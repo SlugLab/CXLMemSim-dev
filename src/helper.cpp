@@ -11,34 +11,40 @@
 
 #include "helper.h"
 #include <fstream>
+#include <monitor.h>
 #include <signal.h>
 #include <string>
 #include <vector>
 
-struct ModelContext model_ctx[] = {{CPU_MDL_BDX,
-                                    {
-                                        "/sys/bus/event_source/devices/uncore_cbo_%u/type",
-                                    }},
-                                   {CPU_MDL_SKX,
-                                    {
-                                        "/sys/bus/event_source/devices/uncore_cha_%u/type",
-                                    }},
-                                   {CPU_MDL_SPR,
-                                    {
-                                        "/sys/bus/event_source/devices/uncore_cha_%u/type",
-                                    }},
-                                   {CPU_MDL_ADL,
-                                    {
-                                        "/sys/bus/event_source/devices/uncore_cbo_%u/type",
-                                    }},
-                                   {CPU_MDL_LNL,
-                                    {
-                                        "/sys/bus/event_source/devices/uncore_cbox_%u/type",
-                                    }},
-                                    {CPU_MDL_ARL,{
-                                        "/sys/bus/event_source/devices/uncore_cbox_%u/type",
-                                    }},
-                                   {CPU_MDL_END, {""}}};
+ModelContext model_ctx[] = {{CPU_MDL_BDX,
+                             {
+                                 "/sys/bus/event_source/devices/uncore_cbo_%u/type",
+                             }},
+                            {CPU_MDL_SKX,
+                             {
+                                 "/sys/bus/event_source/devices/uncore_cha_%u/type",
+                             }},
+                            {CPU_MDL_SPR,
+                             {
+                                 "/sys/bus/event_source/devices/uncore_cha_%u/type",
+                             }},
+                            {CPU_MDL_ADL,
+                             {
+                                 "/sys/bus/event_source/devices/uncore_cbo_%u/type",
+                             }},
+                            {CPU_MDL_LNL,
+                             {
+                                 "/sys/bus/event_source/devices/uncore_cbox_%u/type",
+                             }},
+                            {CPU_MDL_ARL,
+                             {
+                                 "/sys/bus/event_source/devices/uncore_cbox_%u/type",
+                             }},
+                            {CPU_MDL_SRF,
+                             {
+                                 "/sys/bus/event_source/devices/uncore_cha_%u/type",
+                             }},
+                            {CPU_MDL_END, {""}}};
 
 long perf_event_open(struct perf_event_attr *event_attr, pid_t pid, int cpu, int group_fd, unsigned long flags) {
     return syscall(__NR_perf_event_open, event_attr, pid, cpu, group_fd, flags);
@@ -55,7 +61,8 @@ int Helper::num_of_cpu() {
 int Helper::num_of_cha() {
     int ncha = 0;
     for (; ncha < cpu; ++ncha) {
-        std::string path = std::format("/sys/bus/event_source/devices/uncore_cha_{}/type", ncha);
+        char path[100];
+        std::sprintf(path, this->path.c_str(), ncha);
         if (!std::filesystem::exists(path)) {
             break;
         }
@@ -92,6 +99,7 @@ PerfConfig Helper::detect_model(uint32_t model, const std::vector<std::string> &
             for (int j = 0; j < 4; ++j) {
                 this->perf_conf.cpu[j] = std::make_tuple(perf_name[j + 4], perf_conf1[j + 4], perf_conf2[j + 4]);
             }
+            this->path = model_ctx[i].perf_conf.path_format_cha_type;
             return this->perf_conf;
         }
         i++;
@@ -104,6 +112,10 @@ Helper::Helper() {
     cha = num_of_cha();
 }
 void Helper::noop_handler(int) { ; }
+void Helper::suspend_handler(int) {
+    for (auto &m : monitors->mon)
+        m.status = MONITOR_SUSPEND;
+}
 void Helper::detach_children() {
     struct sigaction sa {};
 
@@ -111,6 +123,12 @@ void Helper::detach_children() {
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESTART | SA_NOCLDWAIT;
     if (sigaction(SIGCHLD, &sa, nullptr) < 0) {
+        SPDLOG_ERROR("Failed to sigaction: %s", strerror(errno));
+    }
+    sa.sa_handler = suspend_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
+    if (sigaction(SIGINT, &sa, nullptr) < 0) {
         SPDLOG_ERROR("Failed to sigaction: %s", strerror(errno));
     }
 }
@@ -126,7 +144,7 @@ int PMUInfo::start_all_pmcs() {
     }
     return 0;
 }
-PMUInfo::PMUInfo(pid_t pid, Helper *helper, struct PerfConfig *perf_config) : helper(helper) {
+PMUInfo::PMUInfo(pid_t pid, Helper *helper, PerfConfig *perf_config) : helper(helper) {
     for (auto i : helper->used_cpu) {
         this->chas.emplace_back(i, perf_config);
     }

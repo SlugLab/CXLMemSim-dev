@@ -40,10 +40,9 @@ BpfTimeRuntime::~BpfTimeRuntime() { bpftime_remove_global_shm(); }
 
 int BpfTimeRuntime::read(CXLController *controller, BPFTimeRuntimeElem *elem) {
     mem_stats stats;
-    alloc_info alloc_info1;
     proc_info proc_info1;
     proc_info thread_info1;
-    for (int i = 0; i < 11; i++) {
+    for (int i = 6; i < 11; i++) {
         int key = 0;
         int key1 = 0;
         auto item1 = bpftime_map_get_next_key(i, &key1, &key); // process map
@@ -52,11 +51,6 @@ int BpfTimeRuntime::read(CXLController *controller, BPFTimeRuntimeElem *elem) {
         if (i == 6 && item2 != nullptr) {
             stats = *((mem_stats *)item2);
             controller->set_stats(stats);
-            elem->total++;
-        }
-        if (i == 7 && item2 != nullptr) {
-            alloc_info1 = *((alloc_info *)item2);
-            controller->set_alloc_info(alloc_info1);
             elem->total++;
         }
         if (i == 9 && item2 != nullptr) {
