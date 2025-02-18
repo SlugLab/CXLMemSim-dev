@@ -217,15 +217,15 @@ int main(int argc, char *argv[]) {
     auto bandwidth = result["bandwidth"].as<std::vector<int>>();
     auto frequency = result["frequency"].as<double>();
     auto topology = result["topology"].as<std::string>();
-    enum page_type mode;
+    page_type mode;
     if (result["mode"].as<std::string>() == "hugepage_2M") {
-        mode = page_type::HUGEPAGE_2M;
+        mode = HUGEPAGE_2M;
     } else if (result["mode"].as<std::string>() == "hugepage_1G") {
-        mode = page_type::HUGEPAGE_1G;
+        mode = HUGEPAGE_1G;
     } else if (result["mode"].as<std::string>() == "cacheline") {
-        mode = page_type::CACHELINE;
+        mode = CACHELINE;
     } else {
-        mode = page_type::PAGE;
+        mode = PAGE;
     }
     auto *policy = new InterleavePolicy();
 
@@ -308,5 +308,6 @@ int main(int argc, char *argv[]) {
     }
     // After processing all groups, call your ROB method.
     std::cout << "Stalls: " << rob.getStallCount() << std::endl;
+    std::cout <<         std::format("{}",*controller)  << std::endl;
     return 0;
 }

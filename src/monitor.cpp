@@ -161,19 +161,26 @@ void Monitors::disable(const uint32_t target) {
     }
 }
 bool Monitors::check_all_terminated(const uint32_t processes) {
-    bool _terminated = true;
+    bool allTerminated = true;
+
     for (uint32_t i = 0; i < processes; ++i) {
-        if (mon[i].status == MONITOR_ON || mon[i].status == MONITOR_OFF) {
-            _terminated = false;
-        } else if (mon[i].status != MONITOR_DISABLE) {
+        // Atomic load
+        auto st = mon[i].status.load();
+
+        if (st == MONITOR_ON || st == MONITOR_OFF) {
+            // We still have an active or paused monitor => not all terminated
+            allTerminated = false;
+        } else if (st != MONITOR_DISABLE) {
+            // Possibly MONITOR_TERMINATED or other final states
+            // Attempt to finalize if needed
             if (this->terminate(mon[i].tgid, mon[i].tid, processes) < 0) {
                 SPDLOG_ERROR("Failed to terminate monitor");
                 exit(1);
             }
         }
-        // SPDLOG_INFO("mon[i].status {}",mon[i].status);
     }
-    return _terminated;
+
+    return allTerminated;
 }
 int Monitors::terminate(const uint32_t tgid, const uint32_t tid, const int32_t tnum) {
     int target = -1;
@@ -207,7 +214,7 @@ int Monitors::terminate(const uint32_t tgid, const uint32_t tid, const int32_t t
         SPDLOG_INFO("PEBS sample total {}", mon[target].before->pebs.total);
         SPDLOG_INFO("LBR sample total {}", mon[target].before->lbr.total);
         SPDLOG_INFO("bpftime sample total {}", mon[target].before->bpftime.total);
-        std::cout << "CXLCounter " << std::format("{}",*controller) << "\n";
+        std::cout << std::format("{}",*controller) << "\n";
         break;
     }
 
@@ -246,7 +253,6 @@ void Monitor::stop() { // thread create and proecess create get the pmu
 }
 
 void Monitor::run() {
-    setuid(0);
     // SPDLOG_INFO("Send SIGCONT to tid={}(tgid={})", this->tid, this->tgid);
     // usleep(10);
 
@@ -255,7 +261,6 @@ void Monitor::run() {
             // in this case process or process group does not exist.
             // It might be a zombie or has terminated execution.
             this->status = MONITOR_TERMINATED;
-            SPDLOG_ERROR("Process [{}:{}] is terminated.", this->tgid, this->tid);
         } else if (errno == EPERM) {
             this->status = MONITOR_NOPERMISSION;
             SPDLOG_ERROR("Failed to signal to any of the target processes. Due to does not have permission.  It "
@@ -267,7 +272,6 @@ void Monitor::run() {
         }
     } else {
         this->status = MONITOR_ON;
-        SPDLOG_INFO("Process [{}:{}] {} is running.", this->tgid, this->tid, this->status);
     }
 }
 

@@ -96,41 +96,72 @@ template <> struct std::formatter<CXLController> {
     }
 
     // Format function to output the Monitors data
-    template <typename FormatContext> auto format(const CXLController &p, FormatContext &ctx) const -> decltype(ctx.out()) {
+
+    template <typename FormatContext>
+    auto format(const CXLController &controller, FormatContext &ctx) const -> decltype(ctx.out()) {
         std::string result;
 
-        // for (size_t core_idx = 0; core_idx < helper.used_cpu.size(); ++core_idx) {
-        //     for (size_t cpu_idx = 0; cpu_idx < helper.perf_conf.cpu.size(); ++cpu_idx) {
-        //         bool is_last_cpu = (cpu_idx == helper.perf_conf.cpu.size() - 1);
-        //         bool is_last_core = (core_idx == helper.used_cpu.size() - 1);
-        //         int cpu_diff = mon.after->cpus[core_idx].cpu[cpu_idx] - mon.before->cpus[core_idx].cpu[cpu_idx];
-        //         if (is_last_cpu && is_last_core) {
-        //             result += std::format("{}", cpu_diff);
-        //         } else {
-        //             result += std::format("{},", cpu_diff);
-        //         }
-        //     }
-        // }
+        // 首先打印控制器自身的计数器信息
+        result += std::format("CXLController:\n");
+        result += std::format("  Total Capacity: {}GB\n", controller.capacity);
+        result += std::format("  Page Type: {}\n", [](page_type pt) {
+            switch(pt) {
+                case CACHELINE: return "CACHELINE";
+                case PAGE: return "PAGE";
+                case HUGEPAGE_2M: return "HUGEPAGE_2M";
+                case HUGEPAGE_1G: return "HUGEPAGE_1G";
+                default: return "UNKNOWN";
+            }
+        }(controller.page_type_));
 
-        // Write the accumulated result to the output iterator
-        // return std::copy(result.begin(), result.end(), ctx.out());
-        return format_to(ctx.out(), "[Monitor");
-    }
-};
+        // 打印全局计数器
+        result += std::format("  Global Counter:\n");
+        result += std::format("    Local: {}\n", controller.counter.local);
+        result += std::format("    Remote: {}\n", controller.counter.remote);
+        result += std::format("    HITM: {}\n", controller.counter.hitm);
 
-template <> struct std::formatter<CXLSwitch> {
-    constexpr auto parse(std::format_parse_context &ctx) -> decltype(ctx.begin()) { return ctx.begin(); }
+        // 打印拓扑结构（交换机和端点）
+        result += "Topology:\n";
 
-    template <typename FormatContext> auto format(const CXLSwitch &switch_, FormatContext &ctx) {
-        return format_to(ctx.out(), "[Monitor");
-    }
-};
+        // 递归打印每个交换机
+        std::function<void(const CXLSwitch*, int)> print_switch =
+            [&result, &print_switch](const CXLSwitch* sw, int depth) {
+            std::string indent(depth * 2, ' ');
 
-template <> struct std::formatter<CXLEndPoint> {
-    constexpr auto parse(std::format_parse_context &ctx) -> decltype(ctx.begin()) { return ctx.begin(); }
+            // 打印交换机事件计数
+            result += std::format("{}Switch:\n", indent);
+            result += std::format("{}  Events:\n", indent);
+            result += std::format("{}    Load: {}\n", indent, sw->counter.load);
+            result += std::format("{}    Store: {}\n", indent, sw->counter.store);
+            result += std::format("{}    Conflict: {}\n", indent, sw->counter.conflict);
 
-    template <typename FormatContext> auto format(const CXLEndPoint &end_point, FormatContext &ctx) {
-        return format_to(ctx.out(), "[Monitor");
+            // 递归打印子交换机
+            for (const auto& child : sw->switches) {
+                print_switch(child, depth + 1);
+            }
+
+            // 打印端点
+            for (const auto& endpoint : sw->expanders) {
+                result += std::format("{}Expander:\n", indent + "  ");
+                result += std::format("{}  Events:\n", indent + "  ");
+                result += std::format("{}    Load: {}\n", indent + "  ", endpoint->counter.load);
+                result += std::format("{}    Store: {}\n", indent + "  ", endpoint->counter.store);
+                result += std::format("{}    Migrate: {}\n", indent + "  ", endpoint->counter.migrate);
+                result += std::format("{}    Hit Old: {}\n", indent + "  ", endpoint->counter.hit_old);
+            }
+        };
+
+        // 从控制器开始递归打印
+        print_switch(&controller, 0);
+
+        // 打印额外的统计信息
+        result += "\nStatistics:\n";
+        result += std::format("  Number of Switches: {}\n", controller.num_switches);
+        result += std::format("  Number of Endpoints: {}\n", controller.num_end_points);
+        result += std::format("  Memory Freed: {} bytes\n", controller.freed);
+        result += std::format("  Cache Size: {} bytes\n", controller.cache_size);
+
+        return format_to(ctx.out(), "{}", result);
     }
 };
 

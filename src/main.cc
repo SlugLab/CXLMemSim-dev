@@ -34,7 +34,6 @@ int main(int argc, char *argv[]) {
     options.add_options()("t,target", "The script file to execute",
                           cxxopts::value<std::string>()->default_value("./microbench/malloc"))(
         "h,help", "Help for CXLMemSim", cxxopts::value<bool>()->default_value("false"))(
-        "s,source", "Collection Phase or Validation Phase", cxxopts::value<bool>()->default_value("false"))(
         "c,cpuset", "The CPUSET for CPU to set affinity on and only run the target process on those CPUs",
         cxxopts::value<std::vector<int>>()->default_value("0"))("d,dramlatency", "The current platform's dram latency",
                                                                 cxxopts::value<double>()->default_value("110"))(
@@ -81,16 +80,17 @@ int main(int argc, char *argv[]) {
     auto pmu_config2 = result["pmu_config2"].as<std::vector<uint64_t>>();
     auto weight = result["weight"].as<std::vector<double>>();
     auto weight_vec = result["weight_vec"].as<std::vector<double>>();
-    auto source = result["source"].as<bool>();
-    enum page_type mode;
-    if (result["mode"].as<std::string>() == "hugepage_2M") {
-        mode = page_type::HUGEPAGE_2M;
-    } else if (result["mode"].as<std::string>() == "hugepage_1G") {
-        mode = page_type::HUGEPAGE_1G;
-    } else if (result["mode"].as<std::string>() == "cacheline") {
-        mode = page_type::CACHELINE;
+    auto page_ = result["mode"].as<std::string>();
+
+    page_type mode;
+    if (page_ == "hugepage_2M") {
+        mode = HUGEPAGE_2M;
+    } else if (page_ == "hugepage_1G") {
+        mode = HUGEPAGE_1G;
+    } else if (page_ == "cacheline") {
+        mode = CACHELINE;
     } else {
-        mode = page_type::PAGE;
+        mode = PAGE;
     }
 
     auto *policy = new InterleavePolicy();
@@ -218,8 +218,7 @@ int main(int argc, char *argv[]) {
     }
 
     uint32_t diff_nsec = 0;
-    struct timespec start_ts{}, end_ts{};
-    struct timespec sleep_start_ts{}, sleep_end_ts{};
+    timespec start_ts{}, end_ts{};
 
     /** Wait all the target processes until emulation process initialized. */
     monitors->run_all(cur_processes);
@@ -231,10 +230,11 @@ int main(int argc, char *argv[]) {
         uint64_t calibrated_delay;
         for (auto const &[i, mon] : monitors->mon | std::views::enumerate) {
             // check other process
-            if (mon.status == MONITOR_DISABLE) {
+            auto m_status = mon.status.load();
+            if (m_status == MONITOR_DISABLE) {
                 continue;
             }
-            if (mon.status == MONITOR_ON || mon.status == MONITOR_SUSPEND) {
+            if (m_status == MONITOR_ON || m_status == MONITOR_SUSPEND) {
                 clock_gettime(CLOCK_MONOTONIC, &start_ts);
                 SPDLOG_DEBUG("[{}:{}:{}] start_ts: {}.{}", i, mon.tgid, mon.tid, start_ts.tv_sec, start_ts.tv_nsec);
                 /** Read CHA values */
@@ -300,7 +300,7 @@ int main(int argc, char *argv[]) {
                 }
                 SPDLOG_DEBUG("[{}:{}:{}]llcmiss_wb={}, llcmiss_ro={}", i, mon.tgid, mon.tid, llcmiss_wb, llcmiss_ro);
 
-                uint64_t emul_delay = 150;
+                uint64_t emul_delay = 0;
 
                 SPDLOG_DEBUG("[{}:{}:{}] pebs: total={}, ", i, mon.tgid, mon.tid, mon.after->pebs.total);
 
@@ -333,7 +333,7 @@ int main(int argc, char *argv[]) {
                 diff_nsec += (end_ts.tv_sec - start_ts.tv_sec) * 1000000000 + (end_ts.tv_nsec - start_ts.tv_nsec);
                 SPDLOG_DEBUG("diff_nsec:{}", diff_nsec);
 
-                calibrated_delay = (diff_nsec > emul_delay) ? 0 : emul_delay - diff_nsec;
+                calibrated_delay = diff_nsec > emul_delay ? 0 : emul_delay - diff_nsec;
                 mon.total_delay += (double)calibrated_delay / 1000000000;
                 diff_nsec = 0;
 
@@ -344,14 +344,14 @@ int main(int argc, char *argv[]) {
                              mon.total_delay);
 
                 {
-                    std::lock_guard<std::mutex> lock(mon.wanted_delay_mutex);
-                    struct timespec new_wanted = mon.wanted_delay;
+                    std::lock_guard lock(mon.wanted_delay_mutex);
+                    timespec new_wanted = mon.wanted_delay;
                     new_wanted.tv_nsec += emul_delay;
                     new_wanted.tv_sec += new_wanted.tv_nsec / 1000000000;
                     new_wanted.tv_nsec = new_wanted.tv_nsec % 1000000000;
                     mon.wanted_delay = new_wanted;
                     SPDLOG_DEBUG("{}:{}", new_wanted.tv_sec, new_wanted.tv_nsec);
-                    SPDLOG_TRACE("{}", *monitors);
+                    SPDLOG_DEBUG("{}", *monitors);
                 }
             }
 

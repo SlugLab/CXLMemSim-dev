@@ -10,6 +10,7 @@
  */
 
 #include "cxlendpoint.h"
+#include <random>
 
 CXLMemExpander::CXLMemExpander(int read_bw, int write_bw, int read_lat, int write_lat, int id, int capacity)
     : capacity(capacity), id(id) {
@@ -142,6 +143,21 @@ std::tuple<int, int> CXLMemExpander::get_all_access() {
     return std::make_tuple(this->last_read, this->last_write);
 }
 void CXLMemExpander::set_epoch(int epoch) { this->epoch = epoch; }
+void CXLMemExpander::free_stats(double size) {
+    std::vector<uint64_t> keys;
+    for (auto &it : this->va_pa_map) {
+        keys.push_back(it.first);
+    }
+    std::shuffle(keys.begin(), keys.end(), std::mt19937(std::random_device()()));
+    for (auto it = keys.begin(); it != keys.end(); ++it) {
+        if (this->va_pa_map[*it] > size) {
+            this->va_pa_map.erase(*it);
+            this->occupation.erase(*it);
+            this->counter.inc_load();
+        }
+    }
+}
+
 std::string CXLSwitch::output() {
     std::string res = std::format("CXLSwitch {} ", this->id);
     if (!this->switches.empty()) {
@@ -259,6 +275,12 @@ std::tuple<int, int> CXLSwitch::get_all_access() {
     return std::make_tuple(read, write);
 }
 void CXLSwitch::set_epoch(int epoch) { this->epoch = epoch; }
+void CXLSwitch::free_stats(double size) {
+    // 随机删除
+    for (auto &expander : this->expanders) {
+        expander->free_stats(size);
+    }
+}
 
 int CXLMemExpander::insert(uint64_t timestamp, uint64_t tid, struct lbr *lbrs, struct cntr *counters) {
     // 这里可以根据你的功能逻辑来处理 LBR 的插入信息
@@ -282,7 +304,8 @@ int CXLSwitch::insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr
         if (ret == 1) {
             this->counter.inc_store();
             return 1;
-        } else if (ret == 2) {
+        }
+        if (ret == 2) {
             this->counter.inc_load();
             return 2;
         }
@@ -293,7 +316,8 @@ int CXLSwitch::insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr
         if (ret == 1) {
             this->counter.inc_store();
             return 1;
-        } else if (ret == 2) {
+        }
+        if (ret == 2) {
             this->counter.inc_load();
             return 2;
         }

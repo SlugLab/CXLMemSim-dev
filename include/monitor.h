@@ -16,7 +16,7 @@
 #include "cxlcontroller.h"
 #include "helper.h"
 #include "pebs.h"
-#include <fmt/format.h>
+#include <atomic>
 #include <mutex>
 #include <sched.h>
 #include <vector>
@@ -55,7 +55,7 @@ public:
     pid_t tgid; // process id
     pid_t tid;
     uint32_t cpu_core;
-    char status;
+    std::atomic_char status;
     timespec wanted_delay; // how much time analyze thinks wait should wait for
     std::mutex wanted_delay_mutex;
     timespec injected_delay; // recorded time for injected
@@ -71,14 +71,15 @@ public:
     BpfTimeRuntime *bpftime_ctx;
 
     Monitor(const Monitor &other)
-        : tgid(other.tgid), tid(other.tid), cpu_core(other.cpu_core), status(other.status),
-          wanted_delay(other.wanted_delay), injected_delay(other.injected_delay), squabble_delay(other.squabble_delay),
+        : tgid(other.tgid), tid(other.tid), cpu_core(other.cpu_core), wanted_delay(other.wanted_delay),
+          injected_delay(other.injected_delay), squabble_delay(other.squabble_delay),
           before(nullptr), // Will be set after copying elements
           after(nullptr), // Will be set after copying elements
           total_delay(other.total_delay), start_exec_ts(other.start_exec_ts), end_exec_ts(other.end_exec_ts),
           is_process(other.is_process), pebs_ctx(other.pebs_ctx ? new PEBS(*other.pebs_ctx) : nullptr),
           lbr_ctx(other.lbr_ctx ? new LBR(*other.lbr_ctx) : nullptr),
           bpftime_ctx(other.bpftime_ctx ? new BpfTimeRuntime(*other.bpftime_ctx) : nullptr) {
+        status.store(other.status.load());
         std::copy(std::begin(other.elem), std::end(other.elem), std::begin(elem));
         before = &elem[0];
         after = &elem[1];
