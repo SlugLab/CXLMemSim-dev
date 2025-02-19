@@ -211,9 +211,9 @@ int Monitors::terminate(const uint32_t tgid, const uint32_t tid, const int32_t t
         SPDLOG_INFO("emulated time ={}", emulated_time);
         SPDLOG_INFO("total delay   ={}", mon[target].total_delay);
 
-        SPDLOG_INFO("PEBS sample total {}", mon[target].before->pebs.total);
+        SPDLOG_INFO("PEBS sample total {} {}", mon[target].before->pebs.total, mon[target].after->pebs.llcmiss);
         SPDLOG_INFO("LBR sample total {}", mon[target].before->lbr.total);
-        SPDLOG_INFO("bpftime sample total {}", mon[target].before->bpftime.total);
+        SPDLOG_INFO("bpftime sample total {}", mon[target].before->bpftime.total, mon[target].after->bpftime.);
         std::cout << std::format("{}",*controller) << "\n";
         break;
     }

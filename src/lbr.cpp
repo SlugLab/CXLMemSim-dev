@@ -92,7 +92,7 @@ LBR::LBR(pid_t pid, uint64_t sample_period) : pid(pid), sample_period(sample_per
         .exclude_hv = 1,
         .precise_ip = 3,
         .config1 = 3,
-        .branch_sample_type = PERF_SAMPLE_BRANCH_USER | PERF_SAMPLE_BRANCH_ANY | (1<<19),
+        .branch_sample_type = PERF_SAMPLE_BRANCH_USER | PERF_SAMPLE_BRANCH_ANY | (1 << 19),
     };
 
     int cpu = -1; // measure on any cpu
@@ -111,7 +111,10 @@ LBR::LBR(pid_t pid, uint64_t sample_period) : pid(pid), sample_period(sample_per
         perror("mmap");
         throw;
     }
-    this->start();
+    if (this->start() < 0) {
+        perror("start");
+        throw;
+    }
 }
 
 int LBR::read(CXLController *controller, LBRElem *elem) {
@@ -124,7 +127,7 @@ int LBR::read(CXLController *controller, LBRElem *elem) {
 
     int r = 0;
     lbr_sample *data;
-    char *dp = ((char *)mp) + PAGE_SIZE;
+    char *dp = (char *)mp + PAGE_SIZE;
 
     do {
         this->seq = mp->lock; // explicit copy
@@ -211,7 +214,10 @@ int LBR::stop() const {
 }
 
 LBR::~LBR() {
-    this->stop();
+    if (this->stop() < 0) {
+        perror("stop");
+        throw;
+    }
 
     if (this->fd < 0) {
         return;

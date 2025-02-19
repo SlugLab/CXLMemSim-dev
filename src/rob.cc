@@ -36,7 +36,8 @@ bool Rob::canRetire(const InstructionGroup &ins) {
         auto allAccess = controller_->get_all_access();
         cur_latency = controller_->calculate_latency(LatencyPass{allAccess, 80, 1, 1});
     }
-    if ((currentCycle_ - ins.cycleCount) >= cur_latency) {
+    // SPDLOG_INFO("{}",cur_latency);
+    if (currentCycle_ - ins.cycleCount >= cur_latency) {
         cur_latency = 0;
         return true;
     }
@@ -215,7 +216,6 @@ int main(int argc, char *argv[]) {
     auto capacity = result["capacity"].as<std::vector<int>>();
     auto latency = result["latency"].as<std::vector<int>>();
     auto bandwidth = result["bandwidth"].as<std::vector<int>>();
-    auto frequency = result["frequency"].as<double>();
     auto topology = result["topology"].as<std::string>();
     page_type mode;
     if (result["mode"].as<std::string>() == "hugepage_2M") {
@@ -228,8 +228,6 @@ int main(int argc, char *argv[]) {
         mode = PAGE;
     }
     auto *policy = new InterleavePolicy();
-
-    controller = new CXLController(policy, capacity[0], mode, 100);
 
     for (auto const &[idx, value] : capacity | std::views::enumerate) {
         if (idx == 0) {
@@ -307,7 +305,11 @@ int main(int argc, char *argv[]) {
         rob.tick();
     }
     // After processing all groups, call your ROB method.
+    int nonMemInstr = std::count_if(instructions.begin(), instructions.end(),
+                                [](const InstructionGroup &ins) { return ins.address == 0; });
+    SPDLOG_INFO("Non-memory instructions: {}", nonMemInstr);
+
     std::cout << "Stalls: " << rob.getStallCount() << std::endl;
-    std::cout <<         std::format("{}",*controller)  << std::endl;
+    std::cout << std::format("{}",*controller)  << std::endl;
     return 0;
 }

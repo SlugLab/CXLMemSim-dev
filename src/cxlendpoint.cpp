@@ -28,11 +28,11 @@ double CXLMemExpander::calculate_latency(LatencyPass lat) {
     auto all_write = std::get<1>(all_access);
     double read_sample = 0.;
     if (all_read != 0) {
-        read_sample = ((double)last_read / all_read);
+        read_sample = (double)last_read / all_read;
     }
     double write_sample = 0.;
     if (all_write != 0) {
-        write_sample = ((double)last_write / all_write);
+        write_sample = (double)last_write / all_write;
     }
     this->last_latency =
         ma_ro * read_sample * (latency.read - dramlatency) + ma_wb * write_sample * (latency.write - dramlatency);
@@ -55,16 +55,16 @@ double CXLMemExpander::calculate_bandwidth(BandwidthPass bw) {
     if (all_write != 0) {
         write_sample = ((double)last_write / all_write);
     }
-    if ((((double)read_sample * 64 * read_config) / 1024 / 1024 / (this->epoch + this->last_latency) * 1000) >
-        ((double)bandwidth.read)) {
+    if (read_sample * 64 * read_config / 1024 / 1024 / (this->epoch + this->last_latency) * 1000 >
+        bandwidth.read) {
         res +=
             read_sample * 64 * read_config / 1024 / 1024 / (this->epoch + this->last_latency) * 1000 / bandwidth.read -
             this->epoch * 0.001; // TODO: read
     }
-    if ((((double)write_sample * 64 * write_config) / 1024 / 1024 / (this->epoch + this->last_latency) * 1000) >
+    if (write_sample * 64 * write_config / 1024 / 1024 / (this->epoch + this->last_latency) * 1000 >
         bandwidth.write) {
-        res += (((double)write_sample * 64 * write_config) / 1024 / 1024 / (this->epoch + this->last_latency) * 1000 /
-                bandwidth.write) -
+        res += write_sample * 64 * write_config / 1024 / 1024 / (this->epoch + this->last_latency) * 1000 /
+                bandwidth.write -
                this->epoch * 0.001; // TODO: wb+clflush
     }
     return res;

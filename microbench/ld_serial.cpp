@@ -44,8 +44,8 @@
   "movdqa  (%%r9), %%xmm0 \n"					\
   "add $" STR(MOVE_SIZE) ", %%r8 \n"				\
   "cmp $" STR(FENCE_BOUND) ",%%r8\n"				\
-  "jl LOOP_START%= \n"						\
-  "mfence \n"
+  "mfence \n" \
+  "jl LOOP_START%= \n"						
 
 
 int main(int argc, char **argv) {

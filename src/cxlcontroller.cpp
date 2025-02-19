@@ -119,6 +119,7 @@ int CXLController::insert(uint64_t timestamp, uint64_t tid, lbr lbrs[4], cntr co
     return 0;
 }
 int CXLController::insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr, int index) {
+// compute within index range
     auto index_ = policy->compute_once(this);
     if (index_ == -1) {
         this->occupation.emplace(timestamp, phys_addr);

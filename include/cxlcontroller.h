@@ -103,14 +103,40 @@ template <> struct std::formatter<CXLController> {
 
         // 首先打印控制器自身的计数器信息
         result += std::format("CXLController:\n");
-        result += std::format("  Total Capacity: {}GB\n", controller.capacity);
+        // iterate through the topology map
+        uint64_t total_capacity = 0;
+
+        std::function<void(const CXLSwitch*)> dfs_capacity = [&](const CXLSwitch* node) {
+            if (!node) return;
+
+            // Traverse expanders and sum their capacity
+            for (const auto* expander : node->expanders) {
+                if (expander) {
+                    total_capacity += expander->capacity;
+                }
+            }
+
+            // Recur for all connected switches
+            for (const auto* sw : node->switches) {
+                dfs_capacity(sw); // Proper recursive call
+            }
+        };
+        dfs_capacity(&controller);
+
+        result += std::format("Total system memory capacity: {}GB\n", total_capacity);
+
         result += std::format("  Page Type: {}\n", [](page_type pt) {
-            switch(pt) {
-                case CACHELINE: return "CACHELINE";
-                case PAGE: return "PAGE";
-                case HUGEPAGE_2M: return "HUGEPAGE_2M";
-                case HUGEPAGE_1G: return "HUGEPAGE_1G";
-                default: return "UNKNOWN";
+            switch (pt) {
+            case CACHELINE:
+                return "CACHELINE";
+            case PAGE:
+                return "PAGE";
+            case HUGEPAGE_2M:
+                return "HUGEPAGE_2M";
+            case HUGEPAGE_1G:
+                return "HUGEPAGE_1G";
+            default:
+                return "UNKNOWN";
             }
         }(controller.page_type_));
 
@@ -124,8 +150,8 @@ template <> struct std::formatter<CXLController> {
         result += "Topology:\n";
 
         // 递归打印每个交换机
-        std::function<void(const CXLSwitch*, int)> print_switch =
-            [&result, &print_switch](const CXLSwitch* sw, int depth) {
+        std::function<void(const CXLSwitch *, int)> print_switch = [&result, &print_switch](const CXLSwitch *sw,
+                                                                                            int depth) {
             std::string indent(depth * 2, ' ');
 
             // 打印交换机事件计数
@@ -136,12 +162,12 @@ template <> struct std::formatter<CXLController> {
             result += std::format("{}    Conflict: {}\n", indent, sw->counter.conflict);
 
             // 递归打印子交换机
-            for (const auto& child : sw->switches) {
+            for (const auto &child : sw->switches) {
                 print_switch(child, depth + 1);
             }
 
             // 打印端点
-            for (const auto& endpoint : sw->expanders) {
+            for (const auto &endpoint : sw->expanders) {
                 result += std::format("{}Expander:\n", indent + "  ");
                 result += std::format("{}  Events:\n", indent + "  ");
                 result += std::format("{}    Load: {}\n", indent + "  ", endpoint->counter.load);
