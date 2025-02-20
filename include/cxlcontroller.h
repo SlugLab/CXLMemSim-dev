@@ -17,6 +17,7 @@
 #include <queue>
 #include <string_view>
 
+#define ROB_SIZE 512
 class Monitors;
 struct mem_stats;
 struct proc_info;
@@ -58,16 +59,31 @@ class CXLController : public CXLSwitch {
 public:
     std::vector<CXLMemExpander *> cur_expanders{};
     int capacity; // GB
-    AllocationPolicy *policy;
+    AllocationPolicy *allocation_policy;
+    MigrationPolicy *migration_policy;
+    PagingPolicy *paging_policy;
+    CachingPolicy *caching_policy;
     CXLCounter counter;
     std::map<uint64_t, uint64_t> occupation;
-    std::map<uint64_t, uint64_t> va_pa_map;
     page_type page_type_; // percentage
+    // no need for va pa map because v-indexed will not caught by us
     int num_switches = 0;
     int num_end_points = 0;
+    int last_index = 0;
     uint64_t freed = 0;
-    size_t cache_size = 30 * 1024 * 1024; // 30MB
-    std::queue<uint64_t> cache;
+    // ring buffer
+    std::queue<lbr> ring_buffer;
+    // rob info
+    typedef struct {
+        std::vector<uint64_t> m_bandwidth, m_count;
+        uint64_t llcm_base, llcm_count, ins_count;
+    } rob_info;
+    typedef struct {
+        rob_info rob;
+        std::queue<int> llcm_type;
+        std::queue<int> llcm_type_rob;
+    } thread_info;
+    std::unordered_map<uint64_t, thread_info> thread_map;
 
     explicit CXLController(AllocationPolicy *p, int capacity, page_type page_type_, int epoch);
     void construct_topo(std::string_view newick_tree);
@@ -78,8 +94,9 @@ public:
     std::tuple<int, int> get_all_access() override;
     double calculate_latency(LatencyPass elem) override; // traverse the tree to calculate the latency
     double calculate_bandwidth(BandwidthPass elem) override;
-    int insert(uint64_t timestamp, uint64_t tid, struct lbr *lbrs, struct cntr *counters) override;
-    int insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr, int index) override;
+    void insert_one(thread_info &t_info, lbr &lbr);
+    int insert(uint64_t timestamp, uint64_t tid, lbr *lbrs, cntr *counters) override;
+    int insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, uint64_t virt_addr, int index) override;
     void delete_entry(uint64_t addr, uint64_t length) override;
     std::string output() override;
     void set_stats(mem_stats stats);
@@ -106,18 +123,19 @@ template <> struct std::formatter<CXLController> {
         // iterate through the topology map
         uint64_t total_capacity = 0;
 
-        std::function<void(const CXLSwitch*)> dfs_capacity = [&](const CXLSwitch* node) {
-            if (!node) return;
+        std::function<void(const CXLSwitch *)> dfs_capacity = [&](const CXLSwitch *node) {
+            if (!node)
+                return;
 
             // Traverse expanders and sum their capacity
-            for (const auto* expander : node->expanders) {
+            for (const auto *expander : node->expanders) {
                 if (expander) {
                     total_capacity += expander->capacity;
                 }
             }
 
             // Recur for all connected switches
-            for (const auto* sw : node->switches) {
+            for (const auto *sw : node->switches) {
                 dfs_capacity(sw); // Proper recursive call
             }
         };
@@ -185,7 +203,6 @@ template <> struct std::formatter<CXLController> {
         result += std::format("  Number of Switches: {}\n", controller.num_switches);
         result += std::format("  Number of Endpoints: {}\n", controller.num_end_points);
         result += std::format("  Memory Freed: {} bytes\n", controller.freed);
-        result += std::format("  Cache Size: {} bytes\n", controller.cache_size);
 
         return format_to(ctx.out(), "{}", result);
     }

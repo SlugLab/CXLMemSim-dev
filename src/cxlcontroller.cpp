@@ -43,7 +43,7 @@ void CXLController::construct_topo(std::string_view newick_tree) {
 }
 
 CXLController::CXLController(AllocationPolicy *p, int capacity, page_type page_type_, int epoch)
-    : CXLSwitch(0), capacity(capacity), policy(p), page_type_(page_type_) {
+    : CXLSwitch(0), capacity(capacity), allocation_policy(p), page_type_(page_type_) {
     for (auto switch_ : this->switches) {
         switch_->set_epoch(epoch);
     }
@@ -109,38 +109,78 @@ void CXLController::set_thread_info(proc_info thread_info) {
 
 void CXLController::delete_entry(uint64_t addr, uint64_t length) { CXLSwitch::delete_entry(addr, length); }
 
-int CXLController::insert(uint64_t timestamp, uint64_t tid, lbr lbrs[4], cntr counters[4]) {
-    for (auto expander : this->expanders) {
-        auto res = expander->insert(timestamp, tid, lbrs, counters);
-        if (res != 0) {
-            return res;
-        }
+void CXLController::insert_one(thread_info& t_info, lbr& lbr) {
+    auto& rob = t_info.rob;
+    auto llcm_count = lbr.flags & LBR_DATA_MASK >> LBR_DATA_SHIFT;
+    auto ins_count = lbr.flags & LBR_INS_MASK >> LBR_INS_SHIFT;
+    for(int i = 0; i < llcm_count; i++) {
+        rob.m_count[t_info.llcm_type.front()]++;
+        t_info.llcm_type_rob.push(t_info.llcm_type.front());
+        t_info.llcm_type.pop();
     }
+    rob.llcm_count+=llcm_count;
+    rob.ins_count+=ins_count;
+    while(rob.ins_count>ROB_SIZE) {
+        auto lbr = ring_buffer.front();
+        llcm_count = (lbr.flags & LBR_DATA_MASK) >> LBR_DATA_SHIFT;
+        ins_count = (lbr.flags & LBR_INS_MASK) >> LBR_INS_SHIFT;
+        rob.ins_count -= ins_count;
+        rob.llcm_count -= llcm_count;
+        rob.llcm_base += llcm_count;
+
+        for(int i = 0; i < llcm_count; i++) {
+            rob.m_count[t_info.llcm_type_rob.front()]--;
+            t_info.llcm_type_rob.pop();
+        }
+        ring_buffer.pop();
+    }
+}
+int CXLController::insert(uint64_t timestamp, uint64_t tid, lbr *lbrs, cntr* counters) {
+    for(int i = 0; i<32;i++) {
+        if(!lbrs[i].from) { break; }
+        insert_one(thread_map[tid], lbrs[i]);
+        //TODO calculate delay
+    }
+
     return 0;
 }
-int CXLController::insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr, int index) {
-// compute within index range
-    auto index_ = policy->compute_once(this);
-    if (index_ == -1) {
-        this->occupation.emplace(timestamp, phys_addr);
-        this->va_pa_map.emplace(virt_addr, phys_addr);
-        this->counter.inc_local();
-        return true;
+int CXLController::insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, uint64_t virt_addr, int index) {
+    auto res = true;
+    auto& t_info = thread_map[tid];
+
+    // 计算时间步长,使timestamp均匀分布
+    uint64_t time_step = 0;
+    if (index > last_index) {
+        time_step = (timestamp - last_timestamp) / (index - last_index);
     }
-    this->counter.inc_remote();
-    for (auto switch_ : this->switches) {
-        auto res = switch_->insert(timestamp, phys_addr, virt_addr, index_);
-        if (res != 0) {
-            return res;
-        };
+    uint64_t current_timestamp = last_timestamp;
+
+    for (int i = last_index; i < index; i++) {
+        // 更新当前时间戳
+        current_timestamp += time_step;
+
+        auto numa_policy = allocation_policy->compute_once(this);
+        // TODO How far to go for the numa policy
+        if (numa_policy == -1) {
+            this->occupation.emplace(current_timestamp, phys_addr);
+            this->counter.inc_local();
+            t_info.llcm_type.push(0);
+            continue;
+        }
+        this->counter.inc_remote();
+        for (auto switch_ : this->switches) {
+            res &= switch_->insert(current_timestamp, tid, phys_addr, virt_addr, numa_policy);
+        }
+        for (auto expander_ : this->expanders) {
+            res &= expander_->insert(current_timestamp, tid, phys_addr, virt_addr, numa_policy);
+        }
+        t_info.llcm_type.push(1);
     }
-    for (auto expander_ : this->expanders) {
-        auto res = expander_->insert(timestamp, phys_addr, virt_addr, index_);
-        if (res != 0) {
-            return res;
-        };
-    }
-    return false;
+
+    // 更新最后的索引和时间戳
+    last_index = index;
+    last_timestamp = timestamp;
+    return res;  // 返回实际的结果而不是固定的true
 }
 
 std::vector<std::string> CXLController::tokenize(const std::string_view &s) {
@@ -166,6 +206,3 @@ std::tuple<double, std::vector<uint64_t>> CXLController::calculate_congestion() 
     return CXLSwitch::calculate_congestion();
 }
 void CXLController::set_epoch(int epoch) { CXLSwitch::set_epoch(epoch); }
-MigrationPolicy::MigrationPolicy() {}
-PagingPolicy::PagingPolicy() {}
-CachingPolicy::CachingPolicy() {}

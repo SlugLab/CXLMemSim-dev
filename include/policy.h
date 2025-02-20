@@ -32,9 +32,14 @@ class NUMAPolicy : public AllocationPolicy {
 
 public:
     NUMAPolicy();
-    int last_remote = 0;
-    int all_size = 0;
+    std::vector<double> latency_scores; // 存储每个节点的延迟评分
     int compute_once(CXLController *) override;
+};
+
+class MGLRUPolicy: public MigrationPolicy {
+public:
+  MGLRUPolicy();
+  int compute_once(CXLController *) override;
 };
 
 #endif // CXLMEMSIM_POLICY_H

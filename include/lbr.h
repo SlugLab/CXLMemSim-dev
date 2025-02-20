@@ -12,6 +12,13 @@
 #ifndef CXLMEMSIM_LBR_H
 #define CXLMEMSIM_LBR_H
 
+// 2 bits
+#define LBR_DATA_MASK 0
+#define LBR_DATA_SHIFT 1
+// 8 bits
+#define LBR_INS_MASK 0
+#define LBR_INS_SHIFT 0
+
 #include "cxlcontroller.h"
 #include "helper.h"
 #include <linux/perf_event.h>

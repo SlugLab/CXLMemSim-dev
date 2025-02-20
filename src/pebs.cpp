@@ -97,7 +97,7 @@ int PEBS::read(CXLController *controller, PEBSElem *elem) {
                     SPDLOG_TRACE("pid:{} tid:{} time:{} addr:{} phys_addr:{} llc_miss:{} timestamp={}\n", data->pid,
                                  data->tid, data->time_enabled, data->addr, data->phys_addr, data->value,
                                  data->timestamp);
-                    controller->insert(data->timestamp, data->phys_addr, data->addr, data->value);
+                    controller->insert(data->timestamp, data->tid, data->phys_addr, data->addr, data->value);
                     elem->total++;
                     elem->llcmiss = data->value; // this is the number of llc miss
                 }

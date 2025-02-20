@@ -37,8 +37,8 @@ private:
     virtual void delete_entry(uint64_t addr, uint64_t length) = 0;
     virtual double calculate_latency(LatencyPass elem) = 0; // traverse the tree to calculate the latency
     virtual double calculate_bandwidth(BandwidthPass elem) = 0;
-    virtual int insert(uint64_t timestamp, uint64_t tid, struct lbr *lbrs, struct cntr *counters) = 0;
-    virtual int insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr,
+    virtual int insert(uint64_t timestamp, uint64_t tid, lbr *lbrs, cntr *counters) = 0;
+    virtual int insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, uint64_t virt_addr,
                        int index) = 0; // 0 not this endpoint, 1 store, 2 load, 3 prefetch
     virtual std::tuple<int, int> get_all_access() = 0;
 };
@@ -65,8 +65,8 @@ public:
     std::tuple<int, int> get_all_access() override;
     void set_epoch(int epoch) override;
     void free_stats(double size) override;
-    int insert(uint64_t timestamp, uint64_t tid, struct lbr *lbrs, struct cntr *counters) override;
-    int insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr, int index) override;
+    int insert(uint64_t timestamp, uint64_t tid, lbr *lbrs, cntr *counters) override;
+    int insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, uint64_t virt_addr, int index) override;
     double calculate_latency(LatencyPass elem) override; // traverse the tree to calculate the latency
     double calculate_bandwidth(BandwidthPass elem) override;
     void delete_entry(uint64_t addr, uint64_t length) override;
@@ -83,13 +83,13 @@ public:
     // get the approximate congestion and target done time
     std::unordered_map<uint64_t, uint64_t> timeseries_map;
 
-    double congestion_latency = 0.02;
+    double congestion_latency = 0.02; // us
     explicit CXLSwitch(int id);
     std::tuple<int, int> get_all_access() override;
     double calculate_latency(LatencyPass elem) override; // traverse the tree to calculate the latency
     double calculate_bandwidth(BandwidthPass elem) override;
-    int insert(uint64_t timestamp, uint64_t tid, struct lbr *lbrs, struct cntr *counters) override;
-    int insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr, int index) override;
+    int insert(uint64_t timestamp, uint64_t tid, lbr *lbrs, cntr *counters) override;
+    int insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, uint64_t virt_addr, int index) override;
     void delete_entry(uint64_t addr, uint64_t length) override;
     std::string output() override;
     virtual std::tuple<double, std::vector<uint64_t>> calculate_congestion();

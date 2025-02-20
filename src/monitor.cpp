@@ -213,7 +213,7 @@ int Monitors::terminate(const uint32_t tgid, const uint32_t tid, const int32_t t
 
         SPDLOG_INFO("PEBS sample total {} {}", mon[target].before->pebs.total, mon[target].after->pebs.llcmiss);
         SPDLOG_INFO("LBR sample total {}", mon[target].before->lbr.total);
-        SPDLOG_INFO("bpftime sample total {}", mon[target].before->bpftime.total, mon[target].after->bpftime.);
+        SPDLOG_INFO("bpftime sample total {}", mon[target].before->bpftime.total);
         std::cout << std::format("{}",*controller) << "\n";
         break;
     }

@@ -96,7 +96,7 @@ void CXLMemExpander::delete_entry(uint64_t addr, uint64_t length) {
     }
 }
 
-int CXLMemExpander::insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr, int index) {
+int CXLMemExpander::insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, uint64_t virt_addr, int index) {
 
     if (index == this->id) {
         last_timestamp = last_timestamp > timestamp ? last_timestamp : timestamp; // Update the last timestamp
@@ -209,7 +209,7 @@ double CXLSwitch::calculate_bandwidth(BandwidthPass elem) {
     // time series
     return bw;
 }
-int CXLSwitch::insert(uint64_t timestamp, uint64_t tid, struct lbr *lbrs, struct cntr *counters) {
+int CXLSwitch::insert(uint64_t timestamp, uint64_t tid, lbr *lbrs, cntr *counters) {
     // 这里可以根据你的功能逻辑来处理 LBR 的插入信息
     SPDLOG_DEBUG("CXLSwitch insert lbr for switch id:{}\n", this->id);
 
@@ -218,14 +218,12 @@ int CXLSwitch::insert(uint64_t timestamp, uint64_t tid, struct lbr *lbrs, struct
         int ret = expander->insert(timestamp, tid, lbrs, counters);
         if (ret != 0) {
             // 如果需要，执行相应的 load/store 计数
-            this->counter.inc_load();
             return ret;
         }
     }
     for (auto &sw : this->switches) {
         int ret = sw->insert(timestamp, tid, lbrs, counters);
         if (ret != 0) {
-            this->counter.inc_load();
             return ret;
         }
     }
@@ -282,25 +280,24 @@ void CXLSwitch::free_stats(double size) {
     }
 }
 
-int CXLMemExpander::insert(uint64_t timestamp, uint64_t tid, struct lbr *lbrs, struct cntr *counters) {
+int CXLMemExpander::insert(uint64_t timestamp, uint64_t tid, lbr *lbrs, cntr *counters) {
     // 这里可以根据你的功能逻辑来处理 LBR 的插入信息
     SPDLOG_DEBUG("CXLMemExpander insert lbr for expander id:{}\n", this->id);
-
-    // 简单示例: 统计一次 load 或 store
-    this->counter.inc_load();
+    // 简单示例: 依次尝试调用下属的 Expander 和 Switch
     // 或者根据需要添加更多逻辑
+    // 这里可以根据你的功能逻辑来处理 LBR 的插入信息
 
     return 1; // 返回非 0，表明已被当前 Expander 处理
 }
 
-int CXLSwitch::insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr, int index) {
+int CXLSwitch::insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, uint64_t virt_addr, int index) {
     // 简单示例：依次调用下属的 expander 和 switch
     SPDLOG_DEBUG("CXLSwitch insert phys_addr={}, virt_addr={}, index={} for switch id:{}", phys_addr, virt_addr, index,
                  this->id);
 
     for (auto &expander : this->expanders) {
         // 在每个 expander 上尝试插入
-        int ret = expander->insert(timestamp, phys_addr, virt_addr, index);
+        int ret = expander->insert(timestamp, tid ,phys_addr, virt_addr, index);
         if (ret == 1) {
             this->counter.inc_store();
             return 1;
@@ -312,7 +309,7 @@ int CXLSwitch::insert(uint64_t timestamp, uint64_t phys_addr, uint64_t virt_addr
     }
     // 如果没有合适的 expander，就尝试下属的 switch
     for (auto &sw : this->switches) {
-        int ret = sw->insert(timestamp, phys_addr, virt_addr, index);
+        int ret = sw->insert(timestamp, tid, phys_addr, virt_addr, index);
         if (ret == 1) {
             this->counter.inc_store();
             return 1;
