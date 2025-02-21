@@ -42,8 +42,11 @@ void CXLController::construct_topo(std::string_view newick_tree) {
     }
 }
 
-CXLController::CXLController(AllocationPolicy *p, int capacity, page_type page_type_, int epoch)
-    : CXLSwitch(0), capacity(capacity), allocation_policy(p), page_type_(page_type_) {
+CXLController::CXLController(std::array<Policy *, 4> p, int capacity, page_type page_type_, int epoch,
+                             double dramlatency)
+    : CXLSwitch(0), capacity(capacity), allocation_policy(dynamic_cast<AllocationPolicy *>(p[0])),
+      migration_policy(dynamic_cast<MigrationPolicy *>(p[1])), paging_policy(dynamic_cast<PagingPolicy *>(p[2])),
+      caching_policy(dynamic_cast<CachingPolicy *>(p[3])), page_type_(page_type_), dramlatency(dramlatency) {
     for (auto switch_ : this->switches) {
         switch_->set_epoch(epoch);
     }
@@ -57,9 +60,13 @@ CXLController::CXLController(AllocationPolicy *p, int capacity, page_type page_t
     // deferentiate R/W for multi reader multi writer
 }
 
-double CXLController::calculate_latency(LatencyPass elem) { return CXLSwitch::calculate_latency(elem); }
+double CXLController::calculate_latency(const std::tuple<int, int> &elem, double dramlatency) {
+    return CXLSwitch::calculate_latency(elem, dramlatency);
+}
 
-double CXLController::calculate_bandwidth(BandwidthPass elem) { return CXLSwitch::calculate_bandwidth(elem); }
+double CXLController::calculate_bandwidth(const std::tuple<int, int> &elem) {
+    return CXLSwitch::calculate_bandwidth(elem);
+}
 
 std::string CXLController::output() {
     std::string res;
@@ -99,28 +106,28 @@ void CXLController::set_stats(mem_stats stats) {
         this->freed = stats.total_freed;
 }
 
-void CXLController::set_process_info(proc_info process_info) {
+void CXLController::set_process_info(const proc_info &process_info) {
     monitors->enable(process_info.current_pid, process_info.current_tid, true, 1000, 0);
 }
 
-void CXLController::set_thread_info(proc_info thread_info) {
+void CXLController::set_thread_info(const proc_info &thread_info) {
     monitors->enable(thread_info.current_pid, thread_info.current_tid, false, 0, 0);
 }
 
 void CXLController::delete_entry(uint64_t addr, uint64_t length) { CXLSwitch::delete_entry(addr, length); }
 
-void CXLController::insert_one(thread_info& t_info, lbr& lbr) {
-    auto& rob = t_info.rob;
+void CXLController::insert_one(thread_info &t_info, lbr &lbr) {
+    auto &rob = t_info.rob;
     auto llcm_count = lbr.flags & LBR_DATA_MASK >> LBR_DATA_SHIFT;
     auto ins_count = lbr.flags & LBR_INS_MASK >> LBR_INS_SHIFT;
-    for(int i = 0; i < llcm_count; i++) {
+    for (int i = 0; i < llcm_count; i++) {
         rob.m_count[t_info.llcm_type.front()]++;
         t_info.llcm_type_rob.push(t_info.llcm_type.front());
         t_info.llcm_type.pop();
     }
-    rob.llcm_count+=llcm_count;
-    rob.ins_count+=ins_count;
-    while(rob.ins_count>ROB_SIZE) {
+    rob.llcm_count += llcm_count;
+    rob.ins_count += ins_count;
+    while (rob.ins_count > ROB_SIZE) {
         auto lbr = ring_buffer.front();
         llcm_count = (lbr.flags & LBR_DATA_MASK) >> LBR_DATA_SHIFT;
         ins_count = (lbr.flags & LBR_INS_MASK) >> LBR_INS_SHIFT;
@@ -128,25 +135,17 @@ void CXLController::insert_one(thread_info& t_info, lbr& lbr) {
         rob.llcm_count -= llcm_count;
         rob.llcm_base += llcm_count;
 
-        for(int i = 0; i < llcm_count; i++) {
+        for (int i = 0; i < llcm_count; i++) {
             rob.m_count[t_info.llcm_type_rob.front()]--;
             t_info.llcm_type_rob.pop();
         }
         ring_buffer.pop();
     }
 }
-int CXLController::insert(uint64_t timestamp, uint64_t tid, lbr *lbrs, cntr* counters) {
-    for(int i = 0; i<32;i++) {
-        if(!lbrs[i].from) { break; }
-        insert_one(thread_map[tid], lbrs[i]);
-        //TODO calculate delay
-    }
 
-    return 0;
-}
 int CXLController::insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, uint64_t virt_addr, int index) {
     auto res = true;
-    auto& t_info = thread_map[tid];
+    auto &t_info = thread_map[tid];
 
     // 计算时间步长,使timestamp均匀分布
     uint64_t time_step = 0;
@@ -180,9 +179,22 @@ int CXLController::insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, 
     // 更新最后的索引和时间戳
     last_index = index;
     last_timestamp = timestamp;
-    return res;  // 返回实际的结果而不是固定的true
+    return res; // 返回实际的结果而不是固定的true
 }
+int CXLController::insert(uint64_t timestamp, uint64_t tid, lbr lbrs[32], cntr counters[32]) {
+    for (int i = 0; i < 32; i++) {
+        if (!lbrs[i].from) {
+            break;
+        }
+        insert_one(thread_map[tid], lbrs[i]);
+        // TODO calculate delay
+        auto all_access = get_all_access(); // get the current branch access?
+        latency_lat += calculate_latency(all_access, dramlatency); // insert once
+        bandwidth_lat += calculate_bandwidth(all_access); // insert once
+    }
 
+    return 0;
+}
 std::vector<std::string> CXLController::tokenize(const std::string_view &s) {
     std::vector<std::string> res;
     std::string tmp;

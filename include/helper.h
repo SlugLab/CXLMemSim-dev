@@ -63,19 +63,6 @@ struct EmuCXLBandwidth {
     double write;
 };
 
-struct BandwidthPass {
-    std::tuple<int, int> all_access;
-    uint64_t read_config;
-    uint64_t write_config;
-};
-
-struct LatencyPass {
-    std::tuple<int, int> all_access;
-    double dramlatency;
-    uint64_t readonly;
-    uint64_t writeback;
-};
-
 struct CHAElem {
     std::array<uint64_t, 4> cha;
 };

@@ -19,55 +19,12 @@ CXLMemExpander::CXLMemExpander(int read_bw, int write_bw, int read_lat, int writ
     this->latency.read = read_lat;
     this->latency.write = write_lat;
 }
-double CXLMemExpander::calculate_latency(LatencyPass lat) {
-    auto all_access = lat.all_access;
-    auto dramlatency = lat.dramlatency;
-    auto ma_ro = lat.readonly;
-    auto ma_wb = lat.writeback;
-    auto all_read = std::get<0>(all_access);
-    auto all_write = std::get<1>(all_access);
-    double read_sample = 0.;
-    if (all_read != 0) {
-        read_sample = (double)last_read / all_read;
-    }
-    double write_sample = 0.;
-    if (all_write != 0) {
-        write_sample = (double)last_write / all_write;
-    }
-    this->last_latency =
-        ma_ro * read_sample * (latency.read - dramlatency) + ma_wb * write_sample * (latency.write - dramlatency);
+double CXLMemExpander::calculate_latency(const std::tuple<int, int> &elem, double dramlatency) {
     return this->last_latency;
 }
-double CXLMemExpander::calculate_bandwidth(BandwidthPass bw) {
+double CXLMemExpander::calculate_bandwidth(const std::tuple<int, int> &elem) {
     // Iterate the map within the last 20ms
-    auto all_access = bw.all_access;
-    auto read_config = bw.read_config;
-    auto write_config = bw.write_config;
-
-    double res = 0.0;
-    auto all_read = std::get<0>(all_access);
-    auto all_write = std::get<1>(all_access);
-    double read_sample = 0.;
-    if (all_read != 0) {
-        read_sample = ((double)last_read / all_read);
-    }
-    double write_sample = 0.; // based on time series
-    if (all_write != 0) {
-        write_sample = ((double)last_write / all_write);
-    }
-    if (read_sample * 64 * read_config / 1024 / 1024 / (this->epoch + this->last_latency) * 1000 >
-        bandwidth.read) {
-        res +=
-            read_sample * 64 * read_config / 1024 / 1024 / (this->epoch + this->last_latency) * 1000 / bandwidth.read -
-            this->epoch * 0.001; // TODO: read
-    }
-    if (write_sample * 64 * write_config / 1024 / 1024 / (this->epoch + this->last_latency) * 1000 >
-        bandwidth.write) {
-        res += write_sample * 64 * write_config / 1024 / 1024 / (this->epoch + this->last_latency) * 1000 /
-                bandwidth.write -
-               this->epoch * 0.001; // TODO: wb+clflush
-    }
-    return res;
+    return this->bandwidth.read + this->bandwidth.write;
 }
 void CXLMemExpander::delete_entry(uint64_t addr, uint64_t length) {
     for (auto it1 = va_pa_map.begin(); it1 != va_pa_map.end();) {
@@ -188,17 +145,17 @@ void CXLSwitch::delete_entry(uint64_t addr, uint64_t length) {
     }
 }
 CXLSwitch::CXLSwitch(int id) : id(id) {}
-double CXLSwitch::calculate_latency(LatencyPass elem) {
+double CXLSwitch::calculate_latency(const std::tuple<int, int> &elem, double dramlatency) {
     double lat = 0.0;
     for (auto &expander : this->expanders) {
-        lat += expander->calculate_latency(elem);
+        lat += expander->calculate_latency(elem, dramlatency);
     }
     for (auto &switch_ : this->switches) {
-        lat += switch_->calculate_latency(elem);
+        lat += switch_->calculate_latency(elem, dramlatency);
     }
     return lat;
 }
-double CXLSwitch::calculate_bandwidth(BandwidthPass elem) {
+double CXLSwitch::calculate_bandwidth(const std::tuple<int, int> &elem) {
     double bw = 0.0;
     for (auto &expander : this->expanders) {
         bw += expander->calculate_bandwidth(elem);
@@ -208,26 +165,6 @@ double CXLSwitch::calculate_bandwidth(BandwidthPass elem) {
     }
     // time series
     return bw;
-}
-int CXLSwitch::insert(uint64_t timestamp, uint64_t tid, lbr *lbrs, cntr *counters) {
-    // 这里可以根据你的功能逻辑来处理 LBR 的插入信息
-    SPDLOG_DEBUG("CXLSwitch insert lbr for switch id:{}\n", this->id);
-
-    // 简单示例: 依次尝试调用下属的 Expander 和 Switch
-    for (auto &expander : this->expanders) {
-        int ret = expander->insert(timestamp, tid, lbrs, counters);
-        if (ret != 0) {
-            // 如果需要，执行相应的 load/store 计数
-            return ret;
-        }
-    }
-    for (auto &sw : this->switches) {
-        int ret = sw->insert(timestamp, tid, lbrs, counters);
-        if (ret != 0) {
-            return ret;
-        }
-    }
-    return 0; // 未找到合适的处理者
 }
 std::tuple<double, std::vector<uint64_t>> CXLSwitch::calculate_congestion() {
     double latency = 0.0;
@@ -280,16 +217,6 @@ void CXLSwitch::free_stats(double size) {
     }
 }
 
-int CXLMemExpander::insert(uint64_t timestamp, uint64_t tid, lbr *lbrs, cntr *counters) {
-    // 这里可以根据你的功能逻辑来处理 LBR 的插入信息
-    SPDLOG_DEBUG("CXLMemExpander insert lbr for expander id:{}\n", this->id);
-    // 简单示例: 依次尝试调用下属的 Expander 和 Switch
-    // 或者根据需要添加更多逻辑
-    // 这里可以根据你的功能逻辑来处理 LBR 的插入信息
-
-    return 1; // 返回非 0，表明已被当前 Expander 处理
-}
-
 int CXLSwitch::insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, uint64_t virt_addr, int index) {
     // 简单示例：依次调用下属的 expander 和 switch
     SPDLOG_DEBUG("CXLSwitch insert phys_addr={}, virt_addr={}, index={} for switch id:{}", phys_addr, virt_addr, index,
@@ -297,7 +224,7 @@ int CXLSwitch::insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, uint
 
     for (auto &expander : this->expanders) {
         // 在每个 expander 上尝试插入
-        int ret = expander->insert(timestamp, tid ,phys_addr, virt_addr, index);
+        int ret = expander->insert(timestamp, tid, phys_addr, virt_addr, index);
         if (ret == 1) {
             this->counter.inc_store();
             return 1;

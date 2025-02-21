@@ -15,8 +15,6 @@ MigrationPolicy::MigrationPolicy() = default;
 PagingPolicy::PagingPolicy() = default;
 CachingPolicy::CachingPolicy() = default;
 AllocationPolicy::AllocationPolicy() = default;
-InterleavePolicy::InterleavePolicy() = default;
-NUMAPolicy::NUMAPolicy() = default;
 // If the number is -1 for local, else it is the index of the remote server
 int InterleavePolicy::compute_once(CXLController *controller) {
     int per_size;
@@ -86,19 +84,17 @@ int NUMAPolicy::compute_once(CXLController *controller) {
 
     // 检查本地内存是否有足够空间
     if (controller->occupation.size() * per_size / 1024 / 1024 < controller->capacity * 0.9) {
-        return -1;  // 返回-1表示使用本地内存
+        return -1; // 返回-1表示使用本地内存
     }
 
     // 初始化延迟评分
     if (this->latency_scores.empty()) {
         for (size_t i = 0; i < controller->cur_expanders.size(); i++) {
             // 计算综合延迟分数：考虑读写延迟的加权平均
-            double read_weight = 0.7;  // 读操作权重
-            double write_weight = 0.3;  // 写操作权重
-            double latency_score = 1.0 / (
-                read_weight * controller->cur_expanders[i]->latency.read +
-                write_weight * controller->cur_expanders[i]->latency.write
-            );
+            double read_weight = 0.7; // 读操作权重
+            double write_weight = 0.3; // 写操作权重
+            double latency_score = 1.0 / (read_weight * controller->cur_expanders[i]->latency.read +
+                                          write_weight * controller->cur_expanders[i]->latency.write);
             latency_scores.push_back(latency_score);
         }
     }
@@ -111,13 +107,13 @@ int NUMAPolicy::compute_once(CXLController *controller) {
         // 检查节点是否有足够容量
         if (controller->cur_expanders[i]->occupation.size() * per_size / 1024 / 1024 >=
             controller->cur_expanders[i]->capacity) {
-            continue;  // 跳过已满的节点
+            continue; // 跳过已满的节点
         }
 
         // 计算节点评分
-        double current_score = latency_scores[i] * (1.0 -
-            static_cast<double>(controller->cur_expanders[i]->occupation.size() * per_size) /
-            (controller->cur_expanders[i]->capacity * 1024 * 1024));
+        double current_score =
+            latency_scores[i] * (1.0 - static_cast<double>(controller->cur_expanders[i]->occupation.size() * per_size) /
+                                           (controller->cur_expanders[i]->capacity * 1024 * 1024));
 
         // 更新最佳节点
         if (current_score > best_score) {
@@ -138,3 +134,14 @@ int NUMAPolicy::compute_once(CXLController *controller) {
 
     return best_node;
 }
+
+int MGLRUPolicy::compute_once(CXLController *) {
+    return 0;
+}
+int HugePagePolicy::compute_once(CXLController *) {
+    return 0;
+}
+int FIFOPolicy::compute_once(CXLController *) {
+    return 0;
+}
+

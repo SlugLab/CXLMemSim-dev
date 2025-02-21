@@ -21,37 +21,47 @@
 class Monitors;
 struct mem_stats;
 struct proc_info;
+struct lbr;
+struct cntr;
 enum page_type { CACHELINE, PAGE, HUGEPAGE_2M, HUGEPAGE_1G };
 
-class AllocationPolicy {
+class Policy {
 public:
-    virtual ~AllocationPolicy() = default;
-    AllocationPolicy();
-    virtual int compute_once(CXLController *) = 0;
-    // No write problem
+    virtual ~Policy() = default;
+    Policy() = default;
+    virtual int compute_once(CXLController *) = 0; // reader writer
 };
 
-class MigrationPolicy {
+class AllocationPolicy : public Policy {
 public:
-    virtual ~MigrationPolicy() = default;
+    AllocationPolicy();
+};
+
+class MigrationPolicy : public Policy {
+public:
     MigrationPolicy();
-    virtual int compute_once(CXLController *) = 0; // reader writer
-    // paging related
-    // switching related
+    std::vector<std::tuple<uint64_t, uint64_t>> get_migration_list(CXLController *controller);
+    // migration related
+    // 1. get the migration list
+    // 2. do the migration
+    // 3. update the counter
+    // 4. update the occupation map
+    // 5. update the latency and bandwidth
+    // 6. update the ring buffer
+    // 7. update the rob info
+    // 8. update the thread info
 };
 
 // need to give a timeout and will be added latency later,
-class PagingPolicy {
+class PagingPolicy : public Policy {
 public:
     PagingPolicy();
-    virtual int compute_once(CXLController *) = 0; // reader writer
     // paging related
 };
 
-class CachingPolicy {
+class CachingPolicy: public Policy {
 public:
     CachingPolicy();
-    virtual int compute_once(CXLController *) = 0; // reader writer
     // paging related
 };
 
@@ -59,10 +69,10 @@ class CXLController : public CXLSwitch {
 public:
     std::vector<CXLMemExpander *> cur_expanders{};
     int capacity; // GB
-    AllocationPolicy *allocation_policy;
-    MigrationPolicy *migration_policy;
-    PagingPolicy *paging_policy;
-    CachingPolicy *caching_policy;
+    AllocationPolicy *allocation_policy{};
+    MigrationPolicy *migration_policy{};
+    PagingPolicy *paging_policy{};
+    CachingPolicy *caching_policy{};
     CXLCounter counter;
     std::map<uint64_t, uint64_t> occupation;
     page_type page_type_; // percentage
@@ -71,6 +81,9 @@ public:
     int num_end_points = 0;
     int last_index = 0;
     uint64_t freed = 0;
+    uint64_t latency_lat{};
+    uint64_t bandwidth_lat{};
+    double dramlatency;
     // ring buffer
     std::queue<lbr> ring_buffer;
     // rob info
@@ -85,23 +98,24 @@ public:
     } thread_info;
     std::unordered_map<uint64_t, thread_info> thread_map;
 
-    explicit CXLController(AllocationPolicy *p, int capacity, page_type page_type_, int epoch);
+    explicit CXLController(std::array<Policy*,4> p, int capacity, page_type page_type_, int epoch, double dramlatency);
     void construct_topo(std::string_view newick_tree);
     void insert_end_point(CXLMemExpander *end_point);
     std::vector<std::string> tokenize(const std::string_view &s);
     std::tuple<double, std::vector<uint64_t>> calculate_congestion() override;
     void set_epoch(int epoch) override;
     std::tuple<int, int> get_all_access() override;
-    double calculate_latency(LatencyPass elem) override; // traverse the tree to calculate the latency
-    double calculate_bandwidth(BandwidthPass elem) override;
+    double calculate_latency(const std::tuple<int, int> &elem,
+                             double dramlatency) override; // traverse the tree to calculate the latency
+    double calculate_bandwidth(const std::tuple<int, int> &elem) override;
     void insert_one(thread_info &t_info, lbr &lbr);
-    int insert(uint64_t timestamp, uint64_t tid, lbr *lbrs, cntr *counters) override;
+    int insert(uint64_t timestamp, uint64_t tid, lbr lbrs[32], cntr counters[32]);
     int insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, uint64_t virt_addr, int index) override;
     void delete_entry(uint64_t addr, uint64_t length) override;
     std::string output() override;
     void set_stats(mem_stats stats);
-    void set_process_info(proc_info process_info);
-    void set_thread_info(proc_info thread_info);
+    static void set_process_info(const proc_info &process_info);
+    static void set_thread_info(const proc_info &thread_info);
 };
 
 template <> struct std::formatter<CXLController> {

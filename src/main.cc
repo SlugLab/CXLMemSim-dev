@@ -93,7 +93,10 @@ int main(int argc, char *argv[]) {
         mode = PAGE;
     }
 
-    auto *policy = new InterleavePolicy();
+    auto *policy1 = new InterleavePolicy();
+    auto *policy2 = new MGLRUPolicy();
+    auto *policy3 = new HugePagePolicy();
+    auto *policy4 = new FIFOPolicy();
 
     uint64_t use_cpus = 0;
     cpu_set_t use_cpuset;
@@ -117,7 +120,7 @@ int main(int argc, char *argv[]) {
     for (auto const &[idx, value] : capacity | std::views::enumerate) {
         if (idx == 0) {
             SPDLOG_DEBUG("local_memory_region capacity:{}", value);
-            controller = new CXLController(policy, capacity[0], mode, 100);
+            controller = new CXLController({policy1, policy2, policy3, policy4}, capacity[0], mode, 100, dramlatency);
         } else {
             SPDLOG_DEBUG("memory_region:{}", (idx - 1) + 1);
             SPDLOG_DEBUG(" capacity:{}", capacity[(idx - 1) + 1]);
@@ -126,7 +129,7 @@ int main(int argc, char *argv[]) {
             SPDLOG_DEBUG(" read_bandwidth:{}", bandwidth[(idx - 1) * 2]);
             SPDLOG_DEBUG(" write_bandwidth:{}", bandwidth[(idx - 1) * 2 + 1]);
             auto *ep = new CXLMemExpander(bandwidth[(idx - 1) * 2], bandwidth[(idx - 1) * 2 + 1],
-                                          latency[(idx - 1) * 2], latency[(idx - 1) * 2 + 1], (idx - 1), capacity[idx]);
+                                          latency[(idx - 1) * 2], latency[(idx - 1) * 2 + 1], idx - 1, capacity[idx]);
             controller->insert_end_point(ep);
         }
     }
@@ -288,7 +291,7 @@ int main(int argc, char *argv[]) {
                 // the LLC misses of the CPU core (target_llcmiss) to that
                 // of the LLC misses of all the CPU cores and the
                 // prefetchers (cpus_dram_rds).
-                llcmiss_wb = wb_cnt * std::lround(((double)target_llcmiss) / ((double)read_config));
+                llcmiss_wb = wb_cnt * std::lround((double)target_llcmiss / (double)read_config);
                 uint64_t llcmiss_ro = 0;
                 if (target_llcmiss < llcmiss_wb) { // tunning
                     SPDLOG_ERROR("[{}:{}:{}] clflush {}, llcmiss_wb {}, target_llcmiss {}", i, mon.tgid, mon.tid,
@@ -300,27 +303,12 @@ int main(int argc, char *argv[]) {
                 }
                 SPDLOG_DEBUG("[{}:{}:{}]llcmiss_wb={}, llcmiss_ro={}", i, mon.tgid, mon.tid, llcmiss_wb, llcmiss_ro);
 
-                uint64_t emul_delay = 0;
+                uint64_t emul_delay = controller->latency_lat + controller->bandwidth_lat;
 
                 SPDLOG_DEBUG("[{}:{}:{}] pebs: total={}, ", i, mon.tgid, mon.tid, mon.after->pebs.total);
 
                 /** TODO: calculate latency construct the passing value and use interleaving policy and counter to
                  * get the sample_prop */
-                auto all_access = controller->get_all_access();
-                LatencyPass lat_pass = {
-                    .all_access = all_access,
-                    .dramlatency = dramlatency,
-                    .readonly = llcmiss_ro,
-                    .writeback = llcmiss_wb,
-                };
-                BandwidthPass bw_pass = {
-                    .all_access = all_access,
-                    .read_config = read_config,
-                    .write_config = read_config,
-                };
-                emul_delay += std::lround(controller->calculate_latency(lat_pass));
-                emul_delay += controller->calculate_bandwidth(bw_pass);
-                emul_delay += std::get<0>(controller->calculate_congestion());
 
                 mon.before->pebs.total = mon.after->pebs.total;
                 mon.before->lbr.total = mon.after->lbr.total;
@@ -353,6 +341,8 @@ int main(int argc, char *argv[]) {
                     SPDLOG_DEBUG("{}:{}", new_wanted.tv_sec, new_wanted.tv_nsec);
                     SPDLOG_DEBUG("{}", *monitors);
                 }
+                controller->latency_lat = 0;
+                controller->bandwidth_lat = 0;
             }
 
         } // End for-loop for all target processes

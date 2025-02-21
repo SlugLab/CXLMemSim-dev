@@ -15,7 +15,7 @@ bool Rob::issue(const InstructionGroup &ins) {
 
     // 对于内存访问指令,通知控制器
     if (ins.address != 0) {
-        controller_->insert(ins.retireTimestamp, 0,  ins.address, 0, 0);
+        controller_->insert(ins.retireTimestamp, 0, ins.address, 0, 0);
     }
 
     return true;
@@ -30,7 +30,7 @@ bool Rob::canRetire(const InstructionGroup &ins) {
     // 检查内存访问是否完成
     if (cur_latency == 0) {
         auto allAccess = controller_->get_all_access();
-        cur_latency = controller_->calculate_latency(LatencyPass{allAccess, 80, 1, 1});
+        cur_latency = controller_->calculate_latency(allAccess, 80.);
     }
     // SPDLOG_INFO("{}",cur_latency);
     if (currentCycle_ - ins.cycleCount >= cur_latency) {
@@ -55,7 +55,7 @@ void Rob::retire() {
     // 计算这条指令的实际延迟
     if (oldestIns.address != 0) {
         auto allAccess = controller_->get_all_access();
-        uint64_t latency = controller_->calculate_latency(LatencyPass{allAccess, 80, 1, 1}); // also delete the latency
+        uint64_t latency = controller_->calculate_latency(allAccess, 80.); // also delete the latency
         totalLatency_ += latency;
     }
 

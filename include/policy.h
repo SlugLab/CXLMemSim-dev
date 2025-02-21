@@ -21,7 +21,7 @@
 class InterleavePolicy : public AllocationPolicy {
 
 public:
-    InterleavePolicy();
+    InterleavePolicy() = default;
     int last_remote = 0;
     int all_size = 0;
     std::vector<double> percentage;
@@ -31,15 +31,27 @@ public:
 class NUMAPolicy : public AllocationPolicy {
 
 public:
-    NUMAPolicy();
+    NUMAPolicy() = default;
     std::vector<double> latency_scores; // 存储每个节点的延迟评分
     int compute_once(CXLController *) override;
 };
 
-class MGLRUPolicy: public MigrationPolicy {
+class MGLRUPolicy : public MigrationPolicy {
 public:
-  MGLRUPolicy();
-  int compute_once(CXLController *) override;
+    MGLRUPolicy() = default;
+    int compute_once(CXLController *) override;
+};
+
+class HugePagePolicy : public PagingPolicy {
+public:
+    HugePagePolicy() = default;
+    int compute_once(CXLController *) override;
+};
+
+class FIFOPolicy : public CachingPolicy {
+public:
+    FIFOPolicy() = default;
+    int compute_once(CXLController *) override;
 };
 
 #endif // CXLMEMSIM_POLICY_H
