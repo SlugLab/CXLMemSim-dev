@@ -88,8 +88,8 @@ public:
     std::queue<lbr> ring_buffer;
     // rob info
     typedef struct {
-        std::vector<uint64_t> m_bandwidth, m_count;
-        uint64_t llcm_base, llcm_count, ins_count;
+        std::map<int,int64_t> m_bandwidth, m_count;
+        int64_t llcm_base, llcm_count, ins_count;
     } rob_info;
     typedef struct {
         rob_info rob;
@@ -104,10 +104,10 @@ public:
     std::vector<std::string> tokenize(const std::string_view &s);
     std::tuple<double, std::vector<uint64_t>> calculate_congestion() override;
     void set_epoch(int epoch) override;
-    std::tuple<int, int> get_access(uint64_t timestamp) override;
-    double calculate_latency(const std::tuple<int, int> &elem,
+    std::vector<std::tuple<int, int>> get_access(uint64_t timestamp) override;
+    double calculate_latency(const std::vector<std::tuple<int, int>> &elem,
                              double dramlatency) override; // traverse the tree to calculate the latency
-    double calculate_bandwidth(const std::tuple<int, int> &elem) override;
+    double calculate_bandwidth(const std::vector<std::tuple<int, int>> &elem) override;
     void insert_one(thread_info &t_info, lbr &lbr);
     int insert(uint64_t timestamp, uint64_t tid, lbr lbrs[32], cntr counters[32]);
     int insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, uint64_t virt_addr, int index) override;

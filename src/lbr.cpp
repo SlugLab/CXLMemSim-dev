@@ -139,30 +139,32 @@ int LBR::read(CXLController *controller, LBRElem *elem) {
             // printf("read lbr\n");
             switch (header->type) {
             case PERF_RECORD_LOST:
-                SPDLOG_DEBUG("received PERF_RECORD_LOST\n");
+                SPDLOG_DEBUG("received PERF_RECORD_LOST");
                 break;
             case PERF_RECORD_SAMPLE:
                 data = reinterpret_cast<lbr_sample *>(dp + this->rdlen % DATA_SIZE);
 
                 if (header->size < sizeof(*data)) {
-                    SPDLOG_DEBUG("size too small. size:{}\n", header->size);
+                    SPDLOG_DEBUG("size too small. size:{}", header->size);
                     r = -1;
                     return r;
                 }
                 if (header->size > sizeof(*data)) {
-                    SPDLOG_DEBUG("size too big. size:{} / {}\n", header->size, sizeof(*data));
+                    SPDLOG_DEBUG("size too big. size:{} / {}", header->size, sizeof(*data));
                 }
                 if (this->pid == data->pid) {
                     SPDLOG_ERROR("pid:{} tid:{} size:{} nr2:{} data-size:{} cpu:{} timestamp:{} hw_idx: lbrs:{} "
-                                 "counters:{} {} {}\n",
+                                 "counters:{} {} {}",
                                  data->pid, data->tid, header->size, /*data->nr,*/ data->nr2, sizeof(*data),
                                  /*data->ips[0],*/ data->cpu, data->timestamp, /* data->hw_idx,*/ data->lbrs[0].from,
                                  data->counters[0].counters, data->counters[1].counters, data->counters[2].counters);
-                    controller->insert(data->timestamp, data->tid, data->lbrs, data->counters);
-                    elem->tid = data->tid;
+
                     memcpy(&elem->branch_stack,
                            (char *)&data->counters + (32 * 8), // Cast to char* before arithmetic
                            92 * 8);
+                    controller->insert(data->timestamp, data->tid, data->lbrs, data->counters);
+                    elem->tid = data->tid;
+
                     elem->total++;
                     r = 1;
                 }

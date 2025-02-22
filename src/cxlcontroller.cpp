@@ -60,11 +60,11 @@ CXLController::CXLController(std::array<Policy *, 4> p, int capacity, page_type 
     // deferentiate R/W for multi reader multi writer
 }
 
-double CXLController::calculate_latency(const std::tuple<int, int> &elem, double dramlatency) {
+double CXLController::calculate_latency(const std::vector<std::tuple<int, int>> &elem, double dramlatency) {
     return CXLSwitch::calculate_latency(elem, dramlatency);
 }
 
-double CXLController::calculate_bandwidth(const std::tuple<int, int> &elem) {
+double CXLController::calculate_bandwidth(const std::vector<std::tuple<int, int>> &elem) {
     return CXLSwitch::calculate_bandwidth(elem);
 }
 
@@ -118,8 +118,12 @@ void CXLController::delete_entry(uint64_t addr, uint64_t length) { CXLSwitch::de
 
 void CXLController::insert_one(thread_info &t_info, lbr &lbr) {
     auto &rob = t_info.rob;
-    auto llcm_count = lbr.flags & LBR_DATA_MASK >> LBR_DATA_SHIFT;
-    auto ins_count = lbr.flags & LBR_INS_MASK >> LBR_INS_SHIFT;
+    auto llcm_count = (lbr.flags & LBR_DATA_MASK) >> LBR_DATA_SHIFT;
+    auto ins_count = (lbr.flags & LBR_INS_MASK) >> LBR_INS_SHIFT;
+
+    // ——在这里插入 ring_buffer，表示我们接收到了一个新的 lbr
+    ring_buffer.push(lbr);
+
     for (int i = 0; i < llcm_count; i++) {
         rob.m_count[t_info.llcm_type.front()]++;
         t_info.llcm_type_rob.push(t_info.llcm_type.front());
@@ -127,10 +131,12 @@ void CXLController::insert_one(thread_info &t_info, lbr &lbr) {
     }
     rob.llcm_count += llcm_count;
     rob.ins_count += ins_count;
+
     while (rob.ins_count > ROB_SIZE) {
-        auto lbr = ring_buffer.front();
-        llcm_count = (lbr.flags & LBR_DATA_MASK) >> LBR_DATA_SHIFT;
-        ins_count = (lbr.flags & LBR_INS_MASK) >> LBR_INS_SHIFT;
+        auto old_lbr = ring_buffer.front();
+        llcm_count = (old_lbr.flags & LBR_DATA_MASK) >> LBR_DATA_SHIFT;
+        ins_count = (old_lbr.flags & LBR_INS_MASK) >> LBR_INS_SHIFT;
+
         rob.ins_count -= ins_count;
         rob.llcm_count -= llcm_count;
         rob.llcm_base += llcm_count;
@@ -212,9 +218,7 @@ std::vector<std::string> CXLController::tokenize(const std::string_view &s) {
     }
     return res;
 }
-std::tuple<int, int> CXLController::get_access(uint64_t timestamp) {
-    return CXLSwitch::get_access(timestamp);
-}
+std::vector<std::tuple<int, int>> CXLController::get_access(uint64_t timestamp) { return CXLSwitch::get_access(timestamp); }
 std::tuple<double, std::vector<uint64_t>> CXLController::calculate_congestion() {
     return CXLSwitch::calculate_congestion();
 }

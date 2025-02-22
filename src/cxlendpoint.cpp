@@ -19,29 +19,24 @@ CXLMemExpander::CXLMemExpander(int read_bw, int write_bw, int read_lat, int writ
     this->latency.read = read_lat;
     this->latency.write = write_lat;
 }
-double CXLMemExpander::calculate_latency(const std::tuple<int, int> &elem, double dramlatency) {
+double CXLMemExpander::calculate_latency(const std::vector<std::tuple<int, int>> &elem, double dramlatency) {
 
     return 60;
 }
-double CXLMemExpander::calculate_bandwidth(const std::tuple<int, int> &elem) {
+double CXLMemExpander::calculate_bandwidth(const std::vector<std::tuple<int, int>> &elem) {
     // Iterate the map within the last 20ms
 
     return this->bandwidth.read + this->bandwidth.write;
 }
 void CXLMemExpander::delete_entry(uint64_t addr, uint64_t length) {
-    for (auto it1 = va_pa_map.begin(); it1 != va_pa_map.end();) {
-        if (it1->second >= addr && it1->second <= addr + length) {
-            for (auto it = occupation.begin(); it != occupation.end();) {
-                if (it->second == addr) {
-                    it = occupation.erase(it);
-                } else {
-                    ++it;
-                }
-            }
-            it1 = va_pa_map.erase(it1);
-            this->counter.inc_load();
+    for (auto it = occupation.begin(); it != occupation.end();) {
+        if (it->second == addr) {
+            it = occupation.erase(it);
+        } else {
+            ++it;
         }
     }
+    this->counter.inc_load();
     // kernel mode access
     for (auto it = occupation.begin(); it != occupation.end();) {
         if (it->second >= addr && it->second <= addr + length) {
@@ -61,12 +56,6 @@ int CXLMemExpander::insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr,
         last_timestamp = last_timestamp > timestamp ? last_timestamp : timestamp; // Update the last timestamp
         // Check if the address is already in the map)
         if (phys_addr != 0) {
-            if (va_pa_map.find(virt_addr) == va_pa_map.end()) {
-                this->va_pa_map.emplace(virt_addr, phys_addr);
-            } else {
-                this->va_pa_map[virt_addr] = phys_addr;
-                SPDLOG_DEBUG("virt:{} phys:{} conflict insertion detected\n", virt_addr, phys_addr);
-            }
             for (auto it = this->occupation.cbegin(); it != this->occupation.cend(); it++) {
                 if ((*it).second == phys_addr) {
                     this->occupation.erase(it);
@@ -95,24 +84,30 @@ int CXLMemExpander::insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr,
     return 0;
 }
 std::string CXLMemExpander::output() { return std::format("CXLMemExpander {}", this->id); }
-std::tuple<int, int> CXLMemExpander::get_access(uint64_t timestamp)  {
-    this->last_read = this->counter.load - this->last_counter.load;
-    this->last_write = this->counter.store - this->last_counter.store;
+std::vector<std::tuple<int, int>> CXLMemExpander::get_access(uint64_t timestamp) {
     last_counter = CXLMemExpanderEvent(counter);
-    return std::make_tuple(this->last_read, this->last_write);
+    std::vector<std::tuple<int, int>> res;
+    // Iterate the map within the last 100ns
+    for (auto it = occupation.begin(); it != occupation.end();) {
+        if (it->first > timestamp - 100) {
+            res.push_back(std::make_tuple(it->first, it->second));
+        } else {
+            ++it;
+        }
+    }
+    return res;
 }
 void CXLMemExpander::set_epoch(int epoch) { this->epoch = epoch; }
 void CXLMemExpander::free_stats(double size) {
-    std::vector<uint64_t> keys;
-    for (auto &it : this->va_pa_map) {
-        keys.push_back(it.first);
-    }
-    std::shuffle(keys.begin(), keys.end(), std::mt19937(std::random_device()()));
-    for (auto it = keys.begin(); it != keys.end(); ++it) {
-        if (this->va_pa_map[*it] > size) {
-            this->va_pa_map.erase(*it);
-            this->occupation.erase(*it);
-            this->counter.inc_load();
+    // 随机删除
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(0, 1);
+    for (auto it = occupation.begin(); it != occupation.end();) {
+        if (dis(gen) == 1) {
+            it = occupation.erase(it);
+        } else {
+            ++it;
         }
     }
 }
@@ -147,7 +142,7 @@ void CXLSwitch::delete_entry(uint64_t addr, uint64_t length) {
     }
 }
 CXLSwitch::CXLSwitch(int id) : id(id) {}
-double CXLSwitch::calculate_latency(const std::tuple<int, int> &elem, double dramlatency) {
+double CXLSwitch::calculate_latency(const std::vector<std::tuple<int, int>> &elem, double dramlatency) {
     double lat = 0.0;
     for (auto &expander : this->expanders) {
         lat += expander->calculate_latency(elem, dramlatency);
@@ -157,7 +152,7 @@ double CXLSwitch::calculate_latency(const std::tuple<int, int> &elem, double dra
     }
     return lat;
 }
-double CXLSwitch::calculate_bandwidth(const std::tuple<int, int> &elem) {
+double CXLSwitch::calculate_bandwidth(const std::vector<std::tuple<int, int>> &elem) {
     double bw = 0.0;
     for (auto &expander : this->expanders) {
         bw += expander->calculate_bandwidth(elem);
@@ -197,19 +192,17 @@ std::tuple<double, std::vector<uint64_t>> CXLSwitch::calculate_congestion() {
     }
     return std::make_tuple(latency, congestion);
 }
-std::tuple<int, int> CXLSwitch::get_access(uint64_t timestamp) {
-    int read = 0, write = 0;
+std::vector<std::tuple<int, int>> CXLSwitch::get_access(uint64_t timestamp) {
+    auto res = std::vector<std::tuple<int, int>>();
     for (auto &expander : this->expanders) {
-        auto [r, w] = expander->get_access(timestamp);
-        read += r;
-        write += w;
+        auto tmp = expander->get_access(timestamp);
+        res.insert(res.end(), tmp.begin(), tmp.end());
     }
     for (auto &switch_ : this->switches) {
-        auto [r, w] = switch_->get_access(timestamp);
-        read += r;
-        write += w;
+        auto tmp = switch_->get_access(timestamp);
+        res.insert(res.end(), tmp.begin(), tmp.end());
     }
-    return std::make_tuple(read, write);
+    return res;
 }
 void CXLSwitch::set_epoch(int epoch) { this->epoch = epoch; }
 void CXLSwitch::free_stats(double size) {

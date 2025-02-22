@@ -13,11 +13,11 @@
 #define CXLMEMSIM_LBR_H
 
 // 2 bits
-#define LBR_DATA_MASK 0
-#define LBR_DATA_SHIFT 1
+#define LBR_DATA_MASK 0x0000000000000003
+#define LBR_DATA_SHIFT 0
 // 8 bits
-#define LBR_INS_MASK 0
-#define LBR_INS_SHIFT 0
+#define LBR_INS_MASK 0xfffffff0000
+#define LBR_INS_SHIFT  16
 
 #include "cxlcontroller.h"
 #include "helper.h"

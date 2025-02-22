@@ -252,13 +252,13 @@ int main(int argc, char *argv[]) {
                 if (mon.bpftime_ctx->read(controller, &mon.after->bpftime) < 0) {
                     SPDLOG_ERROR("[{}:{}:{}] Warning: Failed BPFTIMERUNTIME read", i, mon.tgid, mon.tid);
                 }
-                /* read LBR sample */
-                if (mon.lbr_ctx->read(controller, &mon.after->lbr) < 0) {
-                    SPDLOG_ERROR("[{}:{}:{}] Warning: Failed LBR read", i, mon.tgid, mon.tid);
-                }
                 /* read PEBS sample */
                 if (mon.pebs_ctx->read(controller, &mon.after->pebs) < 0) {
                     SPDLOG_ERROR("[{}:{}:{}] Warning: Failed PEBS read", i, mon.tgid, mon.tid);
+                }
+                /* read LBR sample */
+                if (mon.lbr_ctx->read(controller, &mon.after->lbr) < 0) {
+                    SPDLOG_ERROR("[{}:{}:{}] Warning: Failed LBR read", i, mon.tgid, mon.tid);
                 }
                 target_llcmiss = mon.after->pebs.total - mon.before->pebs.total;
 
