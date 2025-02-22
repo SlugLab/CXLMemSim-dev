@@ -36,7 +36,7 @@ private:
     virtual double calculate_bandwidth(const std::tuple<int, int> &elem) = 0;
     virtual int insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, uint64_t virt_addr,
                        int index) = 0; // 0 not this endpoint, 1 store, 2 load, 3 prefetch
-    virtual std::tuple<int, int> get_all_access() = 0;
+    virtual std::tuple<int, int> get_access(uint64_t timestamp) = 0;
 };
 
 class CXLMemExpander : public CXLEndPoint {
@@ -58,7 +58,7 @@ public:
     uint64_t last_timestamp = 0;
     int id = -1;
     CXLMemExpander(int read_bw, int write_bw, int read_lat, int write_lat, int id, int capacity);
-    std::tuple<int, int> get_all_access() override;
+    std::tuple<int, int> get_access(uint64_t timestamp) override;
     void set_epoch(int epoch) override;
     void free_stats(double size) override;
     int insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, uint64_t virt_addr, int index) override;
@@ -80,7 +80,7 @@ public:
 
     double congestion_latency = 0.02; // us
     explicit CXLSwitch(int id);
-    std::tuple<int, int> get_all_access() override;
+    std::tuple<int, int> get_access(uint64_t timestamp) override;
     double calculate_latency(const std::tuple<int, int> &elem, double dramlatency) override; // traverse the tree to calculate the latency
     double calculate_bandwidth(const std::tuple<int, int> &elem) override;
     int insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, uint64_t virt_addr, int index) override;

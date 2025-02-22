@@ -159,7 +159,6 @@ int CXLController::insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, 
         current_timestamp += time_step;
 
         auto numa_policy = allocation_policy->compute_once(this);
-        // TODO How far to go for the numa policy
         if (numa_policy == -1) {
             this->occupation.emplace(current_timestamp, phys_addr);
             this->counter.inc_local();
@@ -188,11 +187,11 @@ int CXLController::insert(uint64_t timestamp, uint64_t tid, lbr lbrs[32], cntr c
         }
         insert_one(thread_map[tid], lbrs[i]);
         // TODO calculate delay
-        auto all_access = get_all_access(); // get the current branch access?
-        latency_lat += calculate_latency(all_access, dramlatency); // insert once
-        bandwidth_lat += calculate_bandwidth(all_access); // insert once
+        // timestamp
     }
-
+    auto all_access = get_access(timestamp); // get the current branch access?
+    latency_lat += calculate_latency(all_access, dramlatency); // insert once
+    bandwidth_lat += calculate_bandwidth(all_access); // insert once
     return 0;
 }
 std::vector<std::string> CXLController::tokenize(const std::string_view &s) {
@@ -213,7 +212,9 @@ std::vector<std::string> CXLController::tokenize(const std::string_view &s) {
     }
     return res;
 }
-std::tuple<int, int> CXLController::get_all_access() { return CXLSwitch::get_all_access(); }
+std::tuple<int, int> CXLController::get_access(uint64_t timestamp) {
+    return CXLSwitch::get_access(timestamp);
+}
 std::tuple<double, std::vector<uint64_t>> CXLController::calculate_congestion() {
     return CXLSwitch::calculate_congestion();
 }

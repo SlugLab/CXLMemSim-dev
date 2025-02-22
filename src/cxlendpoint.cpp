@@ -20,10 +20,12 @@ CXLMemExpander::CXLMemExpander(int read_bw, int write_bw, int read_lat, int writ
     this->latency.write = write_lat;
 }
 double CXLMemExpander::calculate_latency(const std::tuple<int, int> &elem, double dramlatency) {
-    return this->last_latency;
+
+    return 60;
 }
 double CXLMemExpander::calculate_bandwidth(const std::tuple<int, int> &elem) {
     // Iterate the map within the last 20ms
+
     return this->bandwidth.read + this->bandwidth.write;
 }
 void CXLMemExpander::delete_entry(uint64_t addr, uint64_t length) {
@@ -93,7 +95,7 @@ int CXLMemExpander::insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr,
     return 0;
 }
 std::string CXLMemExpander::output() { return std::format("CXLMemExpander {}", this->id); }
-std::tuple<int, int> CXLMemExpander::get_all_access() {
+std::tuple<int, int> CXLMemExpander::get_access(uint64_t timestamp)  {
     this->last_read = this->counter.load - this->last_counter.load;
     this->last_write = this->counter.store - this->last_counter.store;
     last_counter = CXLMemExpanderEvent(counter);
@@ -195,15 +197,15 @@ std::tuple<double, std::vector<uint64_t>> CXLSwitch::calculate_congestion() {
     }
     return std::make_tuple(latency, congestion);
 }
-std::tuple<int, int> CXLSwitch::get_all_access() {
+std::tuple<int, int> CXLSwitch::get_access(uint64_t timestamp) {
     int read = 0, write = 0;
     for (auto &expander : this->expanders) {
-        auto [r, w] = expander->get_all_access();
+        auto [r, w] = expander->get_access(timestamp);
         read += r;
         write += w;
     }
     for (auto &switch_ : this->switches) {
-        auto [r, w] = switch_->get_all_access();
+        auto [r, w] = switch_->get_access(timestamp);
         read += r;
         write += w;
     }

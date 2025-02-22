@@ -29,7 +29,7 @@ bool Rob::canRetire(const InstructionGroup &ins) {
 
     // 检查内存访问是否完成
     if (cur_latency == 0) {
-        auto allAccess = controller_->get_all_access();
+        auto allAccess = controller_->get_access(currentCycle_);
         cur_latency = controller_->calculate_latency(allAccess, 80.);
     }
     // SPDLOG_INFO("{}",cur_latency);
@@ -54,7 +54,7 @@ void Rob::retire() {
 
     // 计算这条指令的实际延迟
     if (oldestIns.address != 0) {
-        auto allAccess = controller_->get_all_access();
+        auto allAccess = controller_->get_access(currentCycle_);
         uint64_t latency = controller_->calculate_latency(allAccess, 80.); // also delete the latency
         totalLatency_ += latency;
     }

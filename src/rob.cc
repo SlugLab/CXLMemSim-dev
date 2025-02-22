@@ -132,6 +132,7 @@ int main(int argc, char *argv[]) {
         "h,help", "Help for CXLMemSimRoB", cxxopts::value<bool>()->default_value("false"))(
         "o,topology", "The newick tree input for the CXL memory expander topology",
         cxxopts::value<std::string>()->default_value("(1,(2,3))"))(
+        "d,dramlatency", "The current platform's dram latency", cxxopts::value<double>()->default_value("110"))(
         "e,capacity", "The capacity vector of the CXL memory expander with the first local",
         cxxopts::value<std::vector<int>>()->default_value("0,20,20,20"))(
         "m,mode", "Page mode or cacheline mode", cxxopts::value<std::string>()->default_value("cacheline"))(
@@ -151,6 +152,7 @@ int main(int argc, char *argv[]) {
     auto latency = result["latency"].as<std::vector<int>>();
     auto bandwidth = result["bandwidth"].as<std::vector<int>>();
     auto topology = result["topology"].as<std::string>();
+    auto dramlatency = result["dramlatency"].as<double>();
     page_type mode;
     if (result["mode"].as<std::string>() == "hugepage_2M") {
         mode = HUGEPAGE_2M;
@@ -161,12 +163,15 @@ int main(int argc, char *argv[]) {
     } else {
         mode = PAGE;
     }
-    auto *policy = new InterleavePolicy();
+    auto *policy1 = new InterleavePolicy();
+    auto *policy2 = new MGLRUPolicy();
+    auto *policy3 = new HugePagePolicy();
+    auto *policy4 = new FIFOPolicy();
 
     for (auto const &[idx, value] : capacity | std::views::enumerate) {
         if (idx == 0) {
             SPDLOG_DEBUG("local_memory_region capacity:{}", value);
-            controller = new CXLController(policy, capacity[0], mode, 100);
+            controller = new CXLController({policy1, policy2, policy3, policy4}, capacity[0], mode, 100, dramlatency);
         } else {
             SPDLOG_DEBUG("memory_region:{}", (idx - 1) + 1);
             SPDLOG_DEBUG(" capacity:{}", capacity[(idx - 1) + 1]);
@@ -240,7 +245,7 @@ int main(int argc, char *argv[]) {
     }
     // After processing all groups, call your ROB method.
     int nonMemInstr = std::count_if(instructions.begin(), instructions.end(),
-                                [](const InstructionGroup &ins) { return ins.address == 0; });
+                                    [](const InstructionGroup &ins) { return ins.address == 0; });
     SPDLOG_INFO("Non-memory instructions: {}", nonMemInstr);
 
     std::cout << "Stalls: " << rob.getStallCount() << std::endl;

@@ -104,7 +104,7 @@ public:
     std::vector<std::string> tokenize(const std::string_view &s);
     std::tuple<double, std::vector<uint64_t>> calculate_congestion() override;
     void set_epoch(int epoch) override;
-    std::tuple<int, int> get_all_access() override;
+    std::tuple<int, int> get_access(uint64_t timestamp) override;
     double calculate_latency(const std::tuple<int, int> &elem,
                              double dramlatency) override; // traverse the tree to calculate the latency
     double calculate_bandwidth(const std::tuple<int, int> &elem) override;
