@@ -60,36 +60,14 @@ CXLController::CXLController(std::array<Policy *, 4> p, int capacity, page_type 
     // deferentiate R/W for multi reader multi writer
 }
 
-double CXLController::calculate_latency(const std::vector<std::tuple<int, int>> &elem, double dramlatency) {
+double CXLController::calculate_latency(const std::vector<std::tuple<uint64_t, uint64_t>> &elem, double dramlatency) {
     return CXLSwitch::calculate_latency(elem, dramlatency);
 }
 
-double CXLController::calculate_bandwidth(const std::vector<std::tuple<int, int>> &elem) {
+double CXLController::calculate_bandwidth(const std::vector<std::tuple<uint64_t, uint64_t>> &elem) {
     return CXLSwitch::calculate_bandwidth(elem);
 }
 
-std::string CXLController::output() {
-    std::string res;
-    if (!this->switches.empty()) {
-        res += "(";
-        res += this->switches[0]->output();
-        for (size_t i = 1; i < this->switches.size(); ++i) {
-            res += ",";
-            res += this->switches[i]->output();
-        }
-        res += ")";
-    }
-    if (!this->expanders.empty()) {
-        res += "(";
-        res += this->expanders[0]->output();
-        for (size_t i = 1; i < this->expanders.size(); ++i) {
-            res += ",";
-            res += this->expanders[i]->output();
-        }
-        res += ")";
-    }
-    return res;
-}
 
 void CXLController::set_stats(mem_stats stats) {
     // SPDLOG_INFO("stats: {} {} {} {} {}", stats.total_allocated, stats.total_freed, stats.current_usage,
@@ -187,17 +165,37 @@ int CXLController::insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, 
     return res; // 返回实际的结果而不是固定的true
 }
 int CXLController::insert(uint64_t timestamp, uint64_t tid, lbr lbrs[32], cntr counters[32]) {
+    // 处理LBR记录
     for (int i = 0; i < 32; i++) {
         if (!lbrs[i].from) {
             break;
         }
         insert_one(thread_map[tid], lbrs[i]);
-        // TODO calculate delay
-        // timestamp
     }
-    auto all_access = get_access(timestamp); // get the current branch access?
-    latency_lat += calculate_latency(all_access, dramlatency); // insert once
-    bandwidth_lat += calculate_bandwidth(all_access); // insert once
+
+    auto all_access = get_access(timestamp);
+    auto& t_info = thread_map[tid];
+
+    // 对每个endpoint计算延迟并累加
+    double total_latency = 0.0;
+    std::function<void(CXLSwitch*)> dfs_calculate = [&](CXLSwitch* node) {
+        // 处理当前节点的expanders
+        for (auto* expander : node->expanders) {
+            total_latency += get_endpoint_rob_latency(expander, all_access, t_info, dramlatency);
+        }
+
+        // 递归处理子节点
+        for (auto* switch_ : node->switches) {
+            dfs_calculate(switch_);
+        }
+    };
+
+    // 从当前controller开始DFS遍历
+    dfs_calculate(this);
+
+    latency_lat += total_latency;
+    bandwidth_lat += calculate_bandwidth(all_access);
+
     return 0;
 }
 std::vector<std::string> CXLController::tokenize(const std::string_view &s) {
@@ -218,7 +216,7 @@ std::vector<std::string> CXLController::tokenize(const std::string_view &s) {
     }
     return res;
 }
-std::vector<std::tuple<int, int>> CXLController::get_access(uint64_t timestamp) { return CXLSwitch::get_access(timestamp); }
+std::vector<std::tuple<uint64_t, uint64_t>> CXLController::get_access(uint64_t timestamp) { return CXLSwitch::get_access(timestamp); }
 std::tuple<double, std::vector<uint64_t>> CXLController::calculate_congestion() {
     return CXLSwitch::calculate_congestion();
 }

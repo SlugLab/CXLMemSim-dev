@@ -17,7 +17,6 @@
 #include <queue>
 #include <string_view>
 
-#define ROB_SIZE 512
 class Monitors;
 struct mem_stats;
 struct proc_info;
@@ -59,7 +58,7 @@ public:
     // paging related
 };
 
-class CachingPolicy: public Policy {
+class CachingPolicy : public Policy {
 public:
     CachingPolicy();
     // paging related
@@ -74,7 +73,7 @@ public:
     PagingPolicy *paging_policy{};
     CachingPolicy *caching_policy{};
     CXLCounter counter;
-    std::map<uint64_t, uint64_t> occupation;
+    std::map<uint64_t, occupation_info> occupation;
     page_type page_type_; // percentage
     // no need for va pa map because v-indexed will not caught by us
     int num_switches = 0;
@@ -87,32 +86,23 @@ public:
     // ring buffer
     std::queue<lbr> ring_buffer;
     // rob info
-    typedef struct {
-        std::map<int,int64_t> m_bandwidth, m_count;
-        int64_t llcm_base, llcm_count, ins_count;
-    } rob_info;
-    typedef struct {
-        rob_info rob;
-        std::queue<int> llcm_type;
-        std::queue<int> llcm_type_rob;
-    } thread_info;
     std::unordered_map<uint64_t, thread_info> thread_map;
 
-    explicit CXLController(std::array<Policy*,4> p, int capacity, page_type page_type_, int epoch, double dramlatency);
+    explicit CXLController(std::array<Policy *, 4> p, int capacity, page_type page_type_, int epoch,
+                           double dramlatency);
     void construct_topo(std::string_view newick_tree);
     void insert_end_point(CXLMemExpander *end_point);
     std::vector<std::string> tokenize(const std::string_view &s);
     std::tuple<double, std::vector<uint64_t>> calculate_congestion() override;
     void set_epoch(int epoch) override;
-    std::vector<std::tuple<int, int>> get_access(uint64_t timestamp) override;
-    double calculate_latency(const std::vector<std::tuple<int, int>> &elem,
+    std::vector<std::tuple<uint64_t, uint64_t>> get_access(uint64_t timestamp) override;
+    double calculate_latency(const std::vector<std::tuple<uint64_t, uint64_t>> &elem,
                              double dramlatency) override; // traverse the tree to calculate the latency
-    double calculate_bandwidth(const std::vector<std::tuple<int, int>> &elem) override;
+    double calculate_bandwidth(const std::vector<std::tuple<uint64_t, uint64_t>> &elem) override;
     void insert_one(thread_info &t_info, lbr &lbr);
     int insert(uint64_t timestamp, uint64_t tid, lbr lbrs[32], cntr counters[32]);
     int insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, uint64_t virt_addr, int index) override;
     void delete_entry(uint64_t addr, uint64_t length) override;
-    std::string output() override;
     void set_stats(mem_stats stats);
     static void set_process_info(const proc_info &process_info);
     static void set_thread_info(const proc_info &thread_info);

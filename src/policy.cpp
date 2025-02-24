@@ -135,13 +135,146 @@ int NUMAPolicy::compute_once(CXLController *controller) {
     return best_node;
 }
 
-int MGLRUPolicy::compute_once(CXLController *) {
-    return 0;
+// MGLRUPolicy实现
+// 多粒度LRU策略实现
+int MGLRUPolicy::compute_once(CXLController *controller) {
+    int per_size;
+    // 确定页面大小
+    switch (controller->page_type_) {
+    case CACHELINE:
+        per_size = 64;
+        break;
+    case PAGE:
+        per_size = 4096;
+        break;
+    case HUGEPAGE_2M:
+        per_size = 2 * 1024 * 1024;
+        break;
+    case HUGEPAGE_1G:
+        per_size = 1024 * 1024 * 1024;
+        break;
+    };
+
+    // 检查本地内存使用情况
+    if (controller->occupation.size() * per_size / 1024 / 1024 < controller->capacity * 0.9) {
+        return -1; // 本地内存足够,不需要迁移
+    }
+
+    // 找到访问频率最低的页面所在的远程节点
+    int target_node = -1;
+    uint64_t lowest_access_count = UINT64_MAX;
+
+    for (size_t i = 0; i < controller->cur_expanders.size(); i++) {
+        auto expander = controller->cur_expanders[i];
+        // 检查节点是否有空间
+        if (expander->occupation.size() * per_size / 1024 / 1024 >= expander->capacity) {
+            continue;
+        }
+
+        // 计算该节点上页面的平均访问次数
+        uint64_t total_access = 0;
+        size_t page_count = 0;
+        for (const auto &page : expander->occupation) {
+            total_access += page.access_count;
+            page_count++;
+        }
+
+        uint64_t avg_access = page_count > 0 ? total_access / page_count : UINT64_MAX;
+
+        if (avg_access < lowest_access_count) {
+            lowest_access_count = avg_access;
+            target_node = i;
+        }
+    }
+
+    return target_node;
 }
-int HugePagePolicy::compute_once(CXLController *) {
-    return 0;
+
+// HugePagePolicy实现
+// 大页面策略实现
+int HugePagePolicy::compute_once(CXLController *controller) {
+    // 如果当前不是大页面模式,尝试升级到大页面
+    if (controller->page_type_ == PAGE) {
+        // 检查连续的小页面数量
+        size_t consecutive_pages = 0;
+        size_t max_consecutive = 0;
+
+        for (size_t i = 1; i < controller->occupation.size(); i++) {
+            if (controller->occupation[i].address == controller->occupation[i - 1].address + 4096) {
+                consecutive_pages++;
+                max_consecutive = std::max(max_consecutive, consecutive_pages);
+            } else {
+                consecutive_pages = 0;
+            }
+        }
+
+        // 如果有足够多连续页面,切换到2M大页面
+        if (max_consecutive >= 512) { // 512 * 4KB = 2MB
+            controller->page_type_ = HUGEPAGE_2M;
+            return 1; // 返回1表示进行了页面大小调整
+        }
+    }
+    // 同理检查是否可以升级到1G大页面
+    else if (controller->page_type_ == HUGEPAGE_2M) {
+        size_t consecutive_pages = 0;
+        size_t max_consecutive = 0;
+
+        for (size_t i = 1; i < controller->occupation.size(); i++) {
+            if (controller->occupation[i].address == controller->occupation[i - 1].address + 2 * 1024 * 1024) {
+                consecutive_pages++;
+                max_consecutive = std::max(max_consecutive, consecutive_pages);
+            } else {
+                consecutive_pages = 0;
+            }
+        }
+
+        if (max_consecutive >= 512) { // 512 * 2MB = 1GB
+            controller->page_type_ = HUGEPAGE_1G;
+            return 1;
+        }
+    }
+
+    return 0; // 返回0表示没有进行调整
 }
-int FIFOPolicy::compute_once(CXLController *) {
-    return 0;
+
+// FIFOPolicy实现
+// 先进先出缓存策略
+int FIFOPolicy::compute_once(CXLController *controller) {
+    int per_size;
+    // 确定页面大小
+    switch (controller->page_type_) {
+    case CACHELINE:
+        per_size = 64;
+        break;
+    case PAGE:
+        per_size = 4096;
+        break;
+    case HUGEPAGE_2M:
+        per_size = 2 * 1024 * 1024;
+        break;
+    case HUGEPAGE_1G:
+        per_size = 1024 * 1024 * 1024;
+        break;
+    };
+
+    // 检查缓存是否已满
+    if (controller->occupation.size() * per_size / 1024 / 1024 >= controller->capacity) {
+        // 找到最早进入缓存的页面
+        uint64_t oldest_timestamp = UINT64_MAX;
+        size_t evict_index = 0;
+
+        for (size_t i = 0; i < controller->occupation.size(); i++) {
+            if (controller->occupation[i].timestamp < oldest_timestamp) {
+                oldest_timestamp = controller->occupation[i].timestamp;
+                evict_index = i;
+            }
+        }
+
+        // 驱逐最早的页面
+        controller->occupation.erase(evict_index);
+        return 1;  // 返回1表示进行了页面驱逐
+    }
+
+    return 0;  // 返回0表示没有进行驱逐
 }
 

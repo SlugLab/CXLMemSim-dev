@@ -54,8 +54,7 @@ Monitor *Monitors::get_mon(const int tgid, const int tid) {
     }
     return new Monitor();
 }
-int Monitors::enable(const uint32_t tgid, const uint32_t tid, bool is_process, uint64_t pebs_sample_period,
-                     const int32_t tnum) {
+int Monitors::enable(uint32_t tgid, uint32_t tid, bool is_process, uint64_t pebs_sample_period, int32_t tnum) {
     int target = -1;
 
     for (int i = 0; i < tnum; i++) {
@@ -214,7 +213,7 @@ int Monitors::terminate(const uint32_t tgid, const uint32_t tid, const int32_t t
         SPDLOG_INFO("PEBS sample total {} {}", mon[target].before->pebs.total, mon[target].after->pebs.llcmiss);
         SPDLOG_INFO("LBR sample total {}", mon[target].before->lbr.total);
         SPDLOG_INFO("bpftime sample total {}", mon[target].before->bpftime.total);
-        std::cout << std::format("{}",*controller) << "\n";
+        SPDLOG_INFO("{}", *controller);
         break;
     }
 

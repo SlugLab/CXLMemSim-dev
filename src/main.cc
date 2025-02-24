@@ -28,6 +28,7 @@
 Helper helper{};
 CXLController *controller;
 Monitors *monitors;
+auto cha_mapping = std::vector{0, 1, 2, 3, 4, 5, 6, 7, 8};
 int main(int argc, char *argv[]) {
     spdlog::cfg::load_env_levels();
     cxxopts::Options options("CXLMemSim", "For simulation of CXL.mem Type 3 on Xeon 6");
@@ -134,8 +135,6 @@ int main(int argc, char *argv[]) {
         }
     }
     controller->construct_topo(topology);
-    SPDLOG_INFO("{}", controller->output());
-
     /** Hove been got by socket if it's not main thread and synchro */
     SPDLOG_DEBUG("cpu_freq:{}", frequency);
     SPDLOG_DEBUG("num_of_cha:{}", ncha);
@@ -241,7 +240,7 @@ int main(int argc, char *argv[]) {
                 clock_gettime(CLOCK_MONOTONIC, &start_ts);
                 SPDLOG_DEBUG("[{}:{}:{}] start_ts: {}.{}", i, mon.tgid, mon.tid, start_ts.tv_sec, start_ts.tv_nsec);
                 /** Read CHA values */
-                std::vector<uint64_t> cha_vec, cpu_vec{};
+                std::vector<uint64_t> cha_vec{0, 0, 0, 0}, cpu_vec{0, 0, 0, 0};
 
                 /*** read CPU params */
                 uint64_t wb_cnt = 0;
@@ -262,18 +261,14 @@ int main(int argc, char *argv[]) {
                 }
                 target_llcmiss = mon.after->pebs.total - mon.before->pebs.total;
 
-                for (int j = 0; j < helper.used_cpu.size(); j++) {
-                    for (auto const &[idx, value] : pmu.cpus | std::views::enumerate) {
-                        value.read_cpu_elems(&mon.after->cpus[j]);
-                        cpu_vec.emplace_back(mon.after->cpus[j].cpu[idx] - mon.before->cpus[j].cpu[idx]);
-                    }
+                for (auto const &[idx, value] : pmu.cpus | std::views::enumerate) {
+                    value.read_cpu_elems(&mon.after->cpus[i]);
+                    cpu_vec[idx] = mon.after->cpus[i].cpu[idx] - mon.before->cpus[i].cpu[idx];
                 }
 
-                for (int j = 0; j < helper.used_cha.size(); j++) {
-                    for (auto const &[idx, value] : pmu.chas | std::views::enumerate) {
-                        value.read_cha_elems(&mon.after->chas[j]);
-                        cha_vec.emplace_back(mon.after->chas[j].cha[idx] - mon.before->chas[j].cha[idx]);
-                    }
+                for (auto const &[idx, value] : pmu.chas | std::views::enumerate) {
+                    value.read_cha_elems(&mon.after->chas[cha_mapping[i]]);
+                    cha_vec[idx] = mon.after->chas[cha_mapping[i]].cha[idx] - mon.before->chas[cha_mapping[i]].cha[idx];
                 }
                 target_llchits = cpu_vec[0];
                 wb_cnt = cpu_vec[1];

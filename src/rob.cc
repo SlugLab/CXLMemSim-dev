@@ -185,7 +185,6 @@ int main(int argc, char *argv[]) {
         }
     }
     controller->construct_topo(topology);
-    SPDLOG_INFO("{}", controller->output());
     Rob rob(controller, 512);
 
     // read from file
