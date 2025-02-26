@@ -276,28 +276,6 @@ int main(int argc, char *argv[]) {
 
                 clflush = cha_vec[0];
                 target_l2miss = cha_vec[2];
-                SPDLOG_DEBUG("[{}:{}:{}] LLC_WB = {}", i, mon.tgid, mon.tid, wb_cnt);
-
-                uint64_t llcmiss_wb = 0;
-                // To estimate the number of the writeback-involving LLC
-                // misses of the CPU core (llcmiss_wb), the total number of
-                // writebacks observed in L3 (wb_cnt) is devided
-                // proportionally, according to the number of the ratio of
-                // the LLC misses of the CPU core (target_llcmiss) to that
-                // of the LLC misses of all the CPU cores and the
-                // prefetchers (cpus_dram_rds).
-                llcmiss_wb = wb_cnt * std::lround((double)target_llcmiss / (double)read_config);
-                uint64_t llcmiss_ro = 0;
-                if (target_llcmiss < llcmiss_wb) { // tunning
-                    SPDLOG_ERROR("[{}:{}:{}] clflush {}, llcmiss_wb {}, target_llcmiss {}", i, mon.tgid, mon.tid,
-                                 clflush, llcmiss_wb, target_llcmiss);
-                    llcmiss_wb = target_llcmiss;
-                    llcmiss_ro = 0;
-                } else {
-                    llcmiss_ro = target_llcmiss - llcmiss_wb;
-                }
-                SPDLOG_DEBUG("[{}:{}:{}]llcmiss_wb={}, llcmiss_ro={}", i, mon.tgid, mon.tid, llcmiss_wb, llcmiss_ro);
-
                 uint64_t emul_delay = controller->latency_lat + controller->bandwidth_lat;
 
                 SPDLOG_DEBUG("[{}:{}:{}] pebs: total={}, ", i, mon.tgid, mon.tid, mon.after->pebs.total);
