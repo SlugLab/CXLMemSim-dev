@@ -276,7 +276,7 @@ int main(int argc, char *argv[]) {
 
                 clflush = cha_vec[0];
                 target_l2miss = cha_vec[2];
-                uint64_t emul_delay = controller->latency_lat + controller->bandwidth_lat;
+                uint64_t emul_delay = (controller->latency_lat + controller->bandwidth_lat) * 1000000;
 
                 SPDLOG_DEBUG("[{}:{}:{}] pebs: total={}, ", i, mon.tgid, mon.tid, mon.after->pebs.total);
 

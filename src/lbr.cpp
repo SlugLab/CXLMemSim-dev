@@ -155,8 +155,8 @@ int LBR::read(CXLController *controller, LBRElem *elem) {
                 if (this->pid == data->pid) {
                     SPDLOG_ERROR("pid:{} tid:{} size:{} nr2:{} data-size:{} cpu:{} timestamp:{} hw_idx: lbrs:{} "
                                  "counters:{} {} {}",
-                                 data->pid, data->tid, header->size, /*data->nr,*/ data->nr2, sizeof(*data),
-                                 /*data->ips[0],*/ data->cpu, data->timestamp, /* data->hw_idx,*/ data->lbrs[0].from,
+                                 data->pid, data->tid, header->size, data->nr2, sizeof(*data),
+                                 data->cpu, data->timestamp, data->lbrs[0].from,
                                  data->counters[0].counters, data->counters[1].counters, data->counters[2].counters);
 
                     memcpy(&elem->branch_stack,

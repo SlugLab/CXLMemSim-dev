@@ -64,7 +64,7 @@ public:
     std::vector<occupation_info> occupation; // timestamp, pa
     CXLMemExpanderEvent counter{};
     CXLMemExpanderEvent last_counter{};
-
+    mutable std::shared_mutex occupationMutex_; // 使用共享互斥锁允许多个读取者
     // LRUCache lru_cache;
     // tlb map and paging map -> invalidate
     int last_read = 0;

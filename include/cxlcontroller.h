@@ -80,8 +80,8 @@ public:
     int num_end_points = 0;
     int last_index = 0;
     uint64_t freed = 0;
-    uint64_t latency_lat{};
-    uint64_t bandwidth_lat{};
+    double latency_lat{};
+    double bandwidth_lat{};
     double dramlatency;
     // ring buffer
     std::queue<lbr> ring_buffer;

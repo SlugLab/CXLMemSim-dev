@@ -1,11 +1,17 @@
 #include "rob.h"
 #include "policy.h"
+#include <atomic>
 #include <cxxopts.hpp>
 #include <fstream>
+#include <future>
 #include <iostream>
+#include <mutex>
+#include <queue>
 #include <ranges>
 #include <spdlog/cfg/env.h>
 #include <sstream>
+#include <thread>
+#include <vector>
 
 Helper helper{};
 CXLController *controller;
@@ -123,6 +129,86 @@ InstructionGroup parseGroup(const std::vector<std::string> &group) {
     }
     return ig;
 }
+void parseInParallel(std::ifstream &file, std::vector<InstructionGroup> &instructions) {
+    std::mutex queueMutex;
+    std::condition_variable cv;
+    std::queue<std::vector<std::string>> groupsQueue;
+    std::atomic<bool> done{false};
+    std::vector<std::string> groupLines;
+
+    // 创建解析线程池
+    const int numThreads = std::thread::hardware_concurrency();
+    std::vector<std::thread> parseThreads;
+    std::mutex resultsMutex;
+
+    // 消费者线程函数
+    auto parseWorker = [&]() {
+        while (true) {
+            std::vector<std::string> group;
+            {
+                std::unique_lock<std::mutex> lock(queueMutex);
+                cv.wait(lock, [&]() { return !groupsQueue.empty() || done; });
+                if (groupsQueue.empty() && done)
+                    break;
+                group = std::move(groupsQueue.front());
+                groupsQueue.pop();
+            }
+
+            auto result = parseGroup(group);
+            if (result.retireTimestamp != 0) {
+                std::lock_guard<std::mutex> lock(resultsMutex);
+                instructions.emplace_back(std::move(result));
+            }
+        }
+    };
+
+    // 启动消费者线程
+    for (int i = 0; i < numThreads; ++i) {
+        parseThreads.emplace_back(parseWorker);
+    }
+
+    // 生产者部分 - 主线程
+    for (const std::string &line : std::ranges::istream_view<std::string>(file)) {
+        if (line.rfind("O3PipeView:fetch:", 0) == 0) {
+            if (!groupLines.empty()) {
+                {
+                    std::lock_guard<std::mutex> lock(queueMutex);
+                    groupsQueue.push(groupLines);
+                }
+                cv.notify_one();
+                groupLines.clear();
+            }
+        }
+        if (!line.empty()) {
+            groupLines.push_back(line);
+        }
+    }
+
+    // 处理最后一组
+    if (!groupLines.empty()) {
+        {
+            std::lock_guard<std::mutex> lock(queueMutex);
+            groupsQueue.push(std::move(groupLines));
+        }
+        cv.notify_one();
+    }
+
+    // 通知所有消费者线程完成
+    {
+        std::lock_guard<std::mutex> lock(queueMutex);
+        done = true;
+    }
+    cv.notify_all();
+
+    // 等待所有线程完成
+    for (auto &thread : parseThreads) {
+        thread.join();
+    }
+
+    // 排序结果
+    std::sort(instructions.begin(), instructions.end(),
+              [](InstructionGroup &a, InstructionGroup &b) { return a.cycleCount < b.cycleCount; });
+}
 
 int main(int argc, char *argv[]) {
     spdlog::cfg::load_env_levels();
@@ -194,38 +280,9 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    std::vector<std::string> groupLines;
+    // std::vector<std::string> groupLines;
     std::vector<InstructionGroup> instructions;
-
-    // Read the file line by line using std::ranges::istream_view.
-    for (const std::string &line : std::ranges::istream_view<std::string>(file)) {
-        // If the line starts with "O3PipeView:fetch:" then it's the start of a new group.
-        if (line.rfind("O3PipeView:fetch:", 0) == 0) {
-            // If we have an existing group, process it.
-            if (!groupLines.empty()) {
-                instructions.emplace_back(parseGroup(groupLines));
-                if (instructions.back().retireTimestamp == 0) {
-                    // auto& back = instructions.back();
-                    // std::cout << "throwing out: " << back.address << back.cycleCount << "[]" << back.retireTimestamp
-                    // << std::endl;
-                    instructions.pop_back();
-                }
-                // Clear the group for the next one.
-                groupLines.clear();
-            }
-        }
-        // Add the current line to the group if it’s not empty.
-        if (!line.empty()) {
-            groupLines.push_back(line);
-        }
-    }
-    // Process any remaining group.
-    if (!groupLines.empty()) {
-        instructions.emplace_back(parseGroup(groupLines));
-    }
-
-    std::sort(instructions.begin(), instructions.end(),
-              [](InstructionGroup &a, InstructionGroup &b) { return a.cycleCount < b.cycleCount; });
+    parseInParallel(file, instructions);
     // Now simulate issuing them into the ROB
     for (const auto &instruction : instructions) {
         bool issued = false;

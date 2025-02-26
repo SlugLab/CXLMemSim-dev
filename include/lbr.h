@@ -39,8 +39,8 @@ struct lbr_sample {
     uint32_t tid;
     // uint64_t nr;
     // uint64_t ips[4];
-    uint32_t cpu;
     uint64_t timestamp;
+    uint32_t cpu;
     uint64_t nr2;
     // uint64_t hw_idx;
     lbr lbrs[32];

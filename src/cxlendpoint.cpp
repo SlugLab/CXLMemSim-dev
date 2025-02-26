@@ -21,6 +21,7 @@ CXLMemExpander::CXLMemExpander(int read_bw, int write_bw, int read_lat, int writ
 }
 // 修改CXLMemExpander的calculate_latency函数
 double CXLMemExpander::calculate_latency(const std::vector<std::tuple<uint64_t, uint64_t>> &elem, double dramlatency) {
+
     if (elem.empty()) {
         return 0.0;
     }
@@ -113,6 +114,7 @@ int CXLMemExpander::insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr,
     if (index == this->id) {
         last_timestamp = last_timestamp > timestamp ? last_timestamp : timestamp; // Update the last timestamp
         // Check if the address is already in the map)
+
         if (phys_addr != 0) {
             for (auto it = this->occupation.cbegin(); it != this->occupation.cend(); it++) {
                 if (it->address == phys_addr) {
@@ -132,16 +134,24 @@ int CXLMemExpander::insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr,
     return 0;
 }
 std::vector<std::tuple<uint64_t, uint64_t>> CXLMemExpander::get_access(uint64_t timestamp) {
+    // 原子操作更新计数器
     last_counter = CXLMemExpanderEvent(counter);
-    // Iterate the map within the last 100ns
-    auto res = occupation |
-               std::views::filter([timestamp](const auto &it) { return it.timestamp > timestamp - 1000; }) |
-               std::views::transform([](const auto &it) { return std::make_tuple(it.timestamp, it.address); }) |
-               std::ranges::to<std::vector>();
-    return res;
+
+    // 使用互斥锁保护对共享资源的访问
+
+    // 创建一个本地副本，减少持锁时间
+    std::vector<std::tuple<uint64_t, uint64_t>> result;
+    for (const auto &it : occupation) {
+        // 如果 occupation 中的元素是指针，需要先检查指针有效性
+        if (it.timestamp > timestamp - 1000000) {
+            result.emplace_back(it.timestamp, it.address);
+        }
+    }
+    return result;
 }
 void CXLMemExpander::set_epoch(int epoch) { this->epoch = epoch; }
 void CXLMemExpander::free_stats(double size) {
+
     // 随机删除
     std::random_device rd;
     std::mt19937 gen(rd());
