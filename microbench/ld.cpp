@@ -26,7 +26,7 @@
 #define STR(x) STR_HELPER(x)
 
 #define MOVE_SIZE 128
-#define MAP_SIZE  (long)(10241024)
+#define MAP_SIZE  (long)(1024 * 1024 * 1024)
 #define CACHELINE_SIZE  64
 
 #ifndef FENCE_COUNT
@@ -45,19 +45,9 @@
   "add $" STR(MOVE_SIZE) ", %%r8 \n"				\
   "cmp $" STR(FENCE_BOUND) ",%%r8\n"				\
   "jl LOOP_START%= \n"						\
-  "mfence \n"
-// 另一种方式是使用 lock 指令前缀来实现内存屏障
-// 这个宏在特定场景下可以替换上面的宏
-#define BODY_ALT(start)						\
-  "xor %%r8, %%r8 \n"						\
-  "LOOP_START%=: \n"						\
-  "lea (%[" #start "], %%r8), %%r9 \n"				\
-  "movdqa  (%%r9), %%xmm0 \n"					\
-  "add $" STR(MOVE_SIZE) ", %%r8 \n"				\
-  "cmp $" STR(FENCE_BOUND) ",%%r8\n"				\
-  "jl LOOP_START%= \n"						\
-  "lock addl $0, 0(%%rsp) \n"                                    \
-  /* lock 指令前缀会强制实现完整的内存屏障 */
+  "mfence \n"						\
+
+
 int main(int argc, char **argv) {
 
   // in principle, you would want to clear out cache lines (and the
@@ -93,32 +83,33 @@ int main(int argc, char **argv) {
 
   // should flush everything from the cache. But, how big is the cache?
   addr = base;
-  size_t large_buffer_size = 32 * 1024 * 1024; // 足够大以覆盖大多数缓存
-  char* large_buffer = (char*)malloc(large_buffer_size);
-  if (large_buffer) {
-    for (size_t i = 0; i < large_buffer_size; i += CACHELINE_SIZE) {
-      // 读取和写入大缓冲区，挤出目标内存的缓存行
-      large_buffer[i] = (char)(i & 0xFF);
-    }
-    free(large_buffer);
+  while (addr < (base + MAP_SIZE)) {
+    asm volatile(
+		 "mov %[buf], %%rsi\n"
+		 "clflush (%%rsi)\n"
+          "mfence\n"
+		 :
+		 : [buf] "r" (addr)
+		 : "rsi");
+    addr += CACHELINE_SIZE;
   }
 
+
   clock_gettime(CLOCK_MONOTONIC, &tstart);
-  for (int i=0; i<1e3; i++) {
-    addr = base;
-    while (addr < (base + MAP_SIZE)) {
-      asm volatile(
-		 BODY_ALT(addr)
+for (int i=0;i<1e3;i++){
+  addr = base;
+  while (addr < (base + MAP_SIZE)) {
+    asm volatile(
+		 BODY(addr)
 		 :
 		 : [addr] "r" (addr)
 		 : "r8", "r9", "xmm0");
 
       addr += (FENCE_COUNT * MOVE_SIZE);
-    }
-    
-    clock_gettime(CLOCK_MONOTONIC, &tend);
-    uint64_t nanos = (1000000000  * tend.tv_sec + tend.tv_nsec);
-    nanos -= (1000000000 * tstart.tv_sec + tstart.tv_nsec);
+  }
+  clock_gettime(CLOCK_MONOTONIC, &tend);
+  uint64_t nanos = (1000000000  * tend.tv_sec + tend.tv_nsec);
+  nanos -= (1000000000 * tstart.tv_sec + tstart.tv_nsec);
 
 
   printf("%lu\n", nanos);
