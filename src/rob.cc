@@ -279,12 +279,13 @@ int main(int argc, char *argv[]) {
         std::cerr << "Failed to open " << target << std::endl;
         return 1;
     }
-
     // std::vector<std::string> groupLines;
     std::vector<InstructionGroup> instructions;
     parseInParallel(file, instructions);
+    // rob.processInstructions(instructions);
     // Now simulate issuing them into the ROB
-    for (const auto &instruction : instructions) {
+    SPDLOG_INFO("{} instructions to process", instructions.size());
+    for (const auto &[idx, instruction] : instructions|std::views::enumerate) {
         bool issued = false;
         while (!issued) {
             issued = rob.issue(instruction);
@@ -293,6 +294,9 @@ int main(int argc, char *argv[]) {
             }
         }
         rob.tick(); // 正常推进时钟
+        if (idx % 10000 == 0) {
+            SPDLOG_INFO("Processing instruction {}", idx);
+        }
     }
 
     // 清空ROB

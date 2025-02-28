@@ -103,6 +103,10 @@ void CXLController::insert_one(thread_info &t_info, lbr &lbr) {
     ring_buffer.push(lbr);
 
     for (int i = 0; i < llcm_count; i++) {
+        if (t_info.llcm_type.empty()) {
+            // 如果 llcm_type 为空，直接插入 0
+            t_info.llcm_type.push(0);
+        }
         rob.m_count[t_info.llcm_type.front()]++;
         t_info.llcm_type_rob.push(t_info.llcm_type.front());
         t_info.llcm_type.pop();

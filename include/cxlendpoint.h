@@ -19,14 +19,14 @@
 #include <map>
 #include <string>
 #include <tuple>
-#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #define ROB_SIZE 512
 
 struct occupation_info {
-    uint64_t timestamp;
-    uint64_t address;
-    uint64_t access_count;
+    uint64_t timestamp{};
+    uint64_t address{};
+    uint64_t access_count{};
 };
 struct rob_info {
     std::map<int, int64_t> m_bandwidth, m_count;
@@ -62,6 +62,8 @@ public:
     uint64_t capacity;
 
     std::vector<occupation_info> occupation; // timestamp, pa
+    std::unordered_set<uint64_t> address_cache{};
+    bool cache_valid = false;
     CXLMemExpanderEvent counter{};
     CXLMemExpanderEvent last_counter{};
     mutable std::shared_mutex occupationMutex_; // 使用共享互斥锁允许多个读取者
@@ -82,6 +84,28 @@ public:
                              double dramlatency) override; // traverse the tree to calculate the latency
     double calculate_bandwidth(const std::vector<std::tuple<uint64_t, uint64_t>> &elem) override;
     void delete_entry(uint64_t addr, uint64_t length) override;
+    void update_address_cache() {
+        if (cache_valid) return;
+
+        address_cache.clear();
+        for (const auto& occ : occupation) {
+            address_cache.insert(occ.address);
+        }
+        cache_valid = true;
+    }
+    // 当 occupation 更新时调用此函数
+    void invalidate_cache() {
+        cache_valid = false;
+    }
+
+    // 检查地址是否在 occupation 中
+    bool is_address_local(uint64_t addr) {
+        if (!cache_valid) {
+            update_address_cache();
+        }
+
+        return address_cache.find(addr) != address_cache.end();
+    }
 };
 class CXLSwitch : public CXLEndPoint {
 public:

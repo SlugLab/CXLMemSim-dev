@@ -14,9 +14,7 @@
 
 #include <cstdint>
 #include <map>
-#include <string>
 #include <tuple>
-#include <unordered_map>
 #include <vector>
 
 /** TODO: Whether to using the pebs to record the state. add back invalidation migrate huge/ page and prefetch*/

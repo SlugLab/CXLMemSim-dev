@@ -21,23 +21,19 @@ CXLMemExpander::CXLMemExpander(int read_bw, int write_bw, int read_lat, int writ
 }
 // 修改CXLMemExpander的calculate_latency函数
 double CXLMemExpander::calculate_latency(const std::vector<std::tuple<uint64_t, uint64_t>> &elem, double dramlatency) {
-
     if (elem.empty()) {
         return 0.0;
     }
+
+    // 首先更新地址缓存以确保其最新
+    update_address_cache();
 
     double total_latency = 0.0;
     size_t access_count = 0;
 
     for (const auto &[timestamp, addr] : elem) {
-        // 检查是否是本endpoint的访问
-        bool is_local_access = false;
-        for (const auto &occ : occupation) {
-            if (occ.address == addr) {
-                is_local_access = true;
-                break;
-            }
-        }
+        // 使用哈希表检查是否是本endpoint的访问
+        bool is_local_access = address_cache.find(addr) != address_cache.end();
 
         if (!is_local_access)
             continue;
@@ -54,6 +50,7 @@ double CXLMemExpander::calculate_latency(const std::vector<std::tuple<uint64_t, 
 
     return access_count > 0 ? total_latency / access_count : 0.0;
 }
+
 double CXLMemExpander::calculate_bandwidth(const std::vector<std::tuple<uint64_t, uint64_t>> &elem) {
     if (elem.empty()) {
         return 0.0;
@@ -71,7 +68,7 @@ double CXLMemExpander::calculate_bandwidth(const std::vector<std::tuple<uint64_t
     for (const auto &[timestamp, addr] : elem) {
         if (timestamp >= window_start) {
             access_count++;
-            total_data += CACHE_LINE_SIZE;
+            total_data += CACHE_LINE_SIZE; // TODO other than cacheline granularity
         }
     }
 
@@ -85,46 +82,64 @@ double CXLMemExpander::calculate_bandwidth(const std::vector<std::tuple<uint64_t
     return std::min(bandwidth_gbps, max_bandwidth);
 }
 void CXLMemExpander::delete_entry(uint64_t addr, uint64_t length) {
-    for (auto it = occupation.begin(); it != occupation.end();) {
-        if (it->address == addr) {
-            // it = occupation.erase(it);
-            it->access_count++;
-            it->timestamp = last_timestamp;
-        } else {
-            ++it;
+    bool modified = false;
+
+    // 使用引用来确保可以修改 occupation 中的元素
+    for (auto& occ : occupation) {
+        if (occ.address == addr) {
+            occ.access_count++;
+            occ.timestamp = last_timestamp;
+            modified = true;
         }
     }
-    this->counter.inc_load();
+
     // kernel mode access
-    for (auto it = occupation.begin(); it != occupation.end();) {
-        if (it->address >= addr && it->address <= addr + length) {
-            if (it->address == addr) {
-                // it = occupation.erase(it);
-                it->access_count++;
-                it->timestamp = last_timestamp;
-            } else {
-                ++it;
+    this->counter.inc_load();  // 只调用一次而不是每次迭代
+    for (auto& occ : occupation) {
+        if (occ.address >= addr && occ.address <= addr + length) {
+            if (occ.address == addr) {
+                continue;  // 已经在上面处理过
             }
+            occ.access_count++;
+            occ.timestamp = last_timestamp;
+            modified = true;
         }
-        this->counter.inc_load();
+    }
+
+    // 如果有修改，标记缓存为无效
+    if (modified) {
+        invalidate_cache();
     }
 }
 
 int CXLMemExpander::insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, uint64_t virt_addr, int index) {
     if (index == this->id) {
-        last_timestamp = last_timestamp > timestamp ? last_timestamp : timestamp; // Update the last timestamp
-        // Check if the address is already in the map)
+        last_timestamp = last_timestamp > timestamp ? last_timestamp : timestamp;
 
         if (phys_addr != 0) {
-            for (auto it = this->occupation.cbegin(); it != this->occupation.cend(); it++) {
-                if (it->address == phys_addr) {
-                    this->occupation.erase(it);
-                    this->occupation.emplace_back(timestamp, phys_addr, 0);
-                    this->counter.inc_load();
-                    return 2;
+            // 使用哈希表快速检查地址是否已存在
+            bool address_exists = address_cache.find(phys_addr) != address_cache.end();
+
+            if (address_exists) {
+                // 地址已存在，找到并更新
+                for (auto it = this->occupation.cbegin(); it != this->occupation.cend(); it++) {
+                    if (it->address == phys_addr) {
+                        this->occupation.erase(it);
+                        this->occupation.emplace_back(timestamp, phys_addr, 0);
+                        this->counter.inc_load();
+
+                        // 不需要更新缓存，地址没变
+                        return 2;
+                    }
                 }
             }
+
+            // 地址不存在，添加新条目
             this->occupation.emplace_back(timestamp, phys_addr, 0);
+
+            // 更新地址缓存
+            address_cache.insert(phys_addr);
+
             this->counter.inc_store();
             return 1;
         }
@@ -143,7 +158,7 @@ std::vector<std::tuple<uint64_t, uint64_t>> CXLMemExpander::get_access(uint64_t 
     std::vector<std::tuple<uint64_t, uint64_t>> result;
     for (const auto &it : occupation) {
         // 如果 occupation 中的元素是指针，需要先检查指针有效性
-        if (it.timestamp > timestamp - 1000000) {
+        if (it.timestamp > timestamp - 100000) {
             result.emplace_back(it.timestamp, it.address);
         }
     }
@@ -151,6 +166,7 @@ std::vector<std::tuple<uint64_t, uint64_t>> CXLMemExpander::get_access(uint64_t 
 }
 void CXLMemExpander::set_epoch(int epoch) { this->epoch = epoch; }
 void CXLMemExpander::free_stats(double size) {
+    bool modified = false;
 
     // 随机删除
     std::random_device rd;
@@ -159,9 +175,15 @@ void CXLMemExpander::free_stats(double size) {
     for (auto it = occupation.begin(); it != occupation.end();) {
         if (dis(gen) == 1) {
             it = occupation.erase(it);
+            modified = true;
         } else {
             ++it;
         }
+    }
+
+    // 如果有修改，重建地址缓存
+    if (modified) {
+        invalidate_cache();
     }
 }
 
@@ -196,9 +218,9 @@ double CXLSwitch::calculate_bandwidth(const std::vector<std::tuple<uint64_t, uin
     return bw;
 }
 double CXLSwitch::get_endpoint_rob_latency(CXLMemExpander *endpoint,
-                                           const std::vector<std::tuple<uint64_t, uint64_t>> &accesses,
-                                           const thread_info &t_info, double dramlatency) {
-    const auto &rob = t_info.rob; // 使用const引用
+                                         const std::vector<std::tuple<uint64_t, uint64_t>> &accesses,
+                                         const thread_info &t_info, double dramlatency) {
+    const auto &rob = t_info.rob;
 
     // 计算当前endpoint的基础延迟
     double base_latency = (endpoint->latency.read + endpoint->latency.write) / 2.0;
@@ -219,18 +241,15 @@ double CXLSwitch::get_endpoint_rob_latency(CXLMemExpander *endpoint,
         }
     }
 
+    // 确保地址缓存是最新的
+    endpoint->update_address_cache();
+
     double total_latency = 0.0;
     size_t access_count = 0;
 
     for (const auto &[timestamp, addr] : accesses) {
-        // 检查该访问是否属于这个endpoint
-        bool is_endpoint_access = false;
-        for (const auto &occ : endpoint->occupation) {
-            if (occ.address == addr) {
-                is_endpoint_access = true;
-                break;
-            }
-        }
+        // 使用哈希表快速检查地址是否属于这个endpoint
+        bool is_endpoint_access = endpoint->is_address_local(addr);
 
         if (!is_endpoint_access)
             continue;
