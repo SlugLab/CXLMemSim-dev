@@ -11,7 +11,6 @@
 
 #include "policy.h"
 #include <numeric>
-MigrationPolicy::MigrationPolicy() = default;
 PagingPolicy::PagingPolicy() = default;
 CachingPolicy::CachingPolicy() = default;
 AllocationPolicy::AllocationPolicy() = default;
@@ -135,61 +134,6 @@ int NUMAPolicy::compute_once(CXLController *controller) {
     return best_node;
 }
 
-// MGLRUPolicy实现
-// 多粒度LRU策略实现
-int MGLRUPolicy::compute_once(CXLController *controller) {
-    int per_size;
-    // 确定页面大小
-    switch (controller->page_type_) {
-    case CACHELINE:
-        per_size = 64;
-        break;
-    case PAGE:
-        per_size = 4096;
-        break;
-    case HUGEPAGE_2M:
-        per_size = 2 * 1024 * 1024;
-        break;
-    case HUGEPAGE_1G:
-        per_size = 1024 * 1024 * 1024;
-        break;
-    };
-
-    // 检查本地内存使用情况
-    if (controller->occupation.size() * per_size / 1024 / 1024 < controller->capacity * 0.9) {
-        return -1; // 本地内存足够,不需要迁移
-    }
-
-    // 找到访问频率最低的页面所在的远程节点
-    int target_node = -1;
-    uint64_t lowest_access_count = UINT64_MAX;
-
-    for (size_t i = 0; i < controller->cur_expanders.size(); i++) {
-        auto expander = controller->cur_expanders[i];
-        // 检查节点是否有空间
-        if (expander->occupation.size() * per_size / 1024 / 1024 >= expander->capacity) {
-            continue;
-        }
-
-        // 计算该节点上页面的平均访问次数
-        uint64_t total_access = 0;
-        size_t page_count = 0;
-        for (const auto &page : expander->occupation) {
-            total_access += page.access_count;
-            page_count++;
-        }
-
-        uint64_t avg_access = page_count > 0 ? total_access / page_count : UINT64_MAX;
-
-        if (avg_access < lowest_access_count) {
-            lowest_access_count = avg_access;
-            target_node = i;
-        }
-    }
-
-    return target_node;
-}
-
 // HugePagePolicy实现
 // 大页面策略实现
 int HugePagePolicy::compute_once(CXLController *controller) {
@@ -276,4 +220,40 @@ int FIFOPolicy::compute_once(CXLController *controller) {
         }
     }
     return 0;  // 返回0表示没有进行驱逐
+}
+bool FrequencyBasedInvalidationPolicy::should_invalidate(uint64_t addr, uint64_t timestamp) {
+    // 根据访问频率决定是否应该失效
+    auto it = access_count.find(addr);
+    if (it != access_count.end()) {
+        return it->second < access_threshold;
+    }
+    return false;
+}
+std::vector<uint64_t> FrequencyBasedInvalidationPolicy::get_invalidation_list(CXLController* controller){
+    std::vector<uint64_t> to_invalidate;
+
+    // 遍历缓存查找低频访问的地址
+    for (const auto& [addr, entry] : controller->lru_cache.cache) {
+        if (should_invalidate(addr, 0)) {
+            to_invalidate.push_back(addr);
+        }
+    }
+
+    // 清理访问计数（周期性）
+    uint64_t current_time = controller->last_timestamp;
+    if (current_time - last_cleanup > cleanup_interval) {
+        access_count.clear();
+        last_cleanup = current_time;
+    }
+
+    return to_invalidate;
+}
+bool FrequencyBasedInvalidationPolicy::should_cache(uint64_t addr, uint64_t timestamp) {
+    // 记录访问
+    access_count[addr]++;
+    return true; // 总是缓存
+}
+int FrequencyBasedInvalidationPolicy::compute_once(CXLController *controller) {
+    // 如果有需要失效的地址，返回正数
+    return !get_invalidation_list(controller).empty() ? 1 : 0;
 }

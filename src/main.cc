@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
     }
 
     auto *policy1 = new InterleavePolicy();
-    auto *policy2 = new MGLRUPolicy();
+    auto *policy2 = new HeatAwareMigrationPolicy();
     auto *policy3 = new HugePagePolicy();
     auto *policy4 = new FIFOPolicy();
 

@@ -36,10 +36,50 @@ public:
     int compute_once(CXLController *) override;
 };
 
-class MGLRUPolicy : public MigrationPolicy {
+class HeatAwareMigrationPolicy : public MigrationPolicy {
 public:
-    MGLRUPolicy() = default;
-    int compute_once(CXLController *) override;
+    std::unordered_map<uint64_t, uint64_t> access_count;  // 地址到访问次数的映射
+    uint64_t hot_threshold;  // 热点数据阈值
+
+    HeatAwareMigrationPolicy(uint64_t threshold = 100) : hot_threshold(threshold) {}
+
+    // 记录访问以跟踪热点数据
+    void record_access(uint64_t addr) {
+        access_count[addr]++;
+    }
+
+    int compute_once(CXLController* controller) override {
+        // 更新访问计数
+        for (const auto& [timestamp, info] : controller->occupation) {
+            record_access(info.address);
+        }
+
+        // 检查是否有热点数据需要迁移
+        auto migration_list = get_migration_list(controller);
+        return migration_list.empty() ? 0 : 1;
+    }
+
+    std::vector<std::tuple<uint64_t, uint64_t>> get_migration_list(CXLController* controller) {
+        std::vector<std::tuple<uint64_t, uint64_t>> to_migrate;
+
+        // 定义页面大小
+        int per_size;
+        switch (controller->page_type_) {
+        case CACHELINE: per_size = 64; break;
+        case PAGE: per_size = 4096; break;
+        case HUGEPAGE_2M: per_size = 2 * 1024 * 1024; break;
+        case HUGEPAGE_1G: per_size = 1024 * 1024 * 1024; break;
+        };
+
+        // 检查热点数据
+        for (const auto& [addr, count] : access_count) {
+            if (count > hot_threshold) {
+                // 添加到迁移列表
+                to_migrate.emplace_back(addr, per_size);
+            }
+        }
+        return to_migrate;
+    }
 };
 
 class HugePagePolicy : public PagingPolicy {
@@ -53,56 +93,23 @@ public:
     FIFOPolicy() = default;
     int compute_once(CXLController *) override;
 };
+
 // 基于访问频率的后向失效策略
 class FrequencyBasedInvalidationPolicy : public CachingPolicy {
-private:
+public:
     std::unordered_map<uint64_t, uint64_t> access_count;  // 地址到访问计数的映射
     uint64_t access_threshold;  // 访问阈值
     uint64_t last_cleanup;      // 上次清理时间戳
     uint64_t cleanup_interval;  // 清理间隔
 
-public:
     explicit FrequencyBasedInvalidationPolicy(uint64_t threshold = 100, uint64_t interval = 10000000)
         : access_threshold(threshold), last_cleanup(0), cleanup_interval(interval) {}
 
-    bool should_cache(uint64_t addr, uint64_t timestamp) {
-        // 记录访问
-        access_count[addr]++;
-        return true; // 总是缓存
-    }
+    bool should_cache(uint64_t addr, uint64_t timestamp) ;
+    bool should_invalidate(uint64_t addr, uint64_t timestamp);
 
-    bool should_invalidate(uint64_t addr, uint64_t timestamp) {
-        // 根据访问频率决定是否应该失效
-        auto it = access_count.find(addr);
-        if (it != access_count.end()) {
-            return it->second < access_threshold;
-        }
-        return false;
-    }
+    std::vector<uint64_t> get_invalidation_list(CXLController* controller) ;
 
-    std::vector<uint64_t> get_invalidation_list(CXLController* controller) {
-        std::vector<uint64_t> to_invalidate;
-
-        // 遍历缓存查找低频访问的地址
-        for (const auto& [addr, entry] : controller->lru_cache.cache) {
-            if (should_invalidate(addr, 0)) {
-                to_invalidate.push_back(addr);
-            }
-        }
-
-        // 清理访问计数（周期性）
-        uint64_t current_time = controller->last_timestamp;
-        if (current_time - last_cleanup > cleanup_interval) {
-            access_count.clear();
-            last_cleanup = current_time;
-        }
-
-        return to_invalidate;
-    }
-
-    int compute_once(CXLController* controller) override {
-        // 如果有需要失效的地址，返回正数
-        return !get_invalidation_list(controller).empty() ? 1 : 0;
-    }
+    int compute_once(CXLController* controller) override;
 };
 #endif // CXLMEMSIM_POLICY_H

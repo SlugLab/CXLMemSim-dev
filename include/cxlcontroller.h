@@ -38,17 +38,30 @@ public:
 
 class MigrationPolicy : public Policy {
 public:
-    MigrationPolicy();
-    std::vector<std::tuple<uint64_t, uint64_t>> get_migration_list(CXLController *controller);
-    // migration related
-    // 1. get the migration list
-    // 2. do the migration
-    // 3. update the counter
-    // 4. update the occupation map
-    // 5. update the latency and bandwidth
-    // 6. update the ring buffer
-    // 7. update the rob info
-    // 8. update the thread info
+    MigrationPolicy() = default;
+    virtual ~MigrationPolicy() = default;
+
+    // 基本的compute_once方法，决定是否需要执行迁移
+    int compute_once(CXLController* controller) override {
+        auto migration_list = get_migration_list(controller);
+        return migration_list.empty() ? 0 : 1;
+    }
+
+    // 获取需要迁移的地址列表
+    std::vector<std::tuple<uint64_t, uint64_t>> get_migration_list(CXLController *controller) {
+        std::vector<std::tuple<uint64_t, uint64_t>> migration_list;
+        // 基类提供空实现
+        return migration_list;
+    }
+    // 判断特定地址是否应该迁移
+    virtual bool should_migrate(uint64_t addr, uint64_t timestamp, int current_device) {
+        return false;
+    }
+
+    // 为给定地址选择最佳的目标设备
+    virtual int select_target_device(uint64_t addr, int current_device, CXLController* controller) {
+        return -1;  // -1表示不迁移
+    }
 };
 
 // need to give a timeout and will be added latency later,
@@ -171,6 +184,7 @@ public:
     double latency_lat{};
     double bandwidth_lat{};
     double dramlatency;
+    std::unordered_map<int, CXLMemExpander*> device_map;
     // ring buffer
     std::queue<lbr> ring_buffer;
     // rob info
@@ -196,6 +210,7 @@ public:
     void set_stats(mem_stats stats);
     static void set_process_info(const proc_info &process_info);
     static void set_thread_info(const proc_info &thread_info);
+    void perform_migration();
     // 添加缓存访问方法
     std::optional<uint64_t> access_cache(uint64_t addr, uint64_t timestamp) { return lru_cache.get(addr, timestamp); }
 
@@ -259,9 +274,9 @@ template <> struct std::formatter<CXLController> {
 
         // 打印全局计数器
         result += std::format("  Global Counter:\n");
-        result += std::format("    Local: {}\n", controller.counter.local);
-        result += std::format("    Remote: {}\n", controller.counter.remote);
-        result += std::format("    HITM: {}\n", controller.counter.hitm);
+        result += std::format("    Local: {}\n", controller.counter.local.get());
+        result += std::format("    Remote: {}\n", controller.counter.remote.get());
+        result += std::format("    HITM: {}\n", controller.counter.hitm.get());
 
         // 打印拓扑结构（交换机和端点）
         result += "Topology:\n";
@@ -274,9 +289,9 @@ template <> struct std::formatter<CXLController> {
             // 打印交换机事件计数
             result += std::format("{}Switch:\n", indent);
             result += std::format("{}  Events:\n", indent);
-            result += std::format("{}    Load: {}\n", indent, sw->counter.load);
-            result += std::format("{}    Store: {}\n", indent, sw->counter.store);
-            result += std::format("{}    Conflict: {}\n", indent, sw->counter.conflict);
+            result += std::format("{}    Load: {}\n", indent, sw->counter.load.get());
+            result += std::format("{}    Store: {}\n", indent, sw->counter.store.get());
+            result += std::format("{}    Conflict: {}\n", indent, sw->counter.conflict.get());
 
             // 递归打印子交换机
             for (const auto &child : sw->switches) {
@@ -287,10 +302,11 @@ template <> struct std::formatter<CXLController> {
             for (const auto &endpoint : sw->expanders) {
                 result += std::format("{}Expander:\n", indent + "  ");
                 result += std::format("{}  Events:\n", indent + "  ");
-                result += std::format("{}    Load: {}\n", indent + "  ", endpoint->counter.load);
-                result += std::format("{}    Store: {}\n", indent + "  ", endpoint->counter.store);
-                result += std::format("{}    Migrate: {}\n", indent + "  ", endpoint->counter.migrate);
-                result += std::format("{}    Hit Old: {}\n", indent + "  ", endpoint->counter.hit_old);
+                result += std::format("{}    Load: {}\n", indent + "  ", endpoint->counter.load.get());
+                result += std::format("{}    Store: {}\n", indent + "  ", endpoint->counter.store.get());
+                result += std::format("{}    Migrate: {}\n", indent + "  ", endpoint->counter.migrate_in.get());
+                result += std::format("{}    Migrate: {}\n", indent + "  ", endpoint->counter.migrate_out.get());
+                result += std::format("{}    Hit Old: {}\n", indent + "  ", endpoint->counter.hit_old.get());
             }
         };
 
