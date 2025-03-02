@@ -33,7 +33,7 @@ double CXLMemExpander::calculate_latency(const std::vector<std::tuple<uint64_t, 
 
     for (const auto &[timestamp, addr] : elem) {
         // 使用哈希表检查是否是本endpoint的访问
-        bool is_local_access = address_cache.find(addr) != address_cache.end();
+        bool is_local_access = is_address_local(addr);
 
         if (!is_local_access)
             continue;
@@ -79,7 +79,7 @@ double CXLMemExpander::calculate_bandwidth(const std::vector<std::tuple<uint64_t
 
     // 确保带宽不超过设备限制
     double max_bandwidth = this->bandwidth.read + this->bandwidth.write;
-    return std::min(bandwidth_gbps, max_bandwidth);
+    return std::min(bandwidth_gbps- max_bandwidth, 0.0);
 }
 void CXLMemExpander::delete_entry(uint64_t addr, uint64_t length) {
     bool modified = false;
@@ -278,7 +278,7 @@ double CXLSwitch::get_endpoint_rob_latency(CXLMemExpander *endpoint,
     return access_count > 0 ? total_latency / access_count : 0.0;
 }
 
-std::tuple<double, std::vector<uint64_t>> CXLSwitch::calculate_congestion() {
+std::tuple<double, std::vector<uint64_t>> CXLSwitch::calculate_congestion() {//TODO reader writer congestion
     double latency = 0.0;
     std::vector<uint64_t> congestion;
     for (auto &switch_ : this->switches) {

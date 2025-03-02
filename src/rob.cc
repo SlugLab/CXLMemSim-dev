@@ -137,7 +137,7 @@ void parseInParallel(std::ifstream &file, std::vector<InstructionGroup> &instruc
     std::vector<std::string> groupLines;
 
     // 创建解析线程池
-    const int numThreads = std::thread::hardware_concurrency();
+    const int numThreads = 4;
     std::vector<std::thread> parseThreads;
     std::mutex resultsMutex;
 

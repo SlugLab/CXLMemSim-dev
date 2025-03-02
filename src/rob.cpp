@@ -18,7 +18,7 @@ bool Rob::issue(const InstructionGroup &ins) {
         counter ++;
         auto lbrs = std::vector<lbr>();
         lbrs.reserve(32);
-        controller_->insert(ins.retireTimestamp, 0, ins.address, 0, counter*10);
+        controller_->insert(ins.retireTimestamp, 0, ins.address, 0, counter);
         controller_->insert(ins.retireTimestamp, 0, lbrs.data(), {});
     }
 

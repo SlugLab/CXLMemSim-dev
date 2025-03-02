@@ -45,6 +45,7 @@
   "movdqa  %%xmm1, (%%r9) \n"					\
   "add $" STR(MOVE_SIZE) ", %%r8 \n"				\
   "cmp $" STR(FENCE_BOUND) ",%%r8\n"				\
+   "clflush (%%r9) \n"					\
   "mfence \n" \
   "jl LOOP_START%= \n"
 

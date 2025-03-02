@@ -64,6 +64,94 @@ public:
     // paging related
 };
 
+struct LRUCacheEntry {
+    uint64_t key; // 缓存键（地址）
+    uint64_t value; // 缓存值
+    uint64_t timestamp; // 最后访问时间戳
+};
+
+// LRU缓存
+class LRUCache {
+    public:
+    int capacity; // 缓存容量
+    std::unordered_map<uint64_t, LRUCacheEntry> cache; // 缓存映射
+    std::list<uint64_t> lru_list; // LRU列表，最近使用的在前面
+    std::unordered_map<uint64_t, std::list<uint64_t>::iterator> lru_map; // 用于O(1)查找列表位置
+
+    explicit LRUCache(int size) : capacity(size) {}
+
+    // 获取缓存值，如果存在则更新访问顺序
+    std::optional<uint64_t> get(uint64_t key, uint64_t timestamp) {
+        auto it = cache.find(key);
+        if (it == cache.end()) {
+            return std::nullopt; // 缓存未命中
+        }
+
+        // 更新访问顺序
+        lru_list.erase(lru_map[key]);
+        lru_list.push_front(key);
+        lru_map[key] = lru_list.begin();
+
+        // 更新时间戳
+        it->second.timestamp = timestamp;
+
+        return it->second.value; // 返回缓存值
+    }
+
+    // 添加或更新缓存
+    void put(uint64_t key, uint64_t value, uint64_t timestamp) {
+        // 如果已存在，先移除旧位置
+        if (cache.find(key) != cache.end()) {
+            lru_list.erase(lru_map[key]);
+        }
+        // 如果缓存已满，移除最久未使用的项
+        else if (cache.size() >= capacity) {
+            uint64_t lru_key = lru_list.back();
+            lru_list.pop_back();
+            lru_map.erase(lru_key);
+            cache.erase(lru_key);
+        }
+
+        // 添加新项到最前面（最近使用）
+        lru_list.push_front(key);
+        lru_map[key] = lru_list.begin();
+        cache[key] = {key, value, timestamp};
+    }
+
+    // 获取缓存使用情况统计
+    std::tuple<int, int> get_stats() { return {cache.size(), capacity}; }
+
+    // 清除缓存
+    void clear() {
+        cache.clear();
+        lru_list.clear();
+        lru_map.clear();
+    }
+    // LRU缓存类中添加size()方法
+    size_t size() const {
+        return cache.size();
+    }
+
+    // LRU缓存类中添加remove()方法
+    bool remove(uint64_t key) {
+        auto it = cache.find(key);
+        if (it == cache.end()) {
+            return false; // 键不存在
+        }
+
+        // 从LRU列表中移除
+        lru_list.erase(lru_map[key]);
+
+        // 从映射中移除
+        lru_map.erase(key);
+
+        // 从缓存中移除
+        cache.erase(key);
+
+        return true;
+    }
+};
+
 class CXLController : public CXLSwitch {
 public:
     std::vector<CXLMemExpander *> cur_expanders{};
@@ -87,6 +175,8 @@ public:
     std::queue<lbr> ring_buffer;
     // rob info
     std::unordered_map<uint64_t, thread_info> thread_map;
+    // LRU cache
+    LRUCache lru_cache;
 
     explicit CXLController(std::array<Policy *, 4> p, int capacity, page_type page_type_, int epoch,
                            double dramlatency);
@@ -106,6 +196,11 @@ public:
     void set_stats(mem_stats stats);
     static void set_process_info(const proc_info &process_info);
     static void set_thread_info(const proc_info &thread_info);
+    // 添加缓存访问方法
+    std::optional<uint64_t> access_cache(uint64_t addr, uint64_t timestamp) { return lru_cache.get(addr, timestamp); }
+
+    // 添加缓存更新方法
+    void update_cache(uint64_t addr, uint64_t value, uint64_t timestamp) { lru_cache.put(addr, value, timestamp); }
 };
 
 template <> struct std::formatter<CXLController> {
@@ -206,6 +301,7 @@ template <> struct std::formatter<CXLController> {
         result += "\nStatistics:\n";
         result += std::format("  Number of Switches: {}\n", controller.num_switches);
         result += std::format("  Number of Endpoints: {}\n", controller.num_end_points);
+        result += std::format("  Number of Threads created: {}\n", controller.thread_map.size());
         result += std::format("  Memory Freed: {} bytes\n", controller.freed);
 
         return format_to(ctx.out(), "{}", result);

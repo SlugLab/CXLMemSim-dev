@@ -258,23 +258,22 @@ int FIFOPolicy::compute_once(CXLController *controller) {
     };
 
     // 检查缓存是否已满
-    if (controller->occupation.size() * per_size / 1024 / 1024 >= controller->capacity) {
-        // 找到最早进入缓存的页面
+    if (controller->lru_cache.size() * per_size / 1024 / 1024 >= controller->capacity) {
+        // 找到时间戳最小的条目（最早插入的）
         uint64_t oldest_timestamp = UINT64_MAX;
-        size_t evict_index = 0;
+        uint64_t oldest_phys_addr = 0;
 
-        for (size_t i = 0; i < controller->occupation.size(); i++) {
-            if (controller->occupation[i].timestamp < oldest_timestamp) {
-                oldest_timestamp = controller->occupation[i].timestamp;
-                evict_index = i;
+        for (const auto& [addr, entry] : controller->lru_cache.cache) {
+            if (entry.timestamp < oldest_timestamp) {
+                oldest_timestamp = entry.timestamp;
+                oldest_phys_addr = addr;
             }
         }
 
-        // 驱逐最早的页面
-        controller->occupation.erase(evict_index);
-        return 1;  // 返回1表示进行了页面驱逐
+        if (oldest_phys_addr != 0) {
+            controller->lru_cache.remove(oldest_phys_addr);
+            return 1;  // 返回1表示进行了页面驱逐
+        }
     }
-
     return 0;  // 返回0表示没有进行驱逐
 }
-

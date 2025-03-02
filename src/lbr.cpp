@@ -83,7 +83,7 @@ LBR::LBR(pid_t pid, uint64_t sample_period) : pid(pid), sample_period(sample_per
         .type = PERF_TYPE_RAW,
         .size = sizeof(perf_event_attr),
         .config = 0x20d1, // mem_load_retired.l3_miss
-        .sample_freq = 4000,
+        .sample_freq = sample_period,
         .sample_type = PERF_SAMPLE_TID | PERF_SAMPLE_CPU | PERF_SAMPLE_TIME | PERF_SAMPLE_BRANCH_STACK,
         .read_format = PERF_FORMAT_TOTAL_TIME_ENABLED,
         .disabled = 1, // Event is initially disabled
@@ -153,7 +153,7 @@ int LBR::read(CXLController *controller, LBRElem *elem) {
                     SPDLOG_DEBUG("size too big. size:{} / {}", header->size, sizeof(*data));
                 }
                 if (this->pid == data->pid) {
-                    SPDLOG_ERROR("pid:{} tid:{} size:{} nr2:{} data-size:{} cpu:{} timestamp:{} hw_idx: lbrs:{} "
+                    SPDLOG_DEBUG("pid:{} tid:{} size:{} nr2:{} data-size:{} cpu:{} timestamp:{} hw_idx: lbrs:{} "
                                  "counters:{} {} {}",
                                  data->pid, data->tid, header->size, data->nr2, sizeof(*data),
                                  data->cpu, data->timestamp, data->lbrs[0].from,

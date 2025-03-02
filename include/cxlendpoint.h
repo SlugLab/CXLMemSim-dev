@@ -17,7 +17,6 @@
 #include <list>
 #include <queue>
 #include <map>
-#include <string>
 #include <tuple>
 #include <unordered_set>
 #include <vector>
@@ -75,6 +74,21 @@ public:
     int epoch = 0;
     uint64_t last_timestamp = 0;
     int id = -1;
+    struct AddressRange {
+        uint64_t start;
+        uint64_t end;
+
+        // 添加比较运算符，用于二分查找
+        bool operator<(const AddressRange& other) const {
+            return end < other.start;
+        }
+
+        bool operator<(uint64_t addr) const {
+            return end < addr;
+        }
+    };
+    std::vector<AddressRange> address_ranges;
+
     CXLMemExpander(int read_bw, int write_bw, int read_lat, int write_lat, int id, int capacity);
     std::vector<std::tuple<uint64_t, uint64_t>> get_access(uint64_t timestamp) override;
     void set_epoch(int epoch) override;
@@ -86,11 +100,9 @@ public:
     void delete_entry(uint64_t addr, uint64_t length) override;
     void update_address_cache() {
         if (cache_valid) return;
-
         address_cache.clear();
-        for (const auto& occ : occupation) {
+        for (const auto& occ : occupation)
             address_cache.insert(occ.address);
-        }
         cache_valid = true;
     }
     // 当 occupation 更新时调用此函数
@@ -98,13 +110,40 @@ public:
         cache_valid = false;
     }
 
-    // 检查地址是否在 occupation 中
-    bool is_address_local(uint64_t addr) {
-        if (!cache_valid) {
-            update_address_cache();
+    void update_range_cache() {
+        if (cache_valid) return;
+        address_ranges.clear();
+        // 排序occupation以便合并连续地址
+        std::sort(occupation.begin(), occupation.end(),
+                 [](const auto& a, const auto& b) { return a.address < b.address; });
+        if (occupation.empty()) {
+            cache_valid = true;
+            return;
         }
+        AddressRange current{occupation[0].address, occupation[0].address};
+        for (size_t i = 1; i < occupation.size(); i++) {
+            if (occupation[i].address == current.end + 1) {
+                // 连续地址，扩展范围
+                current.end = occupation[i].address;
+            } else {
+                // 新范围
+                address_ranges.push_back(current);
+                current = {occupation[i].address, occupation[i].address};
+            }
+        }
+        address_ranges.push_back(current);
+        cache_valid = true;
+    }
 
-        return address_cache.find(addr) != address_cache.end();
+    bool is_address_local(uint64_t addr) {
+        if (!cache_valid)
+            update_range_cache();
+        // 使用标准库的二分查找，查找第一个"不小于"addr的元素
+        auto it = std::lower_bound(address_ranges.begin(), address_ranges.end(), addr);
+        // 如果找到了范围，且addr在这个范围内
+        if (it != address_ranges.end() && addr >= it->start && addr <= it->end)
+            return true;
+        return false;
     }
 };
 class CXLSwitch : public CXLEndPoint {

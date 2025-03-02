@@ -46,7 +46,7 @@ CXLController::CXLController(std::array<Policy *, 4> p, int capacity, page_type 
                              double dramlatency)
     : CXLSwitch(0), capacity(capacity), allocation_policy(dynamic_cast<AllocationPolicy *>(p[0])),
       migration_policy(dynamic_cast<MigrationPolicy *>(p[1])), paging_policy(dynamic_cast<PagingPolicy *>(p[2])),
-      caching_policy(dynamic_cast<CachingPolicy *>(p[3])), page_type_(page_type_), dramlatency(dramlatency) {
+      caching_policy(dynamic_cast<CachingPolicy *>(p[3])), page_type_(page_type_), dramlatency(dramlatency), lru_cache(32 * 1024 * 1024 / 64) {
     for (auto switch_ : this->switches) {
         switch_->set_epoch(epoch);
     }
@@ -56,7 +56,6 @@ CXLController::CXLController(std::array<Policy *, 4> p, int capacity, page_type 
     // TODO get LRU wb
     // TODO BW type series
     // TODO cache
-    // TODO back invalidation
     // deferentiate R/W for multi reader multi writer
 }
 
@@ -130,9 +129,7 @@ void CXLController::insert_one(thread_info &t_info, lbr &lbr) {
         ring_buffer.pop();
     }
 }
-
 int CXLController::insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, uint64_t virt_addr, int index) {
-    auto res = true;
     auto &t_info = thread_map[tid];
 
     // 计算时间步长,使timestamp均匀分布
@@ -142,31 +139,54 @@ int CXLController::insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, 
     }
     uint64_t current_timestamp = last_timestamp;
 
+    bool res = true;
     for (int i = last_index; i < index; i++) {
         // 更新当前时间戳
         current_timestamp += time_step;
 
+        // 首先检查LRU缓存
+        auto cache_result = access_cache(phys_addr, current_timestamp);
+
+        if (cache_result.has_value()) {
+            // 缓存命中
+            this->counter.inc_local();
+            t_info.llcm_type.push(0);  // 本地访问类型
+            continue;
+        }
+
+        // 缓存未命中，决定分配策略
         auto numa_policy = allocation_policy->compute_once(this);
+
         if (numa_policy == -1) {
+            // 本地访问
             this->occupation.emplace(current_timestamp, phys_addr);
             this->counter.inc_local();
             t_info.llcm_type.push(0);
-            continue;
+
+            // 更新缓存
+            update_cache(phys_addr, phys_addr, current_timestamp);  // 使用物理地址作为值
+        } else {
+            // 远程访问
+            this->counter.inc_remote();
+            for (auto switch_ : this->switches) {
+                res &= switch_->insert(current_timestamp, tid, phys_addr, virt_addr, numa_policy);
+            }
+            for (auto expander_ : this->expanders) {
+                res &= expander_->insert(current_timestamp, tid, phys_addr, virt_addr, numa_policy);
+            }
+            t_info.llcm_type.push(1);  // 远程访问类型
+            // 可以选择是否缓存远程访问的数据
+            if (caching_policy->compute_once(this)) {
+                counter.inc_hitm();
+                update_cache(phys_addr, phys_addr, current_timestamp);
+            }
         }
-        this->counter.inc_remote();
-        for (auto switch_ : this->switches) {
-            res &= switch_->insert(current_timestamp, tid, phys_addr, virt_addr, numa_policy);
-        }
-        for (auto expander_ : this->expanders) {
-            res &= expander_->insert(current_timestamp, tid, phys_addr, virt_addr, numa_policy);
-        }
-        t_info.llcm_type.push(1);
     }
 
     // 更新最后的索引和时间戳
     last_index = index;
     last_timestamp = timestamp;
-    return res; // 返回实际的结果而不是固定的true
+    return res;
 }
 int CXLController::insert(uint64_t timestamp, uint64_t tid, lbr lbrs[32], cntr counters[32]) {
     // 处理LBR记录
