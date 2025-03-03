@@ -251,7 +251,7 @@ double CXLSwitch::get_endpoint_rob_latency(CXLMemExpander *endpoint,
         // 使用哈希表快速检查地址是否属于这个endpoint
         bool is_endpoint_access = endpoint->is_address_local(addr);
 
-        if (!is_endpoint_access)
+        if (is_endpoint_access)
             continue;
 
         double current_latency = base_latency;

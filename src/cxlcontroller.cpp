@@ -337,7 +337,7 @@ int CXLController::insert(uint64_t timestamp, uint64_t tid, lbr lbrs[32], cntr c
     // 从当前controller开始DFS遍历
     dfs_calculate(this);
 
-    latency_lat += std::max(total_latency, 0.0);
+    latency_lat += std::max(total_latency + std::get<0>(calculate_congestion()), 0.0);
     bandwidth_lat += std::max(calculate_bandwidth(all_access), 0.0);
 
     return 0;
@@ -421,14 +421,15 @@ void CXLController::invalidate_in_expanders(uint64_t addr) {
 }
 
 // 在交换机及其子节点中执行失效
-void  CXLController::invalidate_in_switch(CXLSwitch* switch_, uint64_t addr) {
-    if (!switch_) return;
+void CXLController::invalidate_in_switch(CXLSwitch *switch_, uint64_t addr) {
+    if (!switch_)
+        return;
 
     // 处理此交换机连接的扩展器
     for (auto expander : switch_->expanders) {
         if (expander) {
             // 从expander的occupation中移除指定地址
-            for (auto it = expander->occupation.begin(); it != expander->occupation.end(); ) {
+            for (auto it = expander->occupation.begin(); it != expander->occupation.end();) {
                 if (it->address == addr) {
                     it = expander->occupation.erase(it);
                     counter.inc_backinv();

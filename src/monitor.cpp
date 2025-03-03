@@ -207,13 +207,14 @@ int Monitors::terminate(const uint32_t tgid, const uint32_t tid, const int32_t t
         double emulated_time =
             (double)(mon[target].end_exec_ts.tv_sec - mon[target].start_exec_ts.tv_sec) +
             (double)(mon[target].end_exec_ts.tv_nsec - mon[target].start_exec_ts.tv_nsec) / 1000000000;
-        SPDLOG_INFO("emulated time ={}", emulated_time);
-        SPDLOG_INFO("total delay   ={}", mon[target].total_delay);
-
-        SPDLOG_INFO("PEBS sample total {} {}", mon[target].before->pebs.total, mon[target].after->pebs.llcmiss);
-        SPDLOG_INFO("LBR sample total {}", mon[target].before->lbr.total);
-        SPDLOG_INFO("bpftime sample total {}", mon[target].before->bpftime.total);
-        SPDLOG_INFO("{}", *controller);
+        std::cout << std::format("emulated time ={}", emulated_time) << std::endl;
+        std::cout << std::format("total delay   ={}", mon[target].total_delay) << std::endl;
+        std::cout << std::format("PEBS sample total {} {}", mon[target].before->pebs.total,
+                                 mon[target].after->pebs.llcmiss)
+                  << std::endl;
+        std::cout << std::format("LBR sample total {}", mon[target].before->lbr.total) << std::endl;
+        std::cout << std::format("bpftime sample total {}", mon[target].before->bpftime.total) << std::endl;
+        std::cout << std::format("{}", *controller) << std::endl;
         break;
     }
 
@@ -335,7 +336,6 @@ timespec operator*(const timespec &lhs, const timespec &rhs) {
 void Monitor::wait(std::vector<Monitor> *mons, int target) {
     auto &mon = (*mons)[target];
     uint64_t diff_nsec, target_nsec;
-    SPDLOG_ERROR("[{}:{}][OFF] total:", mon.tgid, mon.tid);
     timespec start_ts{}, end_ts{};
     timespec sleep_target{};
     // timespec wanted_delay;

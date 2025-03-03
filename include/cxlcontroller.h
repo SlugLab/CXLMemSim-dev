@@ -42,7 +42,7 @@ public:
     virtual ~MigrationPolicy() = default;
 
     // 基本的compute_once方法，决定是否需要执行迁移
-    int compute_once(CXLController* controller) override {
+    int compute_once(CXLController *controller) override {
         auto migration_list = get_migration_list(controller);
         return migration_list.empty() ? 0 : 1;
     }
@@ -54,13 +54,11 @@ public:
         return migration_list;
     }
     // 判断特定地址是否应该迁移
-    virtual bool should_migrate(uint64_t addr, uint64_t timestamp, int current_device) {
-        return false;
-    }
+    virtual bool should_migrate(uint64_t addr, uint64_t timestamp, int current_device) { return false; }
 
     // 为给定地址选择最佳的目标设备
-    virtual int select_target_device(uint64_t addr, int current_device, CXLController* controller) {
-        return -1;  // -1表示不迁移
+    virtual int select_target_device(uint64_t addr, int current_device, CXLController *controller) {
+        return -1; // -1表示不迁移
     }
 };
 
@@ -68,6 +66,7 @@ public:
 class PagingPolicy : public Policy {
 public:
     PagingPolicy();
+    int compute_once(CXLController *) override{};
     // paging related
 };
 
@@ -86,7 +85,7 @@ public:
     }
 
     // 获取需要失效的地址列表
-    virtual std::vector<uint64_t> get_invalidation_list(CXLController* controller) {
+    virtual std::vector<uint64_t> get_invalidation_list(CXLController *controller) {
         return {}; // 默认行为，可以被子类覆盖
     }
 };
@@ -99,7 +98,7 @@ struct LRUCacheEntry {
 
 // LRU缓存
 class LRUCache {
-    public:
+public:
     int capacity; // 缓存容量
     std::unordered_map<uint64_t, LRUCacheEntry> cache; // 缓存映射
     std::list<uint64_t> lru_list; // LRU列表，最近使用的在前面
@@ -155,9 +154,7 @@ class LRUCache {
         lru_map.clear();
     }
     // LRU缓存类中添加size()方法
-    size_t size() const {
-        return cache.size();
-    }
+    size_t size() const { return cache.size(); }
 
     // LRU缓存类中添加remove()方法
     bool remove(uint64_t key) {
@@ -198,7 +195,7 @@ public:
     double latency_lat{};
     double bandwidth_lat{};
     double dramlatency;
-    std::unordered_map<int, CXLMemExpander*> device_map;
+    std::unordered_map<int, CXLMemExpander *> device_map;
     // ring buffer
     std::queue<lbr> ring_buffer;
     // rob info
@@ -232,7 +229,7 @@ public:
     void update_cache(uint64_t addr, uint64_t value, uint64_t timestamp) { lru_cache.put(addr, value, timestamp); }
     void perform_back_invalidation();
     void invalidate_in_expanders(uint64_t addr);
-    void invalidate_in_switch(CXLSwitch* switch_, uint64_t addr);
+    void invalidate_in_switch(CXLSwitch *switch_, uint64_t addr);
 };
 
 template <> struct std::formatter<CXLController> {

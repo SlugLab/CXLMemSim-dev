@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
 
     auto *policy1 = new InterleavePolicy();
     auto *policy2 = new HeatAwareMigrationPolicy();
-    auto *policy3 = new HugePagePolicy();
+    auto *policy3 = new PagingPolicy();
     auto *policy4 = new FIFOPolicy();
 
     uint64_t use_cpus = 0;
