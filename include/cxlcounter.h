@@ -28,6 +28,8 @@ const char hitOldName[] = "hit_old";
 const char localName[] = "local";
 const char remoteName[] = "remote";
 const char hitmName[] = "hitm";
+const char backinvName[] = "backinv";
+
 
 // 基础计数器模板类
 template<const char* Name>
@@ -78,10 +80,8 @@ struct std::formatter<AtomicCounter<Name>> {
     }
 
     template <typename FormatContext>
-    constexpr auto format(const AtomicCounter<Name>& counter, FormatContext& ctx) const
-        -> decltype(ctx.out())
-    {
-        // 直接使用format_to避免嵌套std::format调用
+    auto format(const AtomicCounter<Name>& counter, FormatContext& ctx) const -> decltype(ctx.out()) {
+        // 简化formatter实现，避免嵌套std::format调用
         return format_to(ctx.out(), "{}", counter.get());
     }
 };
@@ -193,6 +193,7 @@ public:
     AtomicCounter<localName> local;
     AtomicCounter<remoteName> remote;
     AtomicCounter<hitmName> hitm;
+    AtomicCounter<backinvName> backinv;
 
     constexpr CXLCounter() noexcept = default;
 
@@ -210,6 +211,7 @@ public:
     constexpr void inc_local() noexcept { local.increment(); }
     constexpr void inc_remote() noexcept { remote.increment(); }
     constexpr void inc_hitm() noexcept { hitm.increment(); }
+    constexpr void inc_backinv() noexcept { backinv.increment(); }
 
     // 便捷方法:计算本地命中率
     constexpr double local_hit_ratio() const noexcept {

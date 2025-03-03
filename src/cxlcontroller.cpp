@@ -294,15 +294,17 @@ int CXLController::insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, 
     }
     static int request_counter = 0;
     request_counter += (index - last_index);
-    if (request_counter >= 1000 && migration_policy) {
-        int result = migration_policy->compute_once(this);
-        if (result > 0) {
+    if (request_counter >= 1000) {
+        if (migration_policy && migration_policy->compute_once(this) > 0) {
             perform_migration();
+        }
+        if (caching_policy && caching_policy->compute_once(this) > 0) {
+            perform_back_invalidation();
         }
         request_counter = 0;
     }
     // 更新最后的索引和时间戳
-    last_index = index;
+    last_index = index > 0 ? index : last_index;
     last_timestamp = timestamp;
     return res;
 }
@@ -335,8 +337,8 @@ int CXLController::insert(uint64_t timestamp, uint64_t tid, lbr lbrs[32], cntr c
     // 从当前controller开始DFS遍历
     dfs_calculate(this);
 
-    latency_lat += total_latency;
-    bandwidth_lat += calculate_bandwidth(all_access);
+    latency_lat += std::max(total_latency, 0.0);
+    bandwidth_lat += std::max(calculate_bandwidth(all_access), 0.0);
 
     return 0;
 }
@@ -358,8 +360,87 @@ std::vector<std::string> CXLController::tokenize(const std::string_view &s) {
     }
     return res;
 }
-std::vector<std::tuple<uint64_t, uint64_t>> CXLController::get_access(uint64_t timestamp) { return CXLSwitch::get_access(timestamp); }
+std::vector<std::tuple<uint64_t, uint64_t>> CXLController::get_access(uint64_t timestamp) {
+    return CXLSwitch::get_access(timestamp);
+}
 std::tuple<double, std::vector<uint64_t>> CXLController::calculate_congestion() {
     return CXLSwitch::calculate_congestion();
 }
 void CXLController::set_epoch(int epoch) { CXLSwitch::set_epoch(epoch); }
+// 在CXLController类中添加
+void CXLController::perform_back_invalidation() {
+    if (!caching_policy)
+        return;
+
+    // 统计结构
+    struct {
+        uint64_t invalidations_performed{0}; // 执行的失效操作数
+        uint64_t invalidations_attempts{0}; // 尝试的失效操作数
+    } local_stats;
+
+    // 获取需要失效的地址列表
+    auto invalidation_list = caching_policy->get_invalidation_list(this);
+    local_stats.invalidations_attempts = invalidation_list.size();
+
+    // 对每个地址执行失效
+    for (const auto &addr : invalidation_list) {
+        // 从本地缓存中移除
+        if (lru_cache.remove(addr)) {
+            local_stats.invalidations_performed++;
+        }
+
+        // 从所有内存扩展器的occupation中移除
+        invalidate_in_expanders(addr);
+    }
+    for (int i = 0; i < local_stats.invalidations_performed;) {
+        counter.inc_backinv();
+    }
+}
+
+// 递归地处理所有扩展器中的失效
+void CXLController::invalidate_in_expanders(uint64_t addr) {
+    // 处理当前控制器直接连接的扩展器
+    for (auto expander : expanders) {
+        if (expander) {
+            // 从expander的occupation中移除指定地址
+            for (auto it = expander->occupation.begin(); it != expander->occupation.end();) {
+                if (it->address == addr) {
+                    it = expander->occupation.erase(it);
+                    counter.inc_backinv();
+                } else {
+                    ++it;
+                }
+            }
+        }
+    }
+
+    // 递归处理所有连接的交换机
+    for (auto switch_ : switches) {
+        invalidate_in_switch(switch_, addr);
+    }
+}
+
+// 在交换机及其子节点中执行失效
+void  CXLController::invalidate_in_switch(CXLSwitch* switch_, uint64_t addr) {
+    if (!switch_) return;
+
+    // 处理此交换机连接的扩展器
+    for (auto expander : switch_->expanders) {
+        if (expander) {
+            // 从expander的occupation中移除指定地址
+            for (auto it = expander->occupation.begin(); it != expander->occupation.end(); ) {
+                if (it->address == addr) {
+                    it = expander->occupation.erase(it);
+                    counter.inc_backinv();
+                } else {
+                    ++it;
+                }
+            }
+        }
+    }
+
+    // 递归处理子交换机
+    for (auto child_switch : switch_->switches) {
+        invalidate_in_switch(child_switch, addr);
+    }
+}

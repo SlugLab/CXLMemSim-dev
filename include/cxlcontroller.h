@@ -74,7 +74,21 @@ public:
 class CachingPolicy : public Policy {
 public:
     CachingPolicy();
-    // paging related
+
+    // 判断是否应该缓存数据
+    virtual bool should_cache(uint64_t addr, uint64_t timestamp) {
+        return true; // 默认行为，可以被子类覆盖
+    }
+
+    // 判断是否应该进行后向失效
+    virtual bool should_invalidate(uint64_t addr, uint64_t timestamp) {
+        return false; // 默认行为，可以被子类覆盖
+    }
+
+    // 获取需要失效的地址列表
+    virtual std::vector<uint64_t> get_invalidation_list(CXLController* controller) {
+        return {}; // 默认行为，可以被子类覆盖
+    }
 };
 
 struct LRUCacheEntry {
@@ -216,6 +230,9 @@ public:
 
     // 添加缓存更新方法
     void update_cache(uint64_t addr, uint64_t value, uint64_t timestamp) { lru_cache.put(addr, value, timestamp); }
+    void perform_back_invalidation();
+    void invalidate_in_expanders(uint64_t addr);
+    void invalidate_in_switch(CXLSwitch* switch_, uint64_t addr);
 };
 
 template <> struct std::formatter<CXLController> {
