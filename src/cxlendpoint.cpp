@@ -278,33 +278,110 @@ double CXLSwitch::get_endpoint_rob_latency(CXLMemExpander *endpoint,
     return access_count > 0 ? total_latency / access_count : 0.0;
 }
 
-std::tuple<double, std::vector<uint64_t>> CXLSwitch::calculate_congestion() {//TODO reader writer congestion
+std::tuple<double, std::vector<uint64_t>> CXLSwitch::calculate_congestion() {
     double latency = 0.0;
     std::vector<uint64_t> congestion;
+    
+    // 收集所有子交换机的拥塞信息
     for (auto &switch_ : this->switches) {
         auto [lat, con] = switch_->calculate_congestion();
         latency += lat;
         congestion.insert(congestion.end(), con.begin(), con.end());
     }
+    
+    // 读写访问记录的数据结构
+    struct AccessRecord {
+        uint64_t timestamp;  // 访问时间戳
+        bool is_write;       // 是否为写操作
+        uint64_t address;    // 访问地址
+    };
+    
+    std::vector<AccessRecord> access_records;
+    
+    // 收集当前周期内的所有访问记录
     for (auto &expander : this->expanders) {
         for (auto &it : expander->occupation) {
-            // every epoch
+            // 只处理当前epoch内的访问
             if (it.timestamp > this->last_timestamp - epoch * 1000) {
+                // 根据访问类型添加记录
+                // 这里假设access_count > 0表示读操作，可以根据实际情况调整判断条件
+                bool is_write = it.access_count == 0;
+                
+                access_records.push_back({
+                    it.timestamp,
+                    is_write,
+                    it.address
+                });
+                
                 congestion.push_back(it.timestamp);
             }
         }
     }
-    sort(congestion.begin(), congestion.end());
-    for (auto it = congestion.begin(); it != congestion.end(); ++it) {
-        if (*(it + 1) - *it < 2000) { // if less than 20ns
+    
+    // 按时间戳排序所有访问
+    std::sort(congestion.begin(), congestion.end());
+    std::sort(access_records.begin(), access_records.end(), 
+        [](const AccessRecord& a, const AccessRecord& b) {
+            return a.timestamp < b.timestamp;
+        });
+    
+    // 检测时间上的冲突
+    for (auto it = congestion.begin(); it != congestion.end() && it + 1 != congestion.end(); ++it) {
+        if (*(it + 1) - *it < 2000) { // 如果时间差小于20ns (2000)
             latency += this->congestion_latency;
             this->counter.inc_conflict();
+            congestion.erase(it);
             if (it + 1 == congestion.end()) {
                 break;
             }
-            congestion.erase(it);
         }
     }
+    
+    // 检测读写冲突
+    std::unordered_map<uint64_t, std::vector<AccessRecord>> address_accesses;
+    
+    // 按地址分组访问记录
+    for (const auto& record : access_records) {
+        address_accesses[record.address].push_back(record);
+    }
+    
+    // 对每个地址检查读写冲突
+    for (auto& [address, records] : address_accesses) {
+        if (records.size() <= 1) continue;  // 只有一个访问，不可能有冲突
+        
+        // 按时间戳排序
+        std::sort(records.begin(), records.end(), 
+            [](const AccessRecord& a, const AccessRecord& b) {
+                return a.timestamp < b.timestamp;
+            });
+        
+        // 检查相邻访问是否存在读写或写写冲突
+        for (size_t i = 0; i < records.size() - 1; i++) {
+            const auto& current = records[i];
+            const auto& next = records[i + 1];
+            
+            // 时间差小于阈值
+            if (next.timestamp - current.timestamp < 2000) {
+                // 有写操作参与的冲突
+                if (current.is_write || next.is_write) {
+                    // 写-写冲突: 增加2倍延迟
+                    if (current.is_write && next.is_write) {
+                        latency += this->congestion_latency * 2.0;
+                    }
+                    // 读-写或写-读冲突: 增加1.5倍延迟
+                    else {
+                        latency += this->congestion_latency * 1.5;
+                    }
+                    this->counter.inc_conflict();
+                }
+                // 读-读冲突: 仅小幅增加延迟
+                else {
+                    latency += this->congestion_latency * 0.5;
+                }
+            }
+        }
+    }
+    
     return std::make_tuple(latency, congestion);
 }
 std::vector<std::tuple<uint64_t, uint64_t>> CXLSwitch::get_access(uint64_t timestamp) {

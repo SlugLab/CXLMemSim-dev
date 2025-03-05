@@ -55,8 +55,6 @@ CXLController::CXLController(std::array<Policy *, 4> p, int capacity, page_type 
     for (auto expander : this->expanders) {
         expander->set_epoch(epoch);
     }
-    // TODO deferentiate R/W for multi reader multi writer
-    // TODO conflict 实现
 }
 
 double CXLController::calculate_latency(const std::vector<std::tuple<uint64_t, uint64_t>> &elem, double dramlatency) {
@@ -243,7 +241,7 @@ void CXLController::insert_one(thread_info &t_info, lbr &lbr) {
 int CXLController::insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, uint64_t virt_addr, int index) {
     auto &t_info = thread_map[tid];
 
-    // 计算时间步长,使timestamp均匀分布
+    // 计算时间步长
     uint64_t time_step = 0;
     if (index > last_index) {
         time_step = (timestamp - last_timestamp) / (index - last_index);
@@ -268,44 +266,49 @@ int CXLController::insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, 
         // 缓存未命中，决定分配策略
         auto numa_policy = allocation_policy->compute_once(this);
 
+        // 检查是否需要页表遍历，并获取额外延迟
+        uint64_t ptw_latency = 0;
+        if (paging_policy) {
+            // 判断是远程访问还是本地访问
+            bool is_remote = numa_policy != -1;
+            ptw_latency = paging_policy->check_page_table_walk(virt_addr, phys_addr, is_remote, page_type_);
+
+            // 如果需要页表遍历，增加延迟
+            if (ptw_latency > 0) {
+                // 这里可以根据需要处理额外延迟
+                latency_lat += ptw_latency;
+                // 或者在计算总延迟时考虑这个因素
+            }
+        }
+
         if (numa_policy == -1) {
             // 本地访问
-            this->occupation.emplace(current_timestamp, phys_addr);
+            this->occupation.emplace(current_timestamp, occupation_info{phys_addr, 1, current_timestamp + ptw_latency});
             this->counter.inc_local();
             t_info.llcm_type.push(0);
 
             // 更新缓存
-            update_cache(phys_addr, phys_addr, current_timestamp); // 使用物理地址作为值
+            update_cache(phys_addr, phys_addr, current_timestamp);
         } else {
             // 远程访问
             this->counter.inc_remote();
             for (auto switch_ : this->switches) {
-                res &= switch_->insert(current_timestamp, tid, phys_addr, virt_addr, numa_policy);
+                res &= switch_->insert(current_timestamp + ptw_latency, tid, phys_addr, virt_addr, numa_policy);
             }
             for (auto expander_ : this->expanders) {
-                res &= expander_->insert(current_timestamp, tid, phys_addr, virt_addr, numa_policy);
+                res &= expander_->insert(current_timestamp + ptw_latency, tid, phys_addr, virt_addr, numa_policy);
             }
             t_info.llcm_type.push(1); // 远程访问类型
-            // 可以选择是否缓存远程访问的数据
-            if (caching_policy->compute_once(this)) {
-                counter.inc_hitm();
+
+            // 如果缓存策略允许缓存远程访问的数据
+            if (caching_policy->should_cache(phys_addr, current_timestamp)) {
                 update_cache(phys_addr, phys_addr, current_timestamp);
             }
         }
     }
-    static int request_counter = 0;
-    request_counter += (index - last_index);
-    if (request_counter >= 1000) {
-        if (migration_policy && migration_policy->compute_once(this) > 0) {
-            perform_migration();
-        }
-        if (caching_policy && caching_policy->compute_once(this) > 0) {
-            perform_back_invalidation();
-        }
-        request_counter = 0;
-    }
+
     // 更新最后的索引和时间戳
-    last_index = index > 0 ? index : last_index;
+    last_index = index;
     last_timestamp = timestamp;
     return res;
 }

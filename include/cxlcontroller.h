@@ -68,6 +68,9 @@ public:
     PagingPolicy();
     int compute_once(CXLController *) override{};
     // paging related
+    virtual uint64_t check_page_table_walk(uint64_t virt_addr, uint64_t phys_addr, bool is_remote, page_type pt) {
+        return 0;
+    }
 };
 
 class CachingPolicy : public Policy {
@@ -318,8 +321,8 @@ template <> struct std::formatter<CXLController> {
                 result += std::format("{}  Events:\n", indent + "  ");
                 result += std::format("{}    Load: {}\n", indent + "  ", endpoint->counter.load.get());
                 result += std::format("{}    Store: {}\n", indent + "  ", endpoint->counter.store.get());
-                result += std::format("{}    Migrate: {}\n", indent + "  ", endpoint->counter.migrate_in.get());
-                result += std::format("{}    Migrate: {}\n", indent + "  ", endpoint->counter.migrate_out.get());
+                result += std::format("{}    Migrate in: {}\n", indent + "  ", endpoint->counter.migrate_in.get());
+                result += std::format("{}    Migrate out: {}\n", indent + "  ", endpoint->counter.migrate_out.get());
                 result += std::format("{}    Hit Old: {}\n", indent + "  ", endpoint->counter.hit_old.get());
             }
         };

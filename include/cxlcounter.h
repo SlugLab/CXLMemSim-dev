@@ -29,7 +29,16 @@ const char localName[] = "local";
 const char remoteName[] = "remote";
 const char hitmName[] = "hitm";
 const char backinvName[] = "backinv";
-
+const char hitName[] = "hit";
+const char missName[] = "miss";
+const char totalName[] = "total";
+const char tlbhits4kName[] = "tlbhits4k";
+const char tlbmisses4kName[] = "tlbmisses4k";
+const char tlbhits2mName[] = "tlbhits2m";
+const char tlbmisses2mName[] = "tlbmisses2m";
+const char tlbhits1gName[] = "tlbhits1g";
+const char tlbmisses1gName[] = "tlbmisses1g";
+const char ptwcountName[] = "ptwcount";
 
 // 基础计数器模板类
 template<const char* Name>
@@ -220,7 +229,53 @@ public:
     }
 };
 
-// 实现部分现在可以以内联方式编写，不需要单独的.cpp文件
-// 但为了兼容性，我们仍保留.cpp文件的实现
+class CXLPageTableEvent {
+public:
+    AtomicCounter<hitName> hit;
+    AtomicCounter<missName> miss;
+    AtomicCounter<totalName> total;
+    constexpr CXLPageTableEvent() noexcept = default;
+
+    constexpr void inc_hit() noexcept { hit.increment(); }
+    constexpr void inc_miss() noexcept { miss.increment(); }
+    constexpr void inc_total() noexcept { total.increment(); }
+
+    constexpr uint64_t get_hit() const noexcept { return hit; }
+    constexpr uint64_t get_miss() const noexcept { return miss; }
+    constexpr uint64_t get_total() const noexcept { return total; }
+
+    constexpr double hit_ratio() const noexcept {
+        uint64_t total = hit + miss;
+        return total > 0 ? static_cast<double>(hit) / total : 0.0;
+    }
+};
+
+class CXLHugePageEvent {
+public:
+
+    AtomicCounter<tlbhits4kName> tlb_hits_4k;
+    AtomicCounter<tlbmisses4kName> tlb_misses_4k;
+    AtomicCounter<tlbhits2mName> tlb_hits_2m;
+    AtomicCounter<tlbmisses2mName> tlb_misses_2m;
+    AtomicCounter<tlbhits1gName> tlb_hits_1g;
+    AtomicCounter<tlbmisses1gName> tlb_misses_1g;
+    AtomicCounter<ptwcountName> ptw_count; // 页表遍历次数
+    constexpr CXLHugePageEvent() noexcept = default;
+    constexpr void inc_tlb_hits_4k() noexcept { tlb_hits_4k.increment(); }
+    constexpr void inc_tlb_misses_4k() noexcept { tlb_misses_4k.increment(); }
+    constexpr void inc_tlb_hits_2m() noexcept { tlb_hits_2m.increment(); }
+    constexpr void inc_tlb_misses_2m() noexcept { tlb_misses_2m.increment(); }
+    constexpr void inc_tlb_hits_1g() noexcept { tlb_hits_1g.increment(); }
+    constexpr void inc_tlb_misses_1g() noexcept { tlb_misses_1g.increment(); }
+    constexpr void inc_ptw_count() noexcept { ptw_count.increment(); }
+
+    constexpr uint64_t get_tlb_hits_4k() const noexcept { return tlb_hits_4k; }
+    constexpr uint64_t get_tlb_misses_4k() const noexcept { return tlb_misses_4k; }
+    constexpr uint64_t get_tlb_hits_2m() const noexcept { return tlb_hits_2m; }
+    constexpr uint64_t get_tlb_misses_2m() const noexcept { return tlb_misses_2m; }
+    constexpr uint64_t get_tlb_hits_1g() const noexcept { return tlb_hits_1g; }
+    constexpr uint64_t get_tlb_misses_1g() const noexcept { return tlb_misses_1g; }
+    constexpr uint64_t get_ptw_count() const noexcept { return ptw_count; }
+};
 
 #endif // CXLMEMSIM_CXLCOUNTER_H
