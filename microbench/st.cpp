@@ -74,6 +74,7 @@ int main(int argc, char **argv) {
   __cpuid(0, eax, ebx, ecx, edx);
 
   clock_gettime(CLOCK_MONOTONIC, &tstart);
+  for (int i=0;i<1e3;i++){
   addr = base;
 
   while (addr < (base + MAP_SIZE)) {
@@ -89,6 +90,7 @@ int main(int argc, char **argv) {
   uint64_t nanos = (1000000000 * tend.tv_sec + tend.tv_nsec);
   nanos -= (1000000000 * tstart.tv_sec + tstart.tv_nsec);
   printf("%lu\n", nanos);
+  }
 
   munmap(base, MAP_SIZE);
   return 0;

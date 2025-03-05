@@ -66,7 +66,7 @@ int main(int argc, char **argv) {
     *iaddr = hash;
     iaddr++;
   }
-
+  
   // 替代缓存刷新的代码段
   addr = base;
   // 使用大块内存访问替代缓存刷新
@@ -80,12 +80,13 @@ int main(int argc, char **argv) {
     }
     free(cache_clear);
   }
-
+  
   // 使用cpuid替代内存屏障
   unsigned int eax, ebx, ecx, edx;
   __cpuid(0, eax, ebx, ecx, edx);
-
+  
   clock_gettime(CLOCK_MONOTONIC, &tstart);
+  for (int i=0;i<1e3;i++){
   addr = base;
   while (addr < (base + MAP_SIZE)) {
     //fprintf (stderr, "addr %p bound %p\n", addr, base + MAP_SIZE);
@@ -100,7 +101,8 @@ int main(int argc, char **argv) {
   uint64_t nanos = (1000000000  * tend.tv_sec + tend.tv_nsec);
   nanos -= (1000000000 * tstart.tv_sec + tstart.tv_nsec);
   printf("%lu\n", nanos);
-
+  }
+  
   munmap(base, MAP_SIZE);
   return 0;
 }

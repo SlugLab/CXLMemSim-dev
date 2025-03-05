@@ -45,7 +45,7 @@
   "add $" STR(MOVE_SIZE) ", %%r8 \n"				\
   "cmp $" STR(FENCE_BOUND) ",%%r8\n"				\
   "jl LOOP_START%= \n"						\
-  "mfence \n"						\
+  "cpuid \n"						\
 
 
 int main(int argc, char **argv) {
@@ -86,8 +86,7 @@ int main(int argc, char **argv) {
   while (addr < (base + MAP_SIZE)) {
     asm volatile(
 		 "mov %[buf], %%rsi\n"
-		 "clflush (%%rsi)\n"
-          "mfence\n"
+          "cpuid \n"
 		 :
 		 : [buf] "r" (addr)
 		 : "rsi");

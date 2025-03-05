@@ -56,6 +56,7 @@ CXLController::CXLController(std::array<Policy *, 4> p, int capacity, page_type 
         expander->set_epoch(epoch);
     }
     // TODO deferentiate R/W for multi reader multi writer
+    // TODO conflict 实现
 }
 
 double CXLController::calculate_latency(const std::vector<std::tuple<uint64_t, uint64_t>> &elem, double dramlatency) {
