@@ -258,7 +258,7 @@ int CXLController::insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, 
 
         if (cache_result.has_value()) {
             // 缓存命中
-            this->counter.inc_local();
+            this->counter.inc_hitm();
             t_info.llcm_type.push(0); // 本地访问类型
             continue;
         }
@@ -306,9 +306,20 @@ int CXLController::insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, 
             }
         }
     }
+    static int request_counter = 0;
+    request_counter += (index - last_index);
+    if (request_counter >= 1000) {
+        if (migration_policy && migration_policy->compute_once(this) > 0) {
+            perform_migration();
+        }
+        if (caching_policy && caching_policy->compute_once(this) > 0) {
+            perform_back_invalidation();
+        }
+        request_counter = 0;
+    }
 
     // 更新最后的索引和时间戳
-    last_index = index;
+    last_index = index>0 ? index : last_index;
     last_timestamp = timestamp;
     return res;
 }
@@ -341,7 +352,7 @@ int CXLController::insert(uint64_t timestamp, uint64_t tid, lbr lbrs[32], cntr c
     // 从当前controller开始DFS遍历
     dfs_calculate(this);
 
-    latency_lat += std::max(total_latency + std::get<0>(calculate_congestion()), 0.0);
+    latency_lat += std::max(total_latency+std::get<0>(calculate_congestion()), 0.0);
     bandwidth_lat += std::max(calculate_bandwidth(all_access), 0.0);
 
     return 0;
@@ -376,28 +387,16 @@ void CXLController::perform_back_invalidation() {
     if (!caching_policy)
         return;
 
-    // 统计结构
-    struct {
-        uint64_t invalidations_performed{0}; // 执行的失效操作数
-        uint64_t invalidations_attempts{0}; // 尝试的失效操作数
-    } local_stats;
-
-    // 获取需要失效的地址列表
     auto invalidation_list = caching_policy->get_invalidation_list(this);
-    local_stats.invalidations_attempts = invalidation_list.size();
 
     // 对每个地址执行失效
     for (const auto &addr : invalidation_list) {
         // 从本地缓存中移除
         if (lru_cache.remove(addr)) {
-            local_stats.invalidations_performed++;
+            counter.inc_backinv();
         }
-
         // 从所有内存扩展器的occupation中移除
         invalidate_in_expanders(addr);
-    }
-    for (int i = 0; i < local_stats.invalidations_performed;) {
-        counter.inc_backinv();
     }
 }
 

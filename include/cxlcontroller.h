@@ -66,7 +66,7 @@ public:
 class PagingPolicy : public Policy {
 public:
     PagingPolicy();
-    int compute_once(CXLController *) override{};
+    int compute_once(CXLController *) override{return 0;};
     // paging related
     virtual uint64_t check_page_table_walk(uint64_t virt_addr, uint64_t phys_addr, bool is_remote, page_type pt) {
         return 0;

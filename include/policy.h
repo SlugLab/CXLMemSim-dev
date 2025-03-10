@@ -90,7 +90,7 @@ public:
 };
 
 class HugePagePolicy : public PagingPolicy {
-private:
+public:
     // 页表遍历延迟基准值（纳秒）
     uint64_t ptw_base_latency_local; // 本地内存页表遍历基准延迟
     uint64_t ptw_base_latency_remote; // 远程内存页表遍历基准延迟
@@ -145,7 +145,6 @@ private:
     TLBCache tlb_2m; // 2MB页面的TLB
     TLBCache tlb_1g; // 1GB页面的TLB
     CXLHugePageEvent stats; // 统计信息
-public:
     explicit HugePagePolicy(uint64_t local_latency = 100, uint64_t remote_latency = 300)
         : ptw_base_latency_local(local_latency), ptw_base_latency_remote(remote_latency),
           tlb_4k(64), // 4KB页面TLB容量(较大)
@@ -331,7 +330,7 @@ public:
 };
 
 class PageTableAwarePolicy : public PagingPolicy {
-private:
+public:
     // 页表缓存，用于追踪已经转换过的虚拟地址
     std::unordered_map<uint64_t, uint64_t> va_pa_cache;
     // 页表访问延迟（纳秒）
@@ -344,7 +343,6 @@ private:
     // 清理间隔
     uint64_t cleanup_interval;
 
-public:
     explicit PageTableAwarePolicy(uint64_t local_latency = 100, uint64_t remote_latency = 300,
                                   uint64_t cleanup_interval = 10000000)
         : ptw_latency_local(local_latency), ptw_latency_remote(remote_latency), last_cleanup_timestamp(0),
@@ -425,6 +423,19 @@ class FIFOPolicy : public CachingPolicy {
 public:
     FIFOPolicy() = default;
     int compute_once(CXLController *) override;
+    std::vector<uint64_t> get_invalidation_list(CXLController *controller) override {
+        std::vector<uint64_t> to_invalidate;
+        for (const auto &[timestamp, info] : controller->occupation) {
+            to_invalidate.push_back(info.address);
+        }
+        return to_invalidate;
+    };
+    bool should_cache(uint64_t addr, uint64_t timestamp) override {
+        return false;
+    };
+    bool should_invalidate(uint64_t addr, uint64_t timestamp) override {
+        return false;
+    };
 };
 
 // 基于访问频率的后向失效策略
@@ -547,12 +558,11 @@ public:
 
 // 基于负载平衡的迁移策略
 class LoadBalancingMigrationPolicy : public MigrationPolicy {
-private:
+public:
     double imbalance_threshold; // 负载不平衡阈值
     uint64_t migration_interval; // 迁移间隔
     uint64_t last_migration; // 上次迁移时间
 
-public:
     LoadBalancingMigrationPolicy(double threshold = 0.2, uint64_t interval = 5000000)
         : imbalance_threshold(threshold), migration_interval(interval), last_migration(0) {}
 
@@ -706,12 +716,11 @@ public:
 
 // 基于局部性的迁移策略
 class LocalityBasedMigrationPolicy : public MigrationPolicy {
-private:
+public:
     std::unordered_map<uint64_t, std::vector<uint64_t>> page_access_pattern; // 页面访问模式
     uint64_t pattern_threshold; // 模式识别阈值
     uint64_t page_size; // 页面大小
 
-public:
     LocalityBasedMigrationPolicy(uint64_t threshold = 5, uint64_t p_size = 4096)
         : pattern_threshold(threshold), page_size(p_size) {}
 
@@ -780,10 +789,9 @@ public:
 
 // 基于数据寿命的迁移策略
 class LifetimeBasedMigrationPolicy : public MigrationPolicy {
-private:
+public:
     uint64_t lifetime_threshold; // 数据寿命阈值
 
-public:
     LifetimeBasedMigrationPolicy(uint64_t threshold = 1000000) : lifetime_threshold(threshold) {}
 
     int compute_once(CXLController *controller) override {
@@ -828,10 +836,9 @@ public:
 
 // 混合多策略迁移
 class HybridMigrationPolicy : public MigrationPolicy {
-private:
+public:
     std::vector<MigrationPolicy *> policies; // 多个迁移策略
 
-public:
     HybridMigrationPolicy() {}
 
     // 添加策略

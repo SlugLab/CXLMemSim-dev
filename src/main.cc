@@ -46,15 +46,15 @@ int main(int argc, char *argv[]) {
         cxxopts::value<std::vector<int>>()->default_value("0,20,20,20"))(
         "f,frequency", "The frequency for the running thread", cxxopts::value<double>()->default_value("4000"))(
         "l,latency", "The simulated latency by epoch based calculation for injected latency",
-        cxxopts::value<std::vector<int>>()->default_value("100,150,100,150,100,150"))(
+        cxxopts::value<std::vector<int>>()->default_value("200,250,200,250,200,250"))(
         "b,bandwidth", "The simulated bandwidth by linear regression",
         cxxopts::value<std::vector<int>>()->default_value("50,50,50,50,50,50"))(
         "x,pmu_name", "The input for Collected PMU",
         cxxopts::value<std::vector<std::string>>()->default_value(
-            "clflush,l2hit,l2miss,cpus_dram_rds,llcl_hits,snoop_fwd_wb,total_stall,l2stall"))(
+            "prefetch,l2hit,l2miss,cpus_dram_rds,llcl_hits,snoop_fwd_wb,total_stall,l2stall"))(
         "y,pmu_config1", "The config0 for Collected PMU",
         cxxopts::value<std::vector<uint64_t>>()->default_value(
-            "0xff0e,0x0134,0x7e35,0x01d3,0x04d1,0x01b7,0x04004a3,0x0449"))(
+            "0x02c0,0x0134,0x7e35,0x01d3,0x04d1,0x01b7,0x04004a3,0x0449"))(
         "z,pmu_config2", "The config1 for Collected PMU",
         cxxopts::value<std::vector<uint64_t>>()->default_value("0,0,0,0,0,0x1a610008,0,0"))(
         "w,weight", "The weight for Linear Regression",
@@ -96,8 +96,8 @@ int main(int argc, char *argv[]) {
 
     auto *policy1 = new InterleavePolicy();
     auto *policy2 = new HeatAwareMigrationPolicy();
-    auto *policy3 = new PagingPolicy();
-    auto *policy4 = new FIFOPolicy();
+    auto *policy3 = new HugePagePolicy();
+    auto *policy4 = new FrequencyBasedInvalidationPolicy();
 
     uint64_t use_cpus = 0;
     cpu_set_t use_cpuset;
@@ -243,10 +243,8 @@ int main(int argc, char *argv[]) {
                 std::vector<uint64_t> cha_vec{0, 0, 0, 0}, cpu_vec{0, 0, 0, 0};
 
                 /*** read CPU params */
-                uint64_t wb_cnt = 0;
-                uint64_t target_l2stall = 0, target_llcmiss = 0, target_llchits = 0;
-                uint64_t target_l2miss = 0, target_l3miss = 0;
-                uint64_t clflush = 0, read_config = 0;
+                uint64_t wb_cnt = 0, target_l2stall = 0, target_llcmiss = 0, target_llchits = 0,target_l2miss = 0, all_llcmiss = 0, all_prefetch = 0;
+                double writeback_latency;
                 /* read BPFTIMERUNTIME sample */
                 if (mon.bpftime_ctx->read(controller, &mon.after->bpftime) < 0) {
                     SPDLOG_ERROR("[{}:{}:{}] Warning: Failed BPFTIMERUNTIME read", i, mon.tgid, mon.tid);
@@ -273,15 +271,16 @@ int main(int argc, char *argv[]) {
                 target_llchits = cpu_vec[0];
                 wb_cnt = cpu_vec[1];
                 target_l2stall = cpu_vec[3];
-
-                clflush = cha_vec[0];
                 target_l2miss = cha_vec[2];
-                uint64_t emul_delay = (controller->latency_lat + controller->bandwidth_lat) * 1000000;
+                for (const auto &mon : monitors->mon) {
+                    all_llcmiss += mon.after->pebs.total - mon.before->pebs.total;
+                    all_prefetch += mon.after->chas[cha_mapping[i]].cha[0] - mon.before->chas[cha_mapping[i]].cha[0];
+                }
+                auto avg_weight = std::accumulate(weight.begin(), weight.end(), 0.0)/weight.size();
+                writeback_latency = (double) target_l2stall * avg_weight * (wb_cnt * target_llcmiss / (all_llcmiss + all_prefetch + 1) / (target_llchits + avg_weight * target_llcmiss + 1));
+                uint64_t emul_delay = (controller->latency_lat + controller->bandwidth_lat + writeback_latency) * 1000000;
 
                 SPDLOG_DEBUG("[{}:{}:{}] pebs: total={}, ", i, mon.tgid, mon.tid, mon.after->pebs.total);
-
-                /** TODO: calculate latency construct the passing value and use interleaving policy and counter to
-                 * get the sample_prop */
 
                 mon.before->pebs.total = mon.after->pebs.total;
                 mon.before->lbr.total = mon.after->lbr.total;

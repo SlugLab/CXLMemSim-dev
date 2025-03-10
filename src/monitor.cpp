@@ -14,6 +14,7 @@
 #include <csignal>
 #include <ctime>
 #include <iostream>
+timespec Monitor::last_delay = {0, 0};
 
 Monitors::Monitors(int cpu_count, cpu_set_t *use_cpuset) : print_flag(true) {
     mon = std::vector<Monitor>(cpu_count);
@@ -108,7 +109,7 @@ int Monitors::enable(uint32_t tgid, uint32_t tid, bool is_process, uint64_t pebs
     }
     SPDLOG_INFO("pid {}[tgid={}, tid={}] monitoring start", target, mon[target].tgid, mon[target].tid);
 
-    new std::thread(Monitor::wait, &mon, target);
+    new std::jthread(mon[target].wait, &mon, target);
     return target;
 }
 void Monitors::disable(const uint32_t target) {
@@ -119,8 +120,6 @@ void Monitors::disable(const uint32_t target) {
     mon[target].before = &mon[target].elem[0];
     mon[target].after = &mon[target].elem[1];
     mon[target].total_delay = 0;
-    mon[target].squabble_delay.tv_sec = 0;
-    mon[target].squabble_delay.tv_nsec = 0;
     mon[target].injected_delay.tv_sec = 0;
     mon[target].injected_delay.tv_nsec = 0;
     mon[target].end_exec_ts.tv_sec = 0;
@@ -281,9 +280,8 @@ void Monitor::clear_time(timespec *time) {
 }
 
 Monitor::Monitor() // which one to hook
-    : tgid(0), tid(0), cpu_core(0), status(0), injected_delay({0}), wasted_delay({0}), squabble_delay({0}),
-      before(nullptr), after(nullptr), total_delay(0), start_exec_ts({0}), end_exec_ts({0}), is_process(false),
-      bpftime_ctx(nullptr) {
+    : tgid(0), tid(0), cpu_core(0), status(0), injected_delay({0}), wasted_delay({0}), before(nullptr), after(nullptr),
+      total_delay(0), start_exec_ts({0}), end_exec_ts({0}), is_process(false) {
 
     for (auto &j : this->elem) {
         j.cpus = std::vector<CPUElem>(helper.used_cpu.size());
@@ -332,14 +330,11 @@ timespec operator*(const timespec &lhs, const timespec &rhs) {
 
     return result;
 }
-
 void Monitor::wait(std::vector<Monitor> *mons, int target) {
     auto &mon = (*mons)[target];
     uint64_t diff_nsec, target_nsec;
     timespec start_ts{}, end_ts{};
-    timespec sleep_target{};
-    // timespec wanted_delay;
-    timespec wanted_delay{};
+    timespec sleep_target{}, wanted_delay{}, interval_target{};
     timespec prev_wanted_delay = mon.wanted_delay;
     // while we're alive
     while ((mon.status == MONITOR_ON || mon.status == MONITOR_OFF)) {
@@ -347,7 +342,11 @@ void Monitor::wait(std::vector<Monitor> *mons, int target) {
         wanted_delay = mon.wanted_delay;
         sleep_target = start_ts + wanted_delay * prev_wanted_delay;
         target_nsec = wanted_delay - prev_wanted_delay;
-
+        interval_target = end_ts + interval_delay;
+        if (mon.bpftime_ctx->updater->get(mon.tid))
+            mon.bpftime_ctx->updater->update(mon.tgid, prev_wanted_delay.tv_nsec - mon.wanted_delay.tv_nsec);
+        else
+            clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &interval_target, nullptr);
         // start time before we ask them to sleep
         clock_gettime(CLOCK_MONOTONIC, &start_ts);
         mon.stop();
@@ -356,20 +355,14 @@ void Monitor::wait(std::vector<Monitor> *mons, int target) {
         // until we've waited enough time...
         while (diff_nsec < target_nsec) {
             SPDLOG_DEBUG("[{}:{}][OFF] total: {}", mon.tgid, mon.tid, wanted_delay.tv_nsec);
-            // SPDLOG_INFO("target: {}:{}", sleep_target.tv_sec, sleep_target.tv_nsec);
-            // SPDLOG_INFO("start: {}:{}", start_ts.tv_sec, start_ts.tv_nsec);
-            //  sleep to the target
             clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &sleep_target, nullptr);
             clock_gettime(CLOCK_MONOTONIC, &end_ts);
             diff_nsec = end_ts - start_ts;
-            // SPDLOG_INFO("diff: {}:{}", diff_nsec, target_nsec);
         }
         mon.run();
-        // keep track of how much we've delayed them for
-        // TODO: use the diff_nsec to help calculate the prev_wanted_delay, to avoid timing errors building up from over
-        // waiting
         prev_wanted_delay = wanted_delay;
-        // break;
+        clock_gettime(CLOCK_MONOTONIC, &end_ts);
     }
     SPDLOG_INFO("{}:{}", prev_wanted_delay.tv_sec, prev_wanted_delay.tv_nsec);
+
 }

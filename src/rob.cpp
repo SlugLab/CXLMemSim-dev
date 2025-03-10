@@ -7,6 +7,7 @@
 bool Rob::issue(const InstructionGroup &ins) {
     if (queue_.size() >= maxSize_) {
         stallCount_++;
+        stallEventCount_++;
         return false; // ROB已满,停顿
     }
 

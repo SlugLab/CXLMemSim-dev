@@ -309,6 +309,8 @@ int main(int argc, char *argv[]) {
     SPDLOG_INFO("Non-memory instructions: {}", nonMemInstr);
 
     std::cout << "Stalls: " << rob.getStallCount() << std::endl;
+    std::cout << "ROB Events: " << rob.getStallEventCount() << std::endl;
+
     std::cout << std::format("{}",*controller)  << std::endl;
     return 0;
 }

@@ -8,9 +8,6 @@
  *  Copyright 2025 Regents of the University of California
  *  UC Santa Cruz Sluglab.
  */
-#include "bpftime_config.hpp"
-#include "bpftime_logger.hpp"
-#include "bpftime_shm.hpp"
 #include <cerrno>
 #include <csignal>
 #include <cstdlib>
@@ -28,7 +25,8 @@
 #include <vector>
 #include "bpftimeruntime.h"
 
-BpfTimeRuntime::BpfTimeRuntime(pid_t tid, std::string program_location) : tid(tid) {
+BpfTimeRuntime::BpfTimeRuntime(pid_t tid, std::string program_location)
+    : tid(tid), updater(new BPFUpdater<uint64_t, uint64_t>(10)) {
     bpftime_initialize_global_shm(bpftime::shm_open_type::SHM_REMOVE_AND_CREATE);
     SPDLOG_INFO("GLOBAL memory initialized ");
     // load json program to shm
@@ -66,3 +64,4 @@ int BpfTimeRuntime::read(CXLController *controller, BPFTimeRuntimeElem *elem) {
     }
     return 0;
 }
+

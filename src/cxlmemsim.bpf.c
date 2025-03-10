@@ -509,7 +509,19 @@ int pthread_mutex_unlock_enter(struct pt_regs *ctx) {
     // 更新锁的状态
     u32 locked = 0;
     bpf_map_update_elem(&locks, &pid, &locked, BPF_ANY);
-
+    struct proc_info* item= bpf_map_lookup_elem(&thread_map, &tid);
+    item->is_locked = 0;
+    bpf_map_update_elem(&thread_map, &tid, item, BPF_ANY);
+    struct proc_info *delay = bpf_map_lookup_elem(&thread_map, &tid);
+    if (delay) {
+        u64 delay_start = bpf_ktime_get_ns();
+#pragma unroll
+        for (int i = 0; i < 100; i++) {
+            if ((bpf_ktime_get_ns() - delay_start) < delay->sleep_time) {
+                break;
+            }
+        }
+    }
     return 0;
 
 }
@@ -545,16 +557,10 @@ int pthread_mutex_lock_enter(struct pt_regs *ctx)
     // 尝试获取锁
     u32 locked = 1;
     bpf_map_update_elem(&locks, &pid, &locked, BPF_ANY);
-    struct proc_info *delay = bpf_map_lookup_elem(&thread_map, &tid);
-    if (delay) {
-        u64 delay_start = bpf_ktime_get_ns();
-      #pragma unroll
-        for (int i = 0; i < 100; i++) {
-            if ((bpf_ktime_get_ns() - delay_start) < delay->sleep_time) {
-                break;
-            }
-        }
-    }
+
+    struct proc_info* item= bpf_map_lookup_elem(&thread_map, &tid);
+    item->is_locked = 1;
+    bpf_map_update_elem(&thread_map, &tid, item, BPF_ANY);
     return 0;
 }
 
