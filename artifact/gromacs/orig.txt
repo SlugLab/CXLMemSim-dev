@@ -1,0 +1,63 @@
+ time ./bin/gmx solvate -cp 5pep-box.gro -cs spc216.gro -o 5pep-solv.gro -p topol.top
+  :-) GROMACS - gmx solvate, 2026.0-dev-20250308-ea62118dab-dirty-unknown (-:
+
+Executable:   /home/try/Documents/CXLMemSim-dev/workloads/gromacs/build/./bin/gmx
+Data prefix:  /home/try/Documents/CXLMemSim-dev/workloads/gromacs (source tree)
+Working dir:  /home/try/Documents/CXLMemSim-dev/workloads/gromacs/build
+Command line:
+  gmx solvate -cp 5pep-box.gro -cs spc216.gro -o 5pep-solv.gro -p topol.top
+
+Reading solute configuration
+Reading solvent configuration
+
+Initialising inter-atomic distances...
+
+WARNING: Masses and atomic (Van der Waals) radii will be guessed
+         based on residue and atom names, since they could not be
+         definitively assigned from the information in your input
+         files. These guessed numbers might deviate from the mass
+         and radius of the atom type. Please check the output
+         files if necessary. Note, that this functionality may
+         be removed in a future GROMACS version. Please, consider
+         using another file format for your input.
+
+NOTE: From version 5.0 gmx solvate uses the Van der Waals radii
+from the source below. This means the results may be different
+compared to previous GROMACS versions.
+
+++++ PLEASE READ AND CITE THE FOLLOWING REFERENCE ++++
+A. Bondi
+van der Waals Volumes and Radii
+J. Phys. Chem. (1964)
+DOI: 10.1021/j100785a001
+-------- -------- --- Thank You --- -------- --------
+
+Generating solvent configuration
+Will generate new solvent configuration of 5x5x5 boxes
+Solvent box contains 69699 atoms in 23233 residues
+Removed 7791 solvent atoms due to solvent-solvent overlap
+Removed 4365 solvent atoms due to solute-solvent overlap
+Sorting configuration
+Found 1 molecule type:
+    SOL (   3 atoms): 19181 residues
+Generated solvent containing 57543 atoms in 19181 residues
+Writing generated configuration to 5pep-solv.gro
+
+Back Off! I just backed up 5pep-solv.gro to ./#5pep-solv.gro.1#
+
+Output configuration contains 62225 atoms in 19507 residues
+Volume                 :     627.119 (nm^3)
+Density                :     1012.07 (g/l)
+Number of solvent molecules:  19181
+
+Processing topology
+Adding line for 19181 solvent molecules with resname (SOL) to topology file (topol.top)
+
+Back Off! I just backed up topol.top to ./#topol.top.3#
+
+GROMACS reminds you: "Everybody Lie Down On the Floor and Keep Calm" (KLF)
+
+
+real    0m0.189s
+user    0m0.518s
+sys     0m1.133s

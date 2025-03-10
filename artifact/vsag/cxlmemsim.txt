@@ -1,0 +1,141 @@
+/home/try/Documents/CXLMemSim-dev/cmake-build-debug/CXLMemSim -t /home/try/Documents/CXLMemSim-dev/workloads/ann-benchmarks/run.sh
+[2025-03-09 22:39:55][info][1150118] Global shm constructed. shm_open_type 1 for bpftime_maps_shm
+[2025-03-09 22:39:55][info][1150118] Global shm initialized
+[2025-03-09 22:39:55][info][1150118] Register attach-impl defined helper bpf_get_func_arg, index 183
+[2025-03-09 22:39:55][info][1150118] Register attach-impl defined helper bpf_get_func_ret_id, index 184
+[2025-03-09 22:39:55][info][1150118] Register attach-impl defined helper bpf_get_retval, index 186
+[2025-03-09 22:39:55][info][1150118] Initializing agent..
+[2025-03-09 22:39:55][info][1150118] Executable path: /usr/bin/bash
+[2025-03-09 22:39:55][info][1150118] Executable path: /usr/bin/bash
+[2025-03-09 22:39:55][info][1150118] Executable path: /usr/bin/bash
+[2025-03-09 22:39:55][info][1150118] Executable path: /usr/bin/bash
+[2025-03-09 22:39:55][info][1150118] Executable path: /usr/bin/bash
+[2025-03-09 22:39:55][info][1150118] Executable path: /usr/bin/bash
+[2025-03-09 22:39:55][info][1150118] Executable path: /usr/bin/bash
+[2025-03-09 22:39:55][info][1150118] Executable path: /usr/bin/bash
+[2025-03-09 22:39:55][info][1150118] Executable path: /usr/bin/bash
+[2025-03-09 22:39:55][info][1150118] Executable path: /usr/bin/bash
+[2025-03-09 22:39:55][info][1150118] Executable path: /usr/bin/bash
+[2025-03-09 22:39:55][info][1150118] Executable path: /usr/bin/bash
+[2025-03-09 22:39:55][info][1150118] Executable path: /usr/bin/bash
+[2025-03-09 22:39:55][info][1150118] Executable path: /usr/bin/bash
+[2025-03-09 22:39:55][info][1150118] Executable path: /usr/bin/bash
+[2025-03-09 22:40:07][info][1150118] Attach successfully
+[2025-03-09 22:40:07][info][1150242] Global shm constructed. shm_open_type 1 for bpftime_maps_shm
+[2025-03-09 22:40:07][info][1150242] Global shm initialized
+[2025-03-09 22:40:07][info][1150242] Register attach-impl defined helper bpf_get_func_arg, index 183
+[2025-03-09 22:40:07][info][1150242] Register attach-impl defined helper bpf_get_func_ret_id, index 184
+[2025-03-09 22:40:07][info][1150242] Register attach-impl defined helper bpf_get_retval, index 186
+[2025-03-09 22:40:07][info][1150242] Initializing agent..
+[2025-03-09 22:40:07][info][1150242] Executable path: /opt/anaconda3/envs/ann/bin/python3.10
+[2025-03-09 22:40:07][info][1150242] Executable path: /opt/anaconda3/envs/ann/bin/python3.10
+[2025-03-09 22:40:07][info][1150242] Executable path: /opt/anaconda3/envs/ann/bin/python3.10
+[2025-03-09 22:40:07][info][1150242] Executable path: /opt/anaconda3/envs/ann/bin/python3.10
+[2025-03-09 22:40:07][info][1150242] Executable path: /opt/anaconda3/envs/ann/bin/python3.10
+[2025-03-09 22:40:07][info][1150242] Executable path: /opt/anaconda3/envs/ann/bin/python3.10
+[2025-03-09 22:40:07][info][1150242] Executable path: /opt/anaconda3/envs/ann/bin/python3.10
+[2025-03-09 22:40:07][info][1150242] Executable path: /opt/anaconda3/envs/ann/bin/python3.10
+[2025-03-09 22:40:07][info][1150242] Executable path: /opt/anaconda3/envs/ann/bin/python3.10
+[2025-03-09 22:40:07][info][1150242] Executable path: /opt/anaconda3/envs/ann/bin/python3.10
+[2025-03-09 22:40:07][info][1150242] Executable path: /opt/anaconda3/envs/ann/bin/python3.10
+[2025-03-09 22:40:07][info][1150242] Executable path: /opt/anaconda3/envs/ann/bin/python3.10
+[2025-03-09 22:40:07][info][1150242] Executable path: /opt/anaconda3/envs/ann/bin/python3.10
+[2025-03-09 22:40:07][info][1150242] Executable path: /opt/anaconda3/envs/ann/bin/python3.10
+[2025-03-09 22:40:07][info][1150242] Executable path: /opt/anaconda3/envs/ann/bin/python3.10
+[2025-03-09 22:40:07][info][1150242] Attach successfully
+['angular', 20, {'M': 24, 'ef_construction': 300, 'use_int8': 4, 'rs': 0.5}]
+Trying to instantiate ann_benchmarks.algorithms.vsag.Vsag(['angular', 20, {'M': 24, 'ef_construction': 300, 'use_int8': 4, 'rs': 0.5}])
+{'M': 24, 'efc': 300, 'sq': 4, 'a': 1.0, 'rs': 0.5}
+Got a train set of size (9000 * 20)
+Got 1000 queries
+{'dtype': 'float32', 'metric_type': 'l2', 'dim': 20, 'hnsw': {'max_degree': 24, 'ef_construction': 300, 'ef_search': 300, 'max_elements': 9000, 'use_static': False, 'sq_num_bits': 4, 'alpha': 1.0, 'redundant_rate': 0.5}}
+[2025-03-09 22:41:26.560] [info] hnsw graph cost 77.730s
+Built index in 77.79402041435242
+Index size:  4048.0
+Running query argument group 1 of 11...
+Run 1/2...
+Run 2/2...
+Running query argument group 2 of 11...
+Run 1/2...
+Run 2/2...
+Running query argument group 3 of 11...
+Run 1/2...
+Run 2/2...
+Running query argument group 4 of 11...
+Run 1/2...
+Run 2/2...
+Running query argument group 5 of 11...
+Run 1/2...
+Run 2/2...
+Running query argument group 6 of 11...
+Run 1/2...
+Run 2/2...
+Running query argument group 7 of 11...
+Run 1/2...
+Run 2/2...
+Running query argument group 8 of 11...
+Run 1/2...
+Run 2/2...
+Running query argument group 9 of 11...
+Run 1/2...
+Run 2/2...
+Running query argument group 10 of 11...
+Run 1/2...
+Run 2/2...
+Running query argument group 11 of 11...
+Run 1/2...
+Run 2/2...
+========== Process 0[tgid=1150118, tid=1150118] statistics summary ==========
+emulated time =157.374140936
+total delay   =29.873116458000002
+PEBS sample total 108 1070
+LBR sample total 2
+bpftime sample total 314346
+CXLController:
+Total system memory capacity: 60GB
+  Page Type: PAGE
+  Global Counter:
+    Local: 0
+    Remote: 106
+    HITM: 964
+Topology:
+Switch:
+  Events:
+    Load: 0
+    Store: 0
+    Conflict: 0
+  Switch:
+    Events:
+      Load: 0
+      Store: 71
+      Conflict: 1
+    Expander:
+      Events:
+        Load: 0
+        Store: 36
+        Migrate in: 0
+        Migrate out: 0
+        Hit Old: 0
+    Expander:
+      Events:
+        Load: 0
+        Store: 35
+        Migrate in: 0
+        Migrate out: 0
+        Hit Old: 0
+  Expander:
+    Events:
+      Load: 0
+      Store: 35
+      Migrate in: 0
+      Migrate out: 0
+      Hit Old: 0
+
+Statistics:
+  Number of Switches: 2
+  Number of Endpoints: 3
+  Number of Threads created: 1
+  Memory Freed: 1863068684 bytes
+
+
+Process finished with exit code 0

@@ -317,9 +317,8 @@ int CXLController::insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, 
         }
         request_counter = 0;
     }
-
     // 更新最后的索引和时间戳
-    last_index = index>0 ? index : last_index;
+    last_index = index > 0 ? index : last_index;
     last_timestamp = timestamp;
     return res;
 }
@@ -352,7 +351,7 @@ int CXLController::insert(uint64_t timestamp, uint64_t tid, lbr lbrs[32], cntr c
     // 从当前controller开始DFS遍历
     dfs_calculate(this);
 
-    latency_lat += std::max(total_latency+std::get<0>(calculate_congestion()), 0.0);
+    latency_lat += std::max(total_latency + std::get<0>(calculate_congestion()), 0.0);
     bandwidth_lat += std::max(calculate_bandwidth(all_access), 0.0);
 
     return 0;

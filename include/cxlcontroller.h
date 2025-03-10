@@ -34,6 +34,8 @@ public:
 class AllocationPolicy : public Policy {
 public:
     AllocationPolicy();
+    virtual ~AllocationPolicy() = default;
+    int compute_once(CXLController *controller) override { return 0; };
 };
 
 class MigrationPolicy : public Policy {
@@ -66,7 +68,7 @@ public:
 class PagingPolicy : public Policy {
 public:
     PagingPolicy();
-    int compute_once(CXLController *) override{return 0;};
+    int compute_once(CXLController *) override { return 0; };
     // paging related
     virtual uint64_t check_page_table_walk(uint64_t virt_addr, uint64_t phys_addr, bool is_remote, page_type pt) {
         return 0;
@@ -76,6 +78,8 @@ public:
 class CachingPolicy : public Policy {
 public:
     CachingPolicy();
+    virtual ~CachingPolicy() = default;
+    int compute_once(CXLController *) override { return 0; };
 
     // 判断是否应该缓存数据
     virtual bool should_cache(uint64_t addr, uint64_t timestamp) {

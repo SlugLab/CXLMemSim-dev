@@ -1,0 +1,4 @@
+time ./workloads/memcached -u try
+real    3m9.193s
+user    0m8.464s
+sys     0m35.308s

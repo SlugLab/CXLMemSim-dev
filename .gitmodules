@@ -28,3 +28,6 @@
 [submodule "workloads/YCSB"]
 	path = workloads/YCSB
 	url = https://github.com/brianfrankcooper/YCSB/
+[submodule "workloads/gromacs"]
+	path = workloads/gromacs
+	url = https://github.com/gromacs/gromacs

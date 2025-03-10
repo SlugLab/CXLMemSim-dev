@@ -60,7 +60,9 @@ int main(int argc, char *argv[]) {
         "w,weight", "The weight for Linear Regression",
         cxxopts::value<std::vector<double>>()->default_value("88, 88, 88, 88, 88, 88, 88"))(
         "v,weight_vec", "The weight vector for Linear Regression",
-        cxxopts::value<std::vector<double>>()->default_value("400, 800, 1200, 1600, 2000, 2400, 3000"));
+        cxxopts::value<std::vector<double>>()->default_value("400, 800, 1200, 1600, 2000, 2400, 3000"))(
+        "k,policy", "The weight vector for Linear Regression",
+        cxxopts::value<std::vector<std::string>>()->default_value("none,none,none,none"));
 
     auto result = options.parse(argc, argv);
     if (result["help"].as<bool>()) {
@@ -82,6 +84,7 @@ int main(int argc, char *argv[]) {
     auto weight = result["weight"].as<std::vector<double>>();
     auto weight_vec = result["weight_vec"].as<std::vector<double>>();
     auto page_ = result["mode"].as<std::string>();
+    auto policy = result["policy"].as<std::vector<std::string>>();
 
     page_type mode;
     if (page_ == "hugepage_2M") {
@@ -93,11 +96,62 @@ int main(int argc, char *argv[]) {
     } else {
         mode = PAGE;
     }
+    AllocationPolicy *policy1;
+    MigrationPolicy *policy2;
+    PagingPolicy *policy3;
+    CachingPolicy *policy4;
 
-    auto *policy1 = new InterleavePolicy();
-    auto *policy2 = new HeatAwareMigrationPolicy();
-    auto *policy3 = new HugePagePolicy();
-    auto *policy4 = new FrequencyBasedInvalidationPolicy();
+    // 初始化分配策略
+    if (policy[0] == "interleave") {
+        policy1 = new InterleavePolicy();
+    } else if (policy[0] == "numa") {
+        policy1 = new NUMAPolicy();
+    } else {
+        SPDLOG_ERROR("Unknown allocation policy: {}", policy[0]);
+        policy1 = new AllocationPolicy();
+    }
+
+    // 初始化迁移策略
+    if (policy[1] == "heataware") {
+        policy2 = new HeatAwareMigrationPolicy();
+    } else if (policy[1] == "frequency") {
+        policy2 = new FrequencyBasedMigrationPolicy();
+    } else if (policy[1] == "loadbalance") {
+        policy2 = new LoadBalancingMigrationPolicy();
+    } else if (policy[1] == "locality") {
+        policy2 = new LocalityBasedMigrationPolicy();
+    } else if (policy[1] == "lifetime") {
+        policy2 = new LifetimeBasedMigrationPolicy();
+    } else if (policy[1] == "hybrid") {
+        auto *hybridPolicy = new HybridMigrationPolicy();
+        // 可以添加多个策略到混合策略中
+        hybridPolicy->add_policy(new HeatAwareMigrationPolicy());
+        hybridPolicy->add_policy(new FrequencyBasedMigrationPolicy());
+        policy2 = hybridPolicy;
+    }else {
+        SPDLOG_ERROR("Unknown migration policy: {}", policy[1]);
+        policy2 = new MigrationPolicy();
+    }
+
+    // 初始化分页策略
+    if (policy[2] == "hugepage") {
+        policy3 = new HugePagePolicy();
+    } else if (policy[2] == "pagetableaware") {
+        policy3 = new PageTableAwarePolicy();
+    } else {
+        SPDLOG_ERROR("Unknown paging policy: {}", policy[2]);
+        policy3 = new PagingPolicy();
+    }
+
+    // 初始化缓存策略
+    if (policy[3] == "fifo") {
+        policy4 = new FIFOPolicy();
+    } else if (policy[3] == "frequency") {
+        policy4 = new FrequencyBasedInvalidationPolicy();
+    }  else {
+        SPDLOG_ERROR("Unknown caching policy: {}", policy[3]);
+        policy4 = new CachingPolicy();
+    }
 
     uint64_t use_cpus = 0;
     cpu_set_t use_cpuset;
@@ -243,7 +297,8 @@ int main(int argc, char *argv[]) {
                 std::vector<uint64_t> cha_vec{0, 0, 0, 0}, cpu_vec{0, 0, 0, 0};
 
                 /*** read CPU params */
-                uint64_t wb_cnt = 0, target_l2stall = 0, target_llcmiss = 0, target_llchits = 0,target_l2miss = 0, all_llcmiss = 0, all_prefetch = 0;
+                uint64_t wb_cnt = 0, target_l2stall = 0, target_llcmiss = 0, target_llchits = 0, target_l2miss = 0,
+                         all_llcmiss = 0, all_prefetch = 0;
                 double writeback_latency;
                 /* read BPFTIMERUNTIME sample */
                 if (mon.bpftime_ctx->read(controller, &mon.after->bpftime) < 0) {
@@ -276,9 +331,13 @@ int main(int argc, char *argv[]) {
                     all_llcmiss += mon.after->pebs.total - mon.before->pebs.total;
                     all_prefetch += mon.after->chas[cha_mapping[i]].cha[0] - mon.before->chas[cha_mapping[i]].cha[0];
                 }
-                auto avg_weight = std::accumulate(weight.begin(), weight.end(), 0.0)/weight.size();
-                writeback_latency = (double) target_l2stall * avg_weight * (wb_cnt * target_llcmiss / (all_llcmiss + all_prefetch + 1) / (target_llchits + avg_weight * target_llcmiss + 1));
-                uint64_t emul_delay = (controller->latency_lat + controller->bandwidth_lat + writeback_latency) * 1000000;
+                auto avg_weight = std::accumulate(weight.begin(), weight.end(), 0.0) / weight.size();
+                // LSU
+                writeback_latency = (double)target_l2stall * avg_weight *
+                                    (wb_cnt * target_llcmiss / (all_llcmiss + all_prefetch + 1) /
+                                     (target_llchits + avg_weight * target_llcmiss + 1));
+                uint64_t emul_delay =
+                    (controller->latency_lat + controller->bandwidth_lat + writeback_latency) * 1000000;
 
                 SPDLOG_DEBUG("[{}:{}:{}] pebs: total={}, ", i, mon.tgid, mon.tid, mon.after->pebs.total);
 
