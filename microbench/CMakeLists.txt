@@ -11,6 +11,7 @@ add_executable(ptr-chasing ptr-chasing.cpp)
 add_executable(branch_simple branch_simple.c)
 add_executable(cache-thrash cache-thrash.c)
 add_executable(cache-miss cache-miss.c)
+add_executable(thread thread.cpp)
 
 add_executable(ld1 ld.cpp)
 target_compile_definitions(ld1 PRIVATE -DFENCE_COUNT=1)

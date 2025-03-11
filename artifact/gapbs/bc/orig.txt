@@ -1,0 +1,60 @@
+[2025-03-11 13:54:43][error][21519] Unable to initialize shared memory: No such file or directory
+Read Time:           5.20577
+Graph has 61578415 nodes and 1468364884 directed edges for degree: 23
+    a                0.07521
+source: 12307662
+    b               20.32974
+    p               10.02506
+source: 53903957
+========== Process 0[tgid=21519, tid=21519] statistics summary ==========
+emulated time =51.370935017
+total delay   =1.5970231
+PEBS sample total 165883 5896295
+LBR sample total 2
+bpftime sample total 0
+CXLController:
+Total system memory capacity: 60GB
+  Page Type: PAGE
+  Global Counter:
+    Local: 0
+    Remote: 163330
+    HITM: 5732965
+Topology:
+Switch:
+  Events:
+    Load: 0
+    Store: 0
+    Conflict: 0
+  Switch:
+    Events:
+      Load: 0
+      Store: 0
+      Conflict: 0
+    Expander:
+      Events:
+        Load: 0
+        Store: 0
+        Migrate in: 0
+        Migrate out: 0
+        Hit Old: 0
+    Expander:
+      Events:
+        Load: 0
+        Store: 0
+        Migrate in: 0
+        Migrate out: 0
+        Hit Old: 0
+  Expander:
+    Events:
+      Load: 0
+      Store: 163330
+      Migrate in: 0
+      Migrate out: 0
+      Hit Old: 0
+
+Statistics:
+  Number of Switches: 2
+  Number of Endpoints: 3
+  Number of Threads created: 1
+  Memory Freed: 0 bytes
+

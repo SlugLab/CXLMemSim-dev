@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-时间戳差异分析脚本 - 修复版本
-分析输入文件中相邻时间戳之间的差异，并生成图表
+PEBS周期对比图生成脚本
+将不同PEBS周期的时间戳-索引关系绘制在同一张图上
 """
 
 import re
@@ -14,6 +14,7 @@ import numpy as np
 import time
 import argparse
 from pathlib import Path
+import glob
 
 def run_test(target, pebs_period, output_dir, run_id=None):
     """
@@ -41,10 +42,7 @@ def run_test(target, pebs_period, output_dir, run_id=None):
     cmd = [
         "./CXLMemSim",
         "-t", target,
-        "-p", str(pebs_period),
-        "-c", "0,1,2,3",  # 使用前4个CPU核
-        "-d", "110",      # DRAM延迟
-        "-m", "p",        # 页面模式
+        "-p", str(pebs_period)
     ]
 
     # 运行命令并捕获输出
@@ -54,7 +52,7 @@ def run_test(target, pebs_period, output_dir, run_id=None):
             result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                     text=True, check=True, timeout=300)  # 5分钟超时
             f.write(result.stdout)
-        return result.stdout
+        return result.stdout, output_file
 
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
         print(f"命令执行失败: {e}")
@@ -62,7 +60,7 @@ def run_test(target, pebs_period, output_dir, run_id=None):
             f.write(f"错误: {e}\n")
             if hasattr(e, 'stdout') and e.stdout:
                 f.write(e.stdout)
-        return None
+        return None, output_file
 
 def parse_timestamps(content):
     """
@@ -96,343 +94,202 @@ def parse_timestamps(content):
     df = pd.DataFrame({'timestamp': timestamps, 'index': indices})
     return df
 
-def calculate_time_diffs(df):
+def find_log_files(output_dir, pattern="*_pebs*.log"):
     """
-    计算相邻时间戳之间的差异
+    查找给定目录中的所有日志文件
 
     参数:
-        df (pandas.DataFrame): 包含时间戳和索引的DataFrame
+        output_dir (str): 输出目录
+        pattern (str): 文件匹配模式
 
     返回:
-        pandas.DataFrame: 包含时间戳差异的DataFrame，如果输入为None则返回None
+        list: 匹配的文件路径列表
     """
-    if df is None or df.empty:
-        return None
+    path_pattern = os.path.join(output_dir, pattern)
+    return glob.glob(path_pattern)
 
-    # 计算时间戳差异（纳秒）
-    df['time_diff'] = df['timestamp'].diff()
-
-    # 第一行的差异为NaN，将其删除
-    df = df.dropna()
-
-    if df.empty:
-        return None
-
-    # 将纳秒转换为微秒，便于可视化
-    df['time_diff_us'] = df['time_diff'] / 1000
-
-    return df
-
-def plot_time_diffs(df, output_file=None):
+def extract_pebs_period(filename):
     """
-    绘制时间戳差异图表
+    从文件名中提取PEBS周期值
 
     参数:
-        df (pandas.DataFrame): 包含时间戳差异的DataFrame
-        output_file (str, optional): 输出文件路径
+        filename (str): 文件名或路径
+
+    返回:
+        int: PEBS周期值，如果无法提取则返回None
+    """
+    basename = os.path.basename(filename)
+    match = re.search(r'_pebs(\d+)_', basename)
+    if match:
+        return int(match.group(1))
+    return None
+
+def normalize_timestamps(df):
+    """
+    归一化时间戳，使第一个时间戳为0
+
+    参数:
+        df (pandas.DataFrame): 包含时间戳的DataFrame
+
+    返回:
+        pandas.DataFrame: 包含归一化时间戳的DataFrame
     """
     if df is None or df.empty:
+        return None
+
+    # 复制DataFrame以避免修改原始数据
+    normalized_df = df.copy()
+
+    # 获取第一个时间戳作为基准
+    base_timestamp = df['timestamp'].iloc[0]
+
+    # 归一化时间戳
+    normalized_df['normalized_timestamp'] = (df['timestamp'] - base_timestamp) / 1000000000  # 转换为秒
+
+    return normalized_df
+
+def plot_combined_graph(dataframes_dict, output_file='combined_pebs_analysis.pdf'):
+    """
+    绘制不同PEBS周期的数据在同一张图上
+
+    参数:
+        dataframes_dict (dict): 键为PEBS周期，值为DataFrame的字典
+        output_file (str): 输出文件路径
+    """
+    if not dataframes_dict:
         print("没有数据可以绘制图表")
         return
 
     plt.figure(figsize=(12, 8))
 
-    # 绘制时间差异随索引变化的散点图
-    plt.subplot(2, 1, 1)
-    plt.scatter(df['index'], df['time_diff_us'], alpha=0.6, s=5)
-    plt.yscale('log')  # 使用对数刻度以便更好地查看不同数量级的差异
-    plt.xlabel('Index')
-    plt.ylabel('Time Difference (us)')
-    plt.title('Time Difference vs Index')
-    plt.grid(True, which="both", ls="--", alpha=0.5)
+    # 设置颜色循环
+    colors = ['blue', 'red', 'green', 'purple', 'orange', 'brown', 'pink', 'gray', 'olive', 'cyan']
+    markers = ['o', 's', '^', 'd', 'v', '<', '>', 'p', '*', 'h']
 
-    # 绘制时间差异的直方图
-    plt.subplot(2, 1, 2)
-    plt.hist(df['time_diff_us'], bins=100, alpha=0.7)
-    plt.xscale('log')  # 使用对数刻度
-    plt.xlabel('Time Difference (us)')
-    plt.ylabel('Frequency')
-    plt.title('Time Difference Distribution')
-    plt.grid(True, which="both", ls="--", alpha=0.5)
+    # 绘制每个PEBS周期的数据
+    for i, (pebs_period, df) in enumerate(sorted(dataframes_dict.items())):
+        color_idx = i % len(colors)
+        marker_idx = i % len(markers)
 
+        # 为了使图表不太拥挤，根据数据点数量调整marker的大小和频率
+        if len(df) > 1000:
+            # 数据点较多时，每隔100个点标记一个，并减小marker尺寸
+            plt.plot(df['normalized_timestamp'], df['index'], '-', color=colors[color_idx],
+                     label=f'PEBS={pebs_period}', alpha=0.7)
+            # 添加少量的标记点
+            marker_indices = np.linspace(0, len(df)-1, 20, dtype=int)
+            plt.plot(df['normalized_timestamp'].iloc[marker_indices],
+                     df['index'].iloc[marker_indices],
+                     markers[marker_idx], color=colors[color_idx], markersize=4, alpha=0.8)
+        else:
+            # 数据点较少时，标记所有点
+            plt.plot(df['normalized_timestamp'], df['index'], '-' + markers[marker_idx],
+                     color=colors[color_idx], label=f'PEBS={pebs_period}',
+                     markersize=5, alpha=0.8, markevery=max(1, len(df)//50))
+
+    plt.xlabel('Time (seconds)', fontsize=12)
+    plt.ylabel('Index', fontsize=12)
+    plt.title('Timestamp vs Index for Different PEBS Periods', fontsize=14)
+    plt.grid(True, alpha=0.3)
+    plt.legend(loc='best')
+
+    # 保存图表
+    plt.xlim(0, 3.5)
+    plt.ylim(0, 150000)
     plt.tight_layout()
+    plt.savefig(output_file, dpi=300)
+    print(f"组合图表已保存到: {output_file}")
 
-    # 保存图表或显示
-    if output_file:
-        plt.savefig(output_file)
-        print(f"图表已保存到: {output_file}")
-    else:
-        plt.show()
-
-def analyze_patterns(df):
-    """
-    分析时间戳差异的模式和统计信息
-
-    参数:
-        df (pandas.DataFrame): 包含时间戳差异的DataFrame
-
-    返回:
-        dict: 包含分析结果的字典，如果输入为None则返回None
-    """
-    if df is None or df.empty:
-        return None
-
-    results = {}
-
-    # 基本统计信息
-    results['min_diff'] = df['time_diff'].min()
-    results['max_diff'] = df['time_diff'].max()
-    results['mean_diff'] = df['time_diff'].mean()
-    results['median_diff'] = df['time_diff'].median()
-    results['std_diff'] = df['time_diff'].std()
-
-    # 寻找主要的时间差异模式 - 使用简单的聚类方法来发现主要的时间差异组
-    diff_clusters = {}
-    threshold = max(results['std_diff'] / 10, 1)  # 使用标准差的1/10作为阈值，但至少为1纳秒
-
-    for diff in df['time_diff']:
-        # 查找是否存在接近的簇
-        found_cluster = False
-        for center in list(diff_clusters.keys()):
-            if abs(diff - center) < threshold:
-                diff_clusters[center] += 1
-                found_cluster = True
-                break
-
-        # 如果没有找到接近的簇，创建新的簇
-        if not found_cluster:
-            diff_clusters[diff] = 1
-
-    # 按照频率排序，找出主要的时间差异模式
-    sorted_clusters = sorted(diff_clusters.items(), key=lambda x: x[1], reverse=True)
-    results['main_patterns'] = sorted_clusters[:10]  # 取前10个主要模式
-
-    return results
-
-def create_pattern_analysis(df, pattern_file='timestamp_patterns.pdf'):
-    """
-    创建时间差异模式分析图
-
-    参数:
-        df (pandas.DataFrame): 包含时间戳差异的DataFrame
-        pattern_file (str): 输出文件名
-    """
-    if df is None or df.empty:
-        print("没有数据可以绘制模式分析图")
-        return
-
-    plt.figure(figsize=(14, 10))
-
-    # 绘制时间差异随时间的变化
-    plt.subplot(3, 1, 1)
-    plt.plot(df['timestamp'], df['time_diff_us'], '-o', markersize=2, alpha=0.6)
-    plt.xlabel('Timestamp')
-    plt.ylabel('Time Difference (us)')
-    plt.title('Time Difference over Time')
-    plt.grid(True)
-
-    # 绘制移动平均值
-    plt.subplot(3, 1, 2)
-    window_size = max(5, min(50, len(df) // 10))  # 使用数据长度的1/10作为窗口大小，但至少为5，最大为50
-    df['rolling_mean'] = df['time_diff_us'].rolling(window=window_size, min_periods=1).mean()
-    plt.plot(df['index'], df['rolling_mean'], 'r-')
-    plt.xlabel('Index')
-    plt.ylabel('Moving Average of Time Diff (us)')
-    plt.title(f'Moving Average of Time Differences ({window_size} points)')
-    plt.grid(True)
-
-    # 绘制相邻差异之间的关系，检查是否存在周期性
-    plt.subplot(3, 1, 3)
-    if len(df) > 1:  # 确保有足够的数据点
-        plt.scatter(df['time_diff_us'].iloc[:-1].values,
-                    df['time_diff_us'].iloc[1:].values,
-                    alpha=0.5, s=5)
-        plt.xlabel('Current Time Difference (us)')
-        plt.ylabel('Next Time Difference (us)')
-        plt.title('Relationship between Adjacent Time Differences')
-        plt.grid(True)
-    else:
-        plt.text(0.5, 0.5, 'Not enough data points for analysis',
-                 horizontalalignment='center', verticalalignment='center')
-
-    plt.tight_layout()
-    plt.savefig(pattern_file)
-    print(f"模式分析图表已保存到: {pattern_file}")
-
-def create_interval_analysis(df, intervals_file='timestamp_intervals.pdf'):
-    """
-    创建时间间隔分组分析图
-
-    参数:
-        df (pandas.DataFrame): 原始时间戳数据
-        intervals_file (str): 输出文件名
-    """
-    if df is None or df.empty or len(df) < 2:
-        print("没有足够的数据可以绘制间隔分析图")
-        return
-
-    # 创建时间间隔分组分析
-    intervals = []
-    interval_indices = []
-    current_interval_start = df['timestamp'].iloc[0]
-    current_interval_idx = df['index'].iloc[0]
-
-    for i in range(1, len(df)):
-        if df['timestamp'].iloc[i] - df['timestamp'].iloc[i-1] > 5000000:  # 超过5毫秒认为是新的间隔
-            interval_length = df['timestamp'].iloc[i-1] - current_interval_start
-            intervals.append(interval_length)
-            interval_indices.append((current_interval_idx, df['index'].iloc[i-1]))
-            current_interval_start = df['timestamp'].iloc[i]
-            current_interval_idx = df['index'].iloc[i]
-
-    # 添加最后一个间隔
-    interval_length = df['timestamp'].iloc[-1] - current_interval_start
-    intervals.append(interval_length)
-    interval_indices.append((current_interval_idx, df['index'].iloc[-1]))
-
-    if not intervals:  # 如果没有识别到有效间隔
-        print("未识别到有效时间间隔")
-        return
-
-    plt.figure(figsize=(12, 6))
-    plt.bar(range(len(intervals)), [i/1000000 for i in intervals])
-    plt.xlabel('Interval Number')
-    plt.ylabel('Interval Duration (ms)')
-    plt.title('Time Interval Distribution')
-    plt.grid(True, axis='y')
-
-    # 添加索引范围标签
-    for i, (start_idx, end_idx) in enumerate(interval_indices):
-        plt.text(i, intervals[i]/1000000 + 0.5, f"{start_idx}-{end_idx}",
-                 horizontalalignment='center', rotation=90)
-
-    plt.tight_layout()
-    plt.savefig(intervals_file)
-    print(f"间隔分析图表已保存到: {intervals_file}")
 
 def main():
-    parser = argparse.ArgumentParser(description='分析时间戳差异并生成图表')
-    parser.add_argument('--output', '-o', help='输出图表文件路径')
-    parser.add_argument('--detailed', '-d', action='store_true', help='输出详细的分析结果')
+    parser = argparse.ArgumentParser(description='为不同PEBS周期创建时间戳vs索引的组合图')
     parser.add_argument('--targets', nargs='+', default=['./microbench/ld1'],
                         help='要测试的目标程序列表')
     parser.add_argument('--pebs-periods', nargs='+', type=int, default=[1, 10, 100, 1000, 10000],
                         help='要测试的PEBS周期列表')
     parser.add_argument('--output-dir', default='./results',
                         help='结果输出目录')
+    parser.add_argument('--output-file', default='combined_pebs_analysis.pdf',
+                        help='输出图表文件路径')
     parser.add_argument('--runs', type=int, default=1,
                         help='每个组合运行的次数')
-    parser.add_argument('--skip-test', action='store_true', help='跳过测试运行，仅处理已有的日志文件')
-    parser.add_argument('--log-file', help='直接处理单个日志文件，而不运行测试')
+    parser.add_argument('--only-plot', action='store_true',
+                        help='只从现有日志文件中绘制图表，不运行新测试')
+    parser.add_argument('--log-files', nargs='+',
+                        help='指定要处理的日志文件，而不是自动查找')
     args = parser.parse_args()
 
-    successful_df = None
+    # 确保输出目录存在
+    os.makedirs(args.output_dir, exist_ok=True)
 
-    # 如果提供了日志文件，直接处理它
-    if args.log_file:
-        print(f"直接处理日志文件: {args.log_file}")
-        try:
-            with open(args.log_file, 'r') as f:
-                content = f.read()
-            df = parse_timestamps(content)
-            if df is not None and not df.empty:
-                successful_df = df
-                print(f"成功从日志文件中提取了 {len(df)} 条时间戳记录")
-            else:
-                print("无法从日志文件中提取有效的时间戳数据")
-        except Exception as e:
-            print(f"处理日志文件时出错: {e}")
+    # 将存储不同PEBS周期的数据
+    pebs_data = {}
 
-    # 否则运行测试并处理结果
-    elif not args.skip_test:
-        # 为每个目标程序和PEBS周期的组合运行测试
+    # 如果只绘制图表，不运行测试
+    if args.only_plot:
+        # 如果指定了日志文件，使用这些文件
+        if args.log_files:
+            log_files = args.log_files
+        else:
+            # 否则查找目录中的所有日志文件
+            log_files = find_log_files(args.output_dir)
+
+        if not log_files:
+            print(f"在 {args.output_dir} 中没有找到匹配的日志文件")
+            return
+
+        print(f"找到以下日志文件：")
+        for log_file in log_files:
+            print(f"  {log_file}")
+
+        # 处理每个日志文件
+        for log_file in log_files:
+            pebs_period = extract_pebs_period(log_file)
+            if pebs_period is None:
+                print(f"无法从文件名 {log_file} 中提取PEBS周期，跳过")
+                continue
+
+            try:
+                with open(log_file, 'r') as f:
+                    content = f.read()
+
+                df = parse_timestamps(content)
+                if df is not None and not df.empty:
+                    print(f"从文件 {log_file} 中提取了 {len(df)} 条时间戳记录 (PEBS={pebs_period})")
+                    # 归一化时间戳
+                    normalized_df = normalize_timestamps(df)
+                    pebs_data[pebs_period] = normalized_df
+                else:
+                    print(f"无法从文件 {log_file} 中提取有效的时间戳数据")
+            except Exception as e:
+                print(f"处理文件 {log_file} 时出错: {e}")
+    else:
+        # 运行测试
         for target in args.targets:
             for pebs_period in args.pebs_periods:
                 for run in range(args.runs):
                     print(f"\n运行目标: {target}, PEBS周期: {pebs_period}, 运行 #{run+1}/{args.runs}")
                     run_id = f"run{run+1}"
 
-                    output = run_test(target, pebs_period, args.output_dir, run_id)
+                    output, log_file = run_test(target, pebs_period, args.output_dir, run_id)
                     if output:
                         df = parse_timestamps(output)
                         if df is not None and not df.empty:
                             print(f"成功提取了 {len(df)} 条时间戳记录")
-                            successful_df = df
-                            # 找到有效数据后可以提前停止
+                            # 归一化时间戳
+                            normalized_df = normalize_timestamps(df)
+                            pebs_data[pebs_period] = normalized_df
+                            # 找到有效数据后继续下一个PEBS周期
                             break
+                        else:
+                            print(f"无法从输出中提取有效的时间戳数据")
 
-                # 如果找到了有效数据，就停止测试
-                if successful_df is not None:
-                    break
-
-            # 如果找到了有效数据，就停止测试
-            if successful_df is not None:
-                break
-
-    # 处理数据并生成图表
-    if successful_df is not None:
-        # 计算时间差异
-        df_with_diffs = calculate_time_diffs(successful_df)
-
-        if df_with_diffs is not None and not df_with_diffs.empty:
-            # 保存原始数据到CSV文件
-            csv_file = os.path.join(args.output_dir, 'timestamp_data.csv')
-            successful_df.to_csv(csv_file, index=False)
-            print(f"原始时间戳数据已保存到: {csv_file}")
-
-            # 保存处理后的数据到CSV文件
-            diffs_csv_file = os.path.join(args.output_dir, 'timestamp_diffs.csv')
-            df_with_diffs.to_csv(diffs_csv_file, index=False)
-            print(f"时间戳差异数据已保存到: {diffs_csv_file}")
-
-            # 绘制时间差异图表
-            output_file = args.output if args.output else os.path.join(args.output_dir, 'timestamp_diffs.pdf')
-            plot_time_diffs(df_with_diffs, output_file)
-
-            # 创建模式分析图表
-            pattern_file = os.path.join(args.output_dir, 'timestamp_patterns.pdf')
-            create_pattern_analysis(df_with_diffs, pattern_file)
-
-            # 创建间隔分析图表
-            intervals_file = os.path.join(args.output_dir, 'timestamp_intervals.pdf')
-            create_interval_analysis(successful_df, intervals_file)
-
-            # 输出详细分析结果
-            if args.detailed:
-                results = analyze_patterns(df_with_diffs)
-                if results:
-                    print("\n时间戳差异分析结果:")
-                    print(f"最小差异: {results['min_diff']} ns ({results['min_diff']/1000:.2f} μs)")
-                    print(f"最大差异: {results['max_diff']} ns ({results['max_diff']/1000:.2f} μs)")
-                    print(f"平均差异: {results['mean_diff']:.2f} ns ({results['mean_diff']/1000:.2f} μs)")
-                    print(f"中位差异: {results['median_diff']} ns ({results['median_diff']/1000:.2f} μs)")
-                    print(f"标准差: {results['std_diff']:.2f} ns ({results['std_diff']/1000:.2f} μs)")
-
-                    print("\n主要时间差异模式:")
-                    for i, (diff, count) in enumerate(results['main_patterns']):
-                        print(f"{i+1}. {diff:.2f} ns ({diff/1000:.2f} μs) - 出现 {count} 次")
-
-                    # 保存统计结果到文件
-                    stats_file = os.path.join(args.output_dir, 'timestamp_stats.txt')
-                    with open(stats_file, 'w') as f:
-                        f.write("时间戳差异分析统计信息\n")
-                        f.write("======================\n\n")
-                        f.write(f"数据点数: {len(successful_df)}\n")
-                        f.write(f"总时间: {(successful_df['timestamp'].iloc[-1] - successful_df['timestamp'].iloc[0])/1000000000:.6f} 秒\n")
-                        f.write(f"平均采样率: {len(successful_df) / ((successful_df['timestamp'].iloc[-1] - successful_df['timestamp'].iloc[0]) / 1000000000):.2f} 点/秒\n\n")
-
-                        f.write("时间差异统计:\n")
-                        f.write(f"  最小差异: {results['min_diff']} 纳秒 ({results['min_diff']/1000:.2f} 微秒)\n")
-                        f.write(f"  最大差异: {results['max_diff']} 纳秒 ({results['max_diff']/1000:.2f} 微秒)\n")
-                        f.write(f"  平均差异: {results['mean_diff']:.2f} 纳秒 ({results['mean_diff']/1000:.2f} 微秒)\n")
-                        f.write(f"  中位差异: {results['median_diff']} 纳秒 ({results['median_diff']/1000:.2f} 微秒)\n")
-                        f.write(f"  标准差: {results['std_diff']:.2f} 纳秒 ({results['std_diff']/1000:.2f} 微秒)\n\n")
-
-                    print(f"统计信息已保存到: {stats_file}")
-        else:
-            print("无法计算时间差异，可能是数据点不足")
+    # 绘制组合图表
+    if pebs_data:
+        output_file = os.path.join(args.output_dir, args.output_file)
+        plot_combined_graph(pebs_data, output_file)
     else:
-        print("没有找到有效的时间戳数据。请检查目标程序的输出或提供有效的日志文件。")
+        print("没有找到任何有效的数据来绘制图表")
 
 if __name__ == "__main__":
     main()

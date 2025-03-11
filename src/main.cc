@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
         "m,mode", "Page mode or cacheline mode", cxxopts::value<std::string>()->default_value("p"))(
         "o,topology", "The newick tree input for the CXL memory expander topology",
         cxxopts::value<std::string>()->default_value("(1,(2,3))"))(
-        "e,capacity", "The capacity vector of the CXL memory expander with the first local",
+        "q,capacity", "The capacity vector of the CXL memory expander with the first local",
         cxxopts::value<std::vector<int>>()->default_value("0,20,20,20"))(
         "f,frequency", "The frequency for the running thread", cxxopts::value<double>()->default_value("4000"))(
         "l,latency", "The simulated latency by epoch based calculation for injected latency",
@@ -61,8 +61,10 @@ int main(int argc, char *argv[]) {
         cxxopts::value<std::vector<double>>()->default_value("88, 88, 88, 88, 88, 88, 88"))(
         "v,weight_vec", "The weight vector for Linear Regression",
         cxxopts::value<std::vector<double>>()->default_value("400, 800, 1200, 1600, 2000, 2400, 3000"))(
-        "k,policy", "The weight vector for Linear Regression",
-        cxxopts::value<std::vector<std::string>>()->default_value("none,none,none,none"));
+        "k,policy", "The policy for allocation, migration, paging and caching",
+        cxxopts::value<std::vector<std::string>>()->default_value("none,none,none,none"))(
+        "e,env", "The environment variable for the target process",
+        cxxopts::value<std::vector<std::string>>()->default_value("OMP_NUM_THREADS=24"));
 
     auto result = options.parse(argc, argv);
     if (result["help"].as<bool>()) {
@@ -85,6 +87,7 @@ int main(int argc, char *argv[]) {
     auto weight_vec = result["weight_vec"].as<std::vector<double>>();
     auto page_ = result["mode"].as<std::string>();
     auto policy = result["policy"].as<std::vector<std::string>>();
+    auto env = result["env"].as<std::vector<std::string>>();
 
     page_type mode;
     if (page_ == "hugepage_2M") {
@@ -226,7 +229,12 @@ int main(int argc, char *argv[]) {
     if (t_process == 0) {
         sleep(1);
         std::vector<const char *> envp;
-        envp.push_back("LD_PRELOAD=/root/.bpftime/libbpftime-agent.so");
+        envp.push_back("AGENT_SO=/root/.bpftime/libbpftime-agent.so");
+        envp.push_back("LD_PRELOAD=/root/.bpftime/libbpftime-agent-transformer.so");
+
+        for (auto const &env_var : env) {
+            envp.push_back(env_var.c_str());
+        }
         envp.push_back(nullptr);
         execve(filename, args, const_cast<char *const *>(envp.data()));
         SPDLOG_ERROR("Exec: failed to create target process");

@@ -49,14 +49,12 @@ struct {
     __type(value, u32);
 } locks SEC(".maps");
 
-SEC("uprobe//lib/x86_64-linux-gnu/libc.so.6:malloc")
-int malloc_entry(struct pt_regs *ctx) {
-    u64 size;
-    u32 pid = bpf_get_current_pid_tgid();
+// malloc 入口探针
+SEC("tracepoint/syscalls/sys_enter_mmap")
+int mmap_enter(struct trace_event_raw_sys_enter *ctx) {
+    u64 size = ctx->args[1];  // mmap 的第二个参数是大小
     u64 pid_tgid = bpf_get_current_pid_tgid();
-
-    // 读取分配大小参数
-    bpf_probe_read_user(&size, sizeof(size), (void *)&PT_REGS_PARM1(ctx));
+    u32 pid = pid_tgid >> 32;
 
     // 更新统计信息
     struct mem_stats *stats, zero_stats = {};
@@ -76,193 +74,73 @@ int malloc_entry(struct pt_regs *ctx) {
     return 0;
 }
 
-SEC("uretprobe//lib/x86_64-linux-gnu/libc.so.6:malloc")
-int BPF_KRETPROBE(malloc_return, void *address) {
-    u32 pid = bpf_get_current_pid_tgid();
+// malloc 返回探针
+SEC("tracepoint/syscalls/sys_exit_mmap")
+int mmap_exit(struct trace_event_raw_sys_exit *ctx) {
+    void *address = (void *)ctx->ret;
     u64 pid_tgid = bpf_get_current_pid_tgid();
-    // bpf_printk("malloc return address: %lx\n", address);
-
-    // 2. 添加调试日志
+    u32 pid = pid_tgid >> 32;
 
     struct alloc_info *info = bpf_map_lookup_elem(&allocs_map, &pid_tgid);
     if (!info) {
-        bpf_printk("alloc info not found for pid_tgid: %llu\n", pid_tgid);
         return 0;
     }
 
-    if (address) {
+    if (address && (unsigned long)address != -1) {  // 检查 mmap 是否成功
         struct mem_stats *stats = bpf_map_lookup_elem(&stats_map, &pid);
         if (stats) {
             stats->total_allocated += info->size;
             stats->current_usage += info->size;
             stats->allocation_count += 1;
-            // __sync_fetch_and_add(&stats->total_allocated,
-            // 		     info->size);
-            // __sync_fetch_and_add(&stats->current_usage, info->size);
-            // __sync_fetch_and_add(&stats->allocation_count, 1);
 
             info->address = (u64)address;
             bpf_map_update_elem(&allocs_map, &address, info, BPF_ANY);
         }
     }
 
-    return 0;
-}
-SEC("uprobe//lib/x86_64-linux-gnu/libc.so.6:calloc")
-int calloc_entry(struct pt_regs *ctx) {
-    u64 size;
-    u32 pid = bpf_get_current_pid_tgid();
-    u64 pid_tgid = bpf_get_current_pid_tgid();
-
-    bpf_probe_read_user(&size, sizeof(size), (void *)&PT_REGS_PARM1(ctx));
-   // 更新统计信息
-    struct mem_stats *stats, zero_stats = {};
-    stats = bpf_map_lookup_elem(&stats_map, &pid);
-    if (!stats) {
-        bpf_map_update_elem(&stats_map, &pid, &zero_stats, BPF_ANY);
-        stats = bpf_map_lookup_elem(&stats_map, &pid);
-        if (!stats)
-            return 0;
-    }
-
-    // 记录请求的大小
-    struct alloc_info info = {
-        .size = size,
-    };
-    bpf_map_update_elem(&allocs_map, &pid_tgid, &info, BPF_ANY);
-    return 0;
-}
-
-SEC("uretprobe//lib/x86_64-linux-gnu/libc.so.6:calloc")
-int calloc_return(struct pt_regs *ctx) {
-    u32 pid = bpf_get_current_pid_tgid();
-    u64 pid_tgid = bpf_get_current_pid_tgid();
-
-    struct alloc_info *info = bpf_map_lookup_elem(&allocs_map, &pid_tgid);
-    if (!info) {
-        bpf_printk("alloc info not found for pid_tgid: %llu\n", pid_tgid);
-        return 0;
-    }
-
-    if (info->address) {
-        struct mem_stats *stats = bpf_map_lookup_elem(&stats_map, &pid);
-        if (stats) {
-            stats->total_freed += info->size;
-            stats->current_usage -= info->size;
-            stats->free_count += 1;
-        }
-    }
-
     bpf_map_delete_elem(&allocs_map, &pid_tgid);
-
     return 0;
 }
-SEC("uprobe//lib/x86_64-linux-gnu/libc.so.6:mmap")
-int mmap_entry(struct pt_regs *ctx) {
-    u64 size;
-    u32 pid = bpf_get_current_pid_tgid();
+
+// 内存释放探针
+SEC("tracepoint/syscalls/sys_enter_munmap")
+int munmap_enter(struct trace_event_raw_sys_enter *ctx) {
+    void *address = (void *)ctx->args[0];
+    u64 size = ctx->args[1];
     u64 pid_tgid = bpf_get_current_pid_tgid();
-
-    bpf_probe_read_user(&size, sizeof(size), (void *)&PT_REGS_PARM2(ctx));
-   // 更新统计信息
-    struct mem_stats *stats, zero_stats = {};
-    stats = bpf_map_lookup_elem(&stats_map, &pid);
-    if (!stats) {
-        bpf_map_update_elem(&stats_map, &pid, &zero_stats, BPF_ANY);
-        stats = bpf_map_lookup_elem(&stats_map, &pid);
-        if (!stats)
-            return 0;
-    }
-
-    // 记录请求的大小
-    struct alloc_info info = {
-        .size = size,
-    };
-    bpf_map_update_elem(&allocs_map, &pid_tgid, &info, BPF_ANY);
-    return 0;
-}
-SEC("uretprobe//lib/x86_64-linux-gnu/libc.so.6:mmap")
-int mmap_return(struct pt_regs *ctx) {
-    u32 pid = bpf_get_current_pid_tgid();
-    u64 pid_tgid = bpf_get_current_pid_tgid();
-
-    struct alloc_info *info = bpf_map_lookup_elem(&allocs_map, &pid_tgid);
-    if (!info) {
-        bpf_printk("alloc info not found for pid_tgid: %llu\n", pid_tgid);
-        return 0;
-    }
-
-    if (info->address) {
-        struct mem_stats *stats = bpf_map_lookup_elem(&stats_map, &pid);
-        if (stats) {
-            stats->total_freed += info->size;
-            stats->current_usage -= info->size;
-            stats->free_count += 1;
-        }
-    }
-
-    bpf_map_delete_elem(&allocs_map, &pid_tgid);
-
-    return 0;
-}
-
-SEC("uprobe//lib/x86_64-linux-gnu/libc.so.6:free")
-int free_entry(struct pt_regs *ctx) {
-    u64 address;
-    u32 pid = bpf_get_current_pid_tgid();
-
-    bpf_probe_read_user(&address, sizeof(address), (void *)&PT_REGS_PARM1(ctx));
+    u32 pid = pid_tgid >> 32;
 
     if (!address)
         return 0;
 
+    // 查找分配信息
     struct alloc_info *info = bpf_map_lookup_elem(&allocs_map, &address);
-    if (!info)
+    if (!info) {
+        // 如果找不到详细信息，使用参数中的大小
+        struct mem_stats *stats = bpf_map_lookup_elem(&stats_map, &pid);
+        if (stats) {
+            stats->total_freed += size;
+            stats->current_usage -= size;
+            stats->free_count += 1;
+        }
         return 0;
+    }
 
     struct mem_stats *stats = bpf_map_lookup_elem(&stats_map, &pid);
     if (stats) {
-        // __sync_fetch_and_add(&stats->total_freed, info->size);
         stats->total_freed += info->size;
-        // __sync_fetch_and_sub(&stats->current_usage, info->size);
         stats->current_usage -= info->size;
-        // __sync_fetch_and_add(&stats->free_count, 1);
         stats->free_count += 1;
     }
 
     bpf_map_delete_elem(&allocs_map, &address);
-
     return 0;
 }
 
-// 辅助函数：获取或创建 mem_info
-static struct mem_info *get_or_create_mem_info(u32 pid) {
-    struct proc_info *proc_info = bpf_map_lookup_elem(&process_map, &pid);
-    struct mem_info *info = &proc_info->mem_info;
-    if (!info) {
-        struct mem_info new_info = {};
-        bpf_map_update_elem(&process_map, &pid, &new_info, BPF_ANY);
-        info = bpf_map_lookup_elem(&process_map, &pid);
-    }
-    return info;
-}
-
-// 简单的自旋锁实现
-static bool try_lock(u32 pid) {
-    u32 locked = 1;
-    u32 *current = bpf_map_lookup_elem(&locks, &pid);
-    if (!current) {
-        bpf_map_update_elem(&locks, &pid, &locked, BPF_ANY);
-        return true;
-    }
-    return false;
-}
-
-static void unlock(u32 pid) { bpf_map_delete_elem(&locks, &pid); }
-
-SEC("uprobe//lib/x86_64-linux-gnu/libc.so.6:brk")
-int brk_entry(struct pt_regs *ctx) {
-    u64 addr;
+// brk 系统调用入口
+SEC("tracepoint/syscalls/sys_enter_brk")
+int brk_enter(struct trace_event_raw_sys_enter *ctx) {
+    u64 addr = ctx->args[0];
     u64 pid_tgid = bpf_get_current_pid_tgid();
     u32 pid = pid_tgid >> 32;
     u32 tid = (u32)pid_tgid;
@@ -276,9 +154,6 @@ int brk_entry(struct pt_regs *ctx) {
         // 已经有锁了，直接返回
         return 0;
     }
-
-    // 读取 brk 参数
-    bpf_probe_read(&addr, sizeof(addr), (void *)&PT_REGS_PARM1(ctx));
 
     // 获取或创建进程信息
     struct proc_info *proc_info = bpf_map_lookup_elem(&process_map, &pid);
@@ -297,14 +172,15 @@ int brk_entry(struct pt_regs *ctx) {
 
     // 释放锁
     bpf_map_delete_elem(&locks, &pid);
-
     return 0;
 }
 
-SEC("uretprobe//lib/x86_64-linux-gnu/libc.so.6:brk")
-int brk_return(struct pt_regs *ctx) {
-    u64 ret = PT_REGS_RC(ctx);
-    u32 pid = bpf_get_current_pid_tgid();
+// brk 系统调用返回
+SEC("tracepoint/syscalls/sys_exit_brk")
+int brk_exit(struct trace_event_raw_sys_exit *ctx) {
+    u64 ret = ctx->ret;
+    u64 pid_tgid = bpf_get_current_pid_tgid();
+    u32 pid = pid_tgid >> 32;
 
     // 尝试获取锁
     u32 locked = 1;
@@ -332,31 +208,23 @@ int brk_return(struct pt_regs *ctx) {
 
     // 释放锁
     bpf_map_delete_elem(&locks, &pid);
-
     return 0;
 }
 
-SEC("uprobe//lib/x86_64-linux-gnu/libc.so.6:execve")
-int execve_entry(struct pt_regs *ctx) {
+// execve 系统调用入口
+SEC("tracepoint/syscalls/sys_enter_execve")
+int execve_enter(struct trace_event_raw_sys_enter *ctx) {
     u64 pid_tgid = bpf_get_current_pid_tgid();
     u32 pid = pid_tgid >> 32;
     u32 tid = (u32)pid_tgid;
 
-    // 读取 execve 的参数
-    const char *filename;
-    char **argv;
-    char **envp;
-
-    bpf_probe_read(&filename, sizeof(filename), (void *)&PT_REGS_PARM1(ctx));
-    bpf_probe_read(&argv, sizeof(argv), (void *)&PT_REGS_PARM2(ctx));
-    bpf_probe_read(&envp, sizeof(envp), (void *)&PT_REGS_PARM3(ctx));
-
     // 创建新的进程信息
-    struct proc_info proc_info = {.parent_pid = pid,
-                                  .create_time = bpf_ktime_get_ns(),
-                                  .thread_count = 1, // execve
-                                  // 创建新进程时只有主线程
-                                  .mem_info = {.total_allocated = 0, .total_freed = 0, .current_brk = 0}};
+    struct proc_info proc_info = {
+        .parent_pid = pid,
+        .create_time = bpf_ktime_get_ns(),
+        .thread_count = 1, // execve 创建新进程时只有主线程
+        .mem_info = {.total_allocated = 0, .total_freed = 0, .current_brk = 0}
+    };
 
     // 保存进程信息
     bpf_map_update_elem(&process_map, &pid, &proc_info, BPF_ANY);
@@ -371,10 +239,10 @@ int execve_entry(struct pt_regs *ctx) {
     return 0;
 }
 
-// execve 的返回点探针
-SEC("uretprobe//lib/x86_64-linux-gnu/libc.so.6:execve")
-int execve_return(struct pt_regs *ctx) {
-    int ret = PT_REGS_RC(ctx);
+// execve 系统调用返回
+SEC("tracepoint/syscalls/sys_exit_execve")
+int execve_exit(struct trace_event_raw_sys_exit *ctx) {
+    int ret = ctx->ret;
     u64 pid_tgid = bpf_get_current_pid_tgid();
     u32 pid = pid_tgid >> 32;
 
@@ -394,17 +262,23 @@ int execve_return(struct pt_regs *ctx) {
 
     return 0;
 }
-SEC("uprobe//lib/x86_64-linux-gnu/libc.so.6:pthread_create")
-int pthread_create_probe(struct pt_regs *ctx) {
+
+// clone 系统调用入口
+SEC("tracepoint/syscalls/sys_enter_clone")
+int clone_enter(struct trace_event_raw_sys_enter *ctx) {
     u64 pid_tgid = bpf_get_current_pid_tgid();
     u32 pid = pid_tgid >> 32;
 
-    // 获取新线程的 ID（通过第一个参数）
-    unsigned long *thread_ptr;
-    bpf_probe_read(&thread_ptr, sizeof(thread_ptr), (void *)&PT_REGS_PARM1(ctx));
+    // 获取 clone 参数
+    unsigned long flags = ctx->args[0];
+    void *stack = (void *)ctx->args[1];
+    void *parent_tidptr = (void *)ctx->args[2];
+    void *child_tidptr = (void *)ctx->args[3];
 
-    if (thread_ptr) {
-        // 创建新的线程信息
+    bpf_printk("clone enter pid: %u, child_tidptr: %lx\n", pid, (unsigned long)child_tidptr);
+
+    if (child_tidptr) {
+        // 创建新的线程/进程信息
         struct proc_info thread_info = {
             .parent_pid = pid,
             .create_time = bpf_ktime_get_ns(),
@@ -413,74 +287,88 @@ int pthread_create_probe(struct pt_regs *ctx) {
         // 更新线程计数
         struct proc_info *parent_info = bpf_map_lookup_elem(&process_map, &pid);
         if (parent_info) {
-            // __sync_fetch_and_add(&parent_info->thread_count, 1);
             parent_info->thread_count += 1;
         }
 
-        // 注意：我们需要在 return probe 中获取实际的线程 ID
-        // 这里先保存父进程信息
-        bpf_map_update_elem(&thread_map, &thread_ptr, &thread_info, BPF_ANY);
+        // 保存父进程信息，稍后在返回探针中获取实际线程 ID
+        bpf_map_update_elem(&thread_map, &child_tidptr, &thread_info, BPF_ANY);
     }
 
     return 0;
 }
 
-SEC("uretprobe//lib/x86_64-linux-gnu/libc.so.6:pthread_create")
-int pthread_create_ret(struct pt_regs *ctx) {
-    int ret = PT_REGS_RC(ctx);
-
-    // pthread_create 成功返回 0
-    if (ret == 0) {
-        // 这里可以添加额外的处理逻辑
-        // 比如记录线程创建的结果
-    }
-
-    return 0;
-}
-
-SEC("uprobe//lib/x86_64-linux-gnu/libc.so.6:pthread_exit")
-int pthread_exit_probe(struct pt_regs *ctx) {
-    u64 pid_tgid = bpf_get_current_pid_tgid();
-    u32 tid = (u32)pid_tgid;
-    u32 pid = pid_tgid >> 32;
-
-    // 查找并删除线程信息
-    struct proc_info *thread_info = bpf_map_lookup_elem(&thread_map, &tid);
-    if (thread_info) {
-        // 更新父进程的线程计数
-        struct proc_info *parent_info = bpf_map_lookup_elem(&process_map, &pid);
-        if (parent_info) {
-            // __sync_fetch_and_sub(&parent_info->thread_count, 1);
-            parent_info->thread_count -= 1;
-        }
-
-        // 删除线程信息
-        bpf_map_delete_elem(&thread_map, &tid);
-    }
-
-    return 0;
-}
-
-SEC("uprobe//lib/x86_64-linux-gnu/libc.so.6:fork")
-int fork_probe(struct pt_regs *ctx) {
+// clone 系统调用返回
+SEC("tracepoint/syscalls/sys_exit_clone")
+int clone_exit(struct trace_event_raw_sys_exit *ctx) {
+    u32 child_pid = (u32)ctx->ret;
     u64 pid_tgid = bpf_get_current_pid_tgid();
     u32 parent_pid = pid_tgid >> 32;
 
-    // 父进程信息会在 fork 返回时记录
-    // 这里可以添加额外的前置处理逻辑
+    if (child_pid > 0) {
+        bpf_printk("clone exit: parent=%u created child=%u\n", parent_pid, child_pid);
+
+        // 创建新的进程/线程信息
+        struct proc_info proc_info = {
+            .parent_pid = parent_pid,
+            .create_time = bpf_ktime_get_ns(),
+            .current_pid = child_pid,
+            .current_tid = child_pid,
+        };
+
+        // 检查标志位确定是进程还是线程
+        // 如果是线程，更新线程计数
+
+        // 更新映射
+        bpf_map_update_elem(&process_map, &child_pid, &proc_info, BPF_ANY);
+    }
 
     return 0;
 }
 
-SEC("uretprobe//lib/x86_64-linux-gnu/libc.so.6:fork")
-int fork_ret(struct pt_regs *ctx) {
-    u32 child_pid = PT_REGS_RC(ctx);
+// clone3 探针
+SEC("tracepoint/syscalls/sys_enter_clone3")
+int sys_clone3_probe(struct trace_event_raw_sys_enter *ctx) {
+    u64 pid_tgid = bpf_get_current_pid_tgid();
+    u32 pid = pid_tgid >> 32;
+    bpf_printk("clone3 syscall called by pid: %u\n", pid);
+
+    // 获取参数
+    struct clone_args *cl_args = (struct clone_args *)ctx->args[0];
+
+    if (cl_args) {
+        // 读取 clone_args 中的 child_tid 指针
+        unsigned long *tid_ptr = NULL;
+        bpf_probe_read(&tid_ptr, sizeof(tid_ptr), &cl_args->child_tid);
+
+        if (tid_ptr) {
+            // 创建新的线程信息
+            struct proc_info thread_info = {
+                .parent_pid = pid,
+                .create_time = bpf_ktime_get_ns(),
+            };
+
+            // 更新线程计数
+            struct proc_info *parent_info = bpf_map_lookup_elem(&process_map, &pid);
+            if (parent_info) {
+                parent_info->thread_count += 1;
+            }
+
+            // 保存父进程信息，稍后在返回探针中获取实际线程 ID
+            bpf_map_update_elem(&thread_map, &tid_ptr, &thread_info, BPF_ANY);
+        }
+    }
+    return 0;
+}
+
+SEC("tracepoint/syscalls/sys_exit_fork")
+int fork_exit(struct trace_event_raw_sys_exit *ctx) {
+    u32 child_pid = (u32)ctx->ret;  // 从返回值获取子进程 ID
     u64 pid_tgid = bpf_get_current_pid_tgid();
     u32 parent_pid = pid_tgid >> 32;
     u32 tid = child_pid;
 
     if (child_pid > 0) {
-        // 创建新的进程信息
+        // 子进程创建成功，创建新的进程信息
         struct proc_info proc_info = {
             .parent_pid = parent_pid,
             .create_time = bpf_ktime_get_ns(),
@@ -491,89 +379,158 @@ int fork_ret(struct pt_regs *ctx) {
 
         // 更新进程 map
         bpf_map_update_elem(&process_map, &child_pid, &proc_info, BPF_ANY);
+
+        bpf_printk("fork: parent=%u created child=%u\n", parent_pid, child_pid);
     }
 
     return 0;
 }
 
-SEC("uprobe//lib/x86_64-linux-gnu/libpthread.so.0:pthread_mutex_unlock")
-int pthread_mutex_unlock_enter(struct pt_regs *ctx) {
-    u32 pid = bpf_get_current_pid_tgid();
-    u32 tid = (u32)pid;
+SEC("tracepoint/syscalls/sys_enter_exit")
+int exit_probe(struct trace_event_raw_sys_enter *ctx) {
     u64 pid_tgid = bpf_get_current_pid_tgid();
+    u32 tid = (u32)pid_tgid;
+    u32 pid = pid_tgid >> 32;
 
-    // 获取锁的地址
-    void *mutex_addr;
-    bpf_probe_read(&mutex_addr, sizeof(mutex_addr), (void *)&PT_REGS_PARM1(ctx));
+    bpf_printk("exit: tid=%u, pid=%u\n", tid, pid);
 
-    // 更新锁的状态
-    u32 locked = 0;
-    bpf_map_update_elem(&locks, &pid, &locked, BPF_ANY);
-    struct proc_info* item= bpf_map_lookup_elem(&thread_map, &tid);
-    item->is_locked = 0;
-    bpf_map_update_elem(&thread_map, &tid, item, BPF_ANY);
-    struct proc_info *delay = bpf_map_lookup_elem(&thread_map, &tid);
-    if (delay) {
-        u64 delay_start = bpf_ktime_get_ns();
+    // 查找并删除线程信息
+    struct proc_info *thread_info = bpf_map_lookup_elem(&thread_map, &tid);
+    if (thread_info) {
+        // 更新父进程的线程计数
+        struct proc_info *parent_info = bpf_map_lookup_elem(&process_map, &thread_info->parent_pid);
+        if (parent_info) {
+            parent_info->thread_count -= 1;
+        }
+        // 删除线程信息
+        bpf_map_delete_elem(&thread_map, &tid);
+    }
+
+    // 如果这是一个主线程，则也可能需要从 process_map 中删除进程信息
+    if (tid == pid) {
+        bpf_map_delete_elem(&process_map, &pid);
+    }
+
+    return 0;
+}
+SEC("tracepoint/syscalls/sys_enter_exit_group")
+int exit_group_probe(struct trace_event_raw_sys_enter *ctx) {
+    u64 pid_tgid = bpf_get_current_pid_tgid();
+    u32 tid = (u32)pid_tgid;
+    u32 pid = pid_tgid >> 32;
+
+    bpf_printk("exit_group: pid=%u\n", pid);
+
+    // 获取退出状态码 (第一个参数)
+    int exit_code = ctx->args[0];
+
+    // 清理该进程组中的所有线程
+    // 注意：由于 BPF 地图迭代限制，我们无法遍历地图来查找所有属于此进程的线程
+    // 因此，我们依赖进程信息中的线程计数
+
+    // 查找进程信息
+    struct proc_info *proc_info = bpf_map_lookup_elem(&process_map, &pid);
+    if (proc_info) {
+        // 记录进程退出信息
+        bpf_printk("Process %u exiting with code %d, had %d threads\n",
+                   pid, exit_code, proc_info->thread_count);
+
+        // 删除进程信息
+        bpf_map_delete_elem(&process_map, &pid);
+    }
+
+    // 删除调用线程的信息
+    bpf_map_delete_elem(&thread_map, &tid);
+
+    return 0;
+}
+
+// 跟踪 futex 系统调用
+SEC("tracepoint/syscalls/sys_enter_futex")
+int futex_enter(struct trace_event_raw_sys_enter *ctx) {
+    u64 pid_tgid = bpf_get_current_pid_tgid();
+    u32 tid = (u32)pid_tgid;
+    u32 pid = pid_tgid >> 32;
+
+    // 获取 futex 参数
+    u32 *uaddr = (u32 *)ctx->args[0];  // futex 地址
+    int futex_op = (int)ctx->args[1];  // 操作码
+    u32 val = (u32)ctx->args[2];       // 值
+
+    // 解析 futex 操作类型
+    int cmd = futex_op & 0xf;
+
+    // FUTEX_LOCK_PI 和 FUTEX_WAIT 类似于互斥锁获取操作
+    if (cmd == 6 /* FUTEX_LOCK_PI */ ||
+        cmd == 0 /* FUTEX_WAIT */ ||
+        cmd == 9 /* FUTEX_LOCK_PI2 */) {
+
+        // 更新锁的状态
+        u32 locked = 1;
+        bpf_map_update_elem(&locks, &tid, &locked, BPF_ANY);
+
+        struct proc_info* item = bpf_map_lookup_elem(&thread_map, &tid);
+        if (item) {
+            item->is_locked = 1;
+            bpf_map_update_elem(&thread_map, &tid, item, BPF_ANY);
+        }
+    }
+    // FUTEX_UNLOCK_PI 类似于互斥锁释放操作
+    else if (cmd == 7 /* FUTEX_UNLOCK_PI */ ||
+             cmd == 1 /* FUTEX_WAKE */) {
+
+        // 更新锁的状态
+        u32 locked = 0;
+        bpf_map_update_elem(&locks, &tid, &locked, BPF_ANY);
+
+        struct proc_info* item = bpf_map_lookup_elem(&thread_map, &tid);
+        if (item) {
+            item->is_locked = 0;
+            bpf_map_update_elem(&thread_map, &tid, item, BPF_ANY);
+
+            // 模拟延迟
+            u64 delay_start = bpf_ktime_get_ns();
 #pragma unroll
-        for (int i = 0; i < 100; i++) {
-            if ((bpf_ktime_get_ns() - delay_start) < delay->sleep_time) {
-                break;
+            for (int i = 0; i < 100; i++) {
+                if ((bpf_ktime_get_ns() - delay_start) < item->sleep_time) {
+                    break;
+                }
             }
         }
     }
-    return 0;
+    // FUTEX_TRYLOCK_PI 类似于 trylock 操作
+    else if (cmd == 8 /* FUTEX_TRYLOCK_PI */) {
+        // 尝试获取锁
+        u32 locked = 1;
+        bpf_map_update_elem(&locks, &tid, &locked, BPF_ANY);
+    }
 
+    return 0;
 }
 
-SEC("uprobe//lib/x86_64-linux-gnu/libpthread.so.0:pthread_mutex_trylock")
-int pthread_mutex_trylock_enter(struct pt_regs *ctx) {
-    u32 pid = bpf_get_current_pid_tgid();
-    u32 tid = (u32)pid;
+// 跟踪 futex 系统调用返回
+SEC("tracepoint/syscalls/sys_exit_futex")
+int futex_exit(struct trace_event_raw_sys_exit *ctx) {
     u64 pid_tgid = bpf_get_current_pid_tgid();
+    u32 tid = (u32)pid_tgid;
+    int ret = ctx->ret;
 
-    // 获取锁的地址
-    void *mutex_addr;
-    bpf_probe_read(&mutex_addr, sizeof(mutex_addr), (void *)&PT_REGS_PARM1(ctx));
+    // 获取当前的锁状态
+    u32 *locked = bpf_map_lookup_elem(&locks, &tid);
+    if (locked) {
+        // 如果 trylock 失败，更新锁状态
+        if (*locked == 1 && ret != 0) {
+            u32 not_locked = 0;
+            bpf_map_update_elem(&locks, &tid, &not_locked, BPF_ANY);
 
-    // 尝试获取锁
-    u32 locked = 1;
-    bpf_map_update_elem(&locks, &pid, &locked, BPF_ANY);
-
-    return 0;
-}
-
-SEC("uprobe//lib/x86_64-linux-gnu/libpthread.so.0:pthread_mutex_lock")
-int pthread_mutex_lock_enter(struct pt_regs *ctx)
-{
-    u32 pid = bpf_get_current_pid_tgid();
-    u32 tid = (u32)pid;
-    u64 pid_tgid = bpf_get_current_pid_tgid();
-
-    // 获取锁的地址
-    void *mutex_addr;
-    bpf_probe_read(&mutex_addr, sizeof(mutex_addr), (void *)&PT_REGS_PARM1(ctx));
-
-    // 尝试获取锁
-    u32 locked = 1;
-    bpf_map_update_elem(&locks, &pid, &locked, BPF_ANY);
-
-    struct proc_info* item= bpf_map_lookup_elem(&thread_map, &tid);
-    item->is_locked = 1;
-    bpf_map_update_elem(&thread_map, &tid, item, BPF_ANY);
-    return 0;
-}
-
-SEC("uprobe//lib/x86_64-linux-gnu/libc.so.6:exit")
-int exit_probe(struct pt_regs *ctx) {
-    u64 pid_tgid = bpf_get_current_pid_tgid();
-    u32 pid = pid_tgid >> 32;
-
-    // 清理进程信息
-    bpf_map_delete_elem(&process_map, &pid);
+            struct proc_info* item = bpf_map_lookup_elem(&thread_map, &tid);
+            if (item) {
+                item->is_locked = 0;
+                bpf_map_update_elem(&thread_map, &tid, item, BPF_ANY);
+            }
+        }
+    }
 
     return 0;
 }
-
-
 char _license[] SEC("license") = "GPL";
