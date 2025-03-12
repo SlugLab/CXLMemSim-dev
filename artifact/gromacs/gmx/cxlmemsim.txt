@@ -1,0 +1,71 @@
+[2025-03-11 22:58:15.400] [info] [agent-transformer.cpp:39] Entering bpftime syscal transformer agent
+[2025-03-11 22:58:16.995] [stderr] [info] [text_segment_transformer.cpp:246] Page zero setted up..
+[2025-03-11 22:58:16.996] [stderr] [info] [text_segment_transformer.cpp:274] Rewriting executable segments..
+[2025-03-11 22:58:57][info][291117] Global shm constructed. shm_open_type 1 for bpftime_maps_shm
+[2025-03-11 22:58:57][info][291117] Global shm initialized
+[2025-03-11 22:58:57][info][291117] Register attach-impl defined helper bpf_get_func_arg, index 183
+[2025-03-11 22:58:57][info][291117] Register attach-impl defined helper bpf_get_func_ret_id, index 184
+[2025-03-11 22:58:57][info][291117] Register attach-impl defined helper bpf_get_retval, index 186
+[2025-03-11 22:58:57][info][291117] Initializing agent..
+[2025-03-11 22:58:57][info][291117] Attach successfully
+[2025-03-11 22:58:57][info][291117] Agent syscall trace setup exiting..
+   :-) GROMACS - gmx mdrun, 2026.0-dev-20250308-ea62118dab-dirty-unknown (-:
+
+Executable:   /home/try/Documents/CXLMemSim-dev/cmake-build-debug/../workloads/gromacs/build/bin/gmx
+Data prefix:  /home/try/Documents/CXLMemSim-dev/workloads/gromacs (source tree)
+Working dir:  /home/try/Documents/CXLMemSim-dev/cmake-build-debug
+Command line:
+  gmx mdrun -s ../workloads/gromacs/build/topol.tpr -nsteps 1000
+
+========== Process 0[tgid=291117, tid=291117] statistics summary ==========
+emulated time =43.308953542
+total delay   =36.10519441700001
+PEBS sample total 7540 76885
+LBR sample total 49
+bpftime sample total 90
+CXLController:
+Total system memory capacity: 60GB
+  Page Type: PAGE
+  Global Counter:
+    Local: 0
+    Remote: 3141
+    HITM: 73744
+Topology:
+Switch:
+  Events:
+    Load: 0
+    Store: 0
+    Conflict: 0
+  Switch:
+    Events:
+      Load: 0
+      Store: 0
+      Conflict: 0
+    Expander:
+      Events:
+        Load: 0
+        Store: 0
+        Migrate in: 0
+        Migrate out: 0
+        Hit Old: 0
+    Expander:
+      Events:
+        Load: 0
+        Store: 0
+        Migrate in: 0
+        Migrate out: 0
+        Hit Old: 0
+  Expander:
+    Events:
+      Load: 0
+      Store: 3141
+      Migrate in: 0
+      Migrate out: 0
+      Hit Old: 0
+
+Statistics:
+  Number of Switches: 2
+  Number of Endpoints: 3
+  Number of Threads created: 1
+  Memory Freed: 0 bytes
+

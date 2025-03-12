@@ -1,0 +1,67 @@
+[2025-03-11 22:56:46.460] [info] [agent-transformer.cpp:39] Entering bpftime syscal transformer agent
+[2025-03-11 22:56:46.460] [stderr] [info] [text_segment_transformer.cpp:246] Page zero setted up..
+[2025-03-11 22:56:46.460] [stderr] [info] [text_segment_transformer.cpp:274] Rewriting executable segments..
+[2025-03-11 22:56:52][info][288233] Global shm constructed. shm_open_type 1 for bpftime_maps_shm
+[2025-03-11 22:56:52][info][288233] Global shm initialized
+[2025-03-11 22:56:52][info][288233] Register attach-impl defined helper bpf_get_func_arg, index 183
+[2025-03-11 22:56:52][info][288233] Register attach-impl defined helper bpf_get_func_ret_id, index 184
+[2025-03-11 22:56:52][info][288233] Register attach-impl defined helper bpf_get_retval, index 186
+[2025-03-11 22:56:52][info][288233] Initializing agent..
+[2025-03-11 22:56:55][info][288233] Attach successfully
+[2025-03-11 22:56:55][info][288233] Agent syscall trace setup exiting..
+
+libgomp: Thread creation failed: Invalid argument
+clone3 syscall called by pid: 288233
+clone3 created new thread/process: 4294967274
+========== Process 0[tgid=288233, tid=288233] statistics summary ==========
+emulated time =10.071769134
+total delay   =9.270521290000001
+PEBS sample total 1014 11174
+LBR sample total 12
+bpftime sample total 34
+CXLController:
+Total system memory capacity: 60GB
+  Page Type: PAGE
+  Global Counter:
+    Local: 0
+    Remote: 877
+    HITM: 10297
+Topology:
+Switch:
+  Events:
+    Load: 0
+    Store: 0
+    Conflict: 0
+  Switch:
+    Events:
+      Load: 0
+      Store: 0
+      Conflict: 0
+    Expander:
+      Events:
+        Load: 0
+        Store: 0
+        Migrate in: 0
+        Migrate out: 0
+        Hit Old: 0
+    Expander:
+      Events:
+        Load: 0
+        Store: 0
+        Migrate in: 0
+        Migrate out: 0
+        Hit Old: 0
+  Expander:
+    Events:
+      Load: 0
+      Store: 877
+      Migrate in: 0
+      Migrate out: 0
+      Hit Old: 0
+
+Statistics:
+  Number of Switches: 2
+  Number of Endpoints: 3
+  Number of Threads created: 1
+  Memory Freed: 0 bytes
+

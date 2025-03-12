@@ -1,0 +1,67 @@
+[2025-03-11 23:01:02.652] [info] [agent-transformer.cpp:39] Entering bpftime syscal transformer agent
+[2025-03-11 23:01:02.652] [stderr] [info] [text_segment_transformer.cpp:246] Page zero setted up..
+[2025-03-11 23:01:02.652] [stderr] [info] [text_segment_transformer.cpp:274] Rewriting executable segments..
+[2025-03-11 23:01:07][info][293500] Global shm constructed. shm_open_type 1 for bpftime_maps_shm
+[2025-03-11 23:01:07][info][293500] Global shm initialized
+[2025-03-11 23:01:07][info][293500] Register attach-impl defined helper bpf_get_func_arg, index 183
+[2025-03-11 23:01:07][info][293500] Register attach-impl defined helper bpf_get_func_ret_id, index 184
+[2025-03-11 23:01:07][info][293500] Register attach-impl defined helper bpf_get_retval, index 186
+[2025-03-11 23:01:07][info][293500] Initializing agent..
+[2025-03-11 23:01:10][info][293500] Attach successfully
+[2025-03-11 23:01:10][info][293500] Agent syscall trace setup exiting..
+argv[0] = ./microbench/malloc
+allocating 100000 MB
+allocated - press enter to fill/read
+filling
+========== Process 0[tgid=293500, tid=293500] statistics summary ==========
+emulated time =161.179963049
+total delay   =8.563868634
+PEBS sample total 1065 11007
+LBR sample total 11
+bpftime sample total 259983
+CXLController:
+Total system memory capacity: 60GB
+  Page Type: PAGE
+  Global Counter:
+    Local: 0
+    Remote: 860
+    HITM: 10147
+Topology:
+Switch:
+  Events:
+    Load: 0
+    Store: 0
+    Conflict: 0
+  Switch:
+    Events:
+      Load: 0
+      Store: 0
+      Conflict: 0
+    Expander:
+      Events:
+        Load: 0
+        Store: 0
+        Migrate in: 0
+        Migrate out: 0
+        Hit Old: 0
+    Expander:
+      Events:
+        Load: 0
+        Store: 0
+        Migrate in: 0
+        Migrate out: 0
+        Hit Old: 0
+  Expander:
+    Events:
+      Load: 0
+      Store: 860
+      Migrate in: 0
+      Migrate out: 0
+      Hit Old: 0
+
+Statistics:
+  Number of Switches: 2
+  Number of Endpoints: 3
+  Number of Threads created: 1
+  Memory Freed: 0 bytes
+

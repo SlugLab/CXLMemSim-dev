@@ -1,0 +1,6 @@
+Generate Time:       0.02857
+Build Time:          0.01217
+Graph has 65536 nodes and 909645 undirected edges for degree: 13
+Skipping largest intermediate component (ID: 0, approx. 70% of the graph)
+Trial Time:          0.00161
+Average Time:        0.00161

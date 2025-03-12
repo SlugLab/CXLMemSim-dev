@@ -1,0 +1,4 @@
+argv[0] = ./microbench/malloc
+allocating 100000 MB
+allocated - press enter to fill/read
+filling

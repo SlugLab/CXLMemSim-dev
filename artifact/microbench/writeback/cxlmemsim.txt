@@ -1,0 +1,64 @@
+[2025-03-11 23:03:44.001] [info] [agent-transformer.cpp:39] Entering bpftime syscal transformer agent
+[2025-03-11 23:03:44.001] [stderr] [info] [text_segment_transformer.cpp:246] Page zero setted up..
+[2025-03-11 23:03:44.001] [stderr] [info] [text_segment_transformer.cpp:274] Rewriting executable segments..
+[2025-03-11 23:03:46][info][294286] Global shm constructed. shm_open_type 1 for bpftime_maps_shm
+[2025-03-11 23:03:46][info][294286] Global shm initialized
+[2025-03-11 23:03:46][info][294286] Register attach-impl defined helper bpf_get_func_arg, index 183
+[2025-03-11 23:03:46][info][294286] Register attach-impl defined helper bpf_get_func_ret_id, index 184
+[2025-03-11 23:03:46][info][294286] Register attach-impl defined helper bpf_get_retval, index 186
+[2025-03-11 23:03:46][info][294286] Initializing agent..
+[2025-03-11 23:03:46][info][294286] Attach successfully
+[2025-03-11 23:03:46][info][294286] Agent syscall trace setup exiting..
+Write-back simulation completed.
+========== Process 0[tgid=294286, tid=294286] statistics summary ==========
+emulated time =7.787099859
+total delay   =6.996492980999999
+PEBS sample total 857 8720
+LBR sample total 10
+bpftime sample total 108
+CXLController:
+Total system memory capacity: 60GB
+  Page Type: PAGE
+  Global Counter:
+    Local: 0
+    Remote: 758
+    HITM: 7962
+Topology:
+Switch:
+  Events:
+    Load: 0
+    Store: 0
+    Conflict: 0
+  Switch:
+    Events:
+      Load: 0
+      Store: 0
+      Conflict: 0
+    Expander:
+      Events:
+        Load: 0
+        Store: 0
+        Migrate in: 0
+        Migrate out: 0
+        Hit Old: 0
+    Expander:
+      Events:
+        Load: 0
+        Store: 0
+        Migrate in: 0
+        Migrate out: 0
+        Hit Old: 0
+  Expander:
+    Events:
+      Load: 0
+      Store: 758
+      Migrate in: 0
+      Migrate out: 0
+      Hit Old: 0
+
+Statistics:
+  Number of Switches: 2
+  Number of Endpoints: 3
+  Number of Threads created: 1
+  Memory Freed: 67117056 bytes
+

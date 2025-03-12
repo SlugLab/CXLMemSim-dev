@@ -1,82 +1,27 @@
-[2025-03-11 14:39:13][info][41666] Global shm constructed. shm_open_type 1 for bpftime_maps_shm
-[2025-03-11 14:39:13][info][41666] Global shm initialized
-[2025-03-11 14:39:13][info][41666] Register attach-impl defined helper bpf_get_func_arg, index 183
-[2025-03-11 14:39:13][info][41666] Register attach-impl defined helper bpf_get_func_ret_id, index 184
-[2025-03-11 14:39:13][info][41666] Register attach-impl defined helper bpf_get_retval, index 186
-[2025-03-11 14:39:13][info][41666] Initializing agent..
-[2025-03-11 14:39:13][info][41666] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
-[2025-03-11 14:39:13][info][41666] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
-[2025-03-11 14:39:13][info][41666] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
-[2025-03-11 14:39:13][info][41666] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
-[2025-03-11 14:39:13][info][41666] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
-[2025-03-11 14:39:13][info][41666] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
-[2025-03-11 14:39:13][info][41666] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
-[2025-03-11 14:39:13][info][41666] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
-[2025-03-11 14:39:13][info][41666] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
-[2025-03-11 14:39:13][info][41666] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
-[2025-03-11 14:39:13][info][41666] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
-[2025-03-11 14:39:13][info][41666] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
-[2025-03-11 14:39:13][info][41666] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
-[2025-03-11 14:39:13][info][41666] Attach successfully
-alloc info not found for pid_tgid: 178954107396802
-alloc info not found for pid_tgid: 178954107396802
-alloc info not found for pid_tgid: 178954107396802
-alloc info not found for pid_tgid: 178954107396802
-alloc info not found for pid_tgid: 178954107396802
-Read Time:           5.17965
-Graph has 61578415 nodes and 1468364884 directed edges for degree: 23
-alloc info not found for pid_tgid: 178954107396802
-alloc info not found for pid_tgid: 178954107396802
-alloc info not found for pid_tgid: 178954107396802
-alloc info not found for pid_tgid: 178954107396802
-    a                0.07411
-source: 12307662
-alloc info not found for pid_tgid: 178954107396802
-alloc info not found for pid_tgid: 178954107396864
-alloc info not found for pid_tgid: 178954107396865
-alloc info not found for pid_tgid: 178954107396850
-alloc info not found for pid_tgid: 178954107396860
-alloc info not found for pid_tgid: 178954107396862
-alloc info not found for pid_tgid: 178954107396846
-alloc info not found for pid_tgid: 178954107396853
-alloc info not found for pid_tgid: 178954107396858
-alloc info not found for pid_tgid: 178954107396845
-alloc info not found for pid_tgid: 178954107396859
-alloc info not found for pid_tgid: 178954107396844
-alloc info not found for pid_tgid: 178954107396849
-alloc info not found for pid_tgid: 178954107396851
-alloc info not found for pid_tgid: 178954107396848
-alloc info not found for pid_tgid: 178954107396843
-alloc info not found for pid_tgid: 178954107396857
-alloc info not found for pid_tgid: 178954107396863
-alloc info not found for pid_tgid: 178954107396856
-alloc info not found for pid_tgid: 178954107396847
-alloc info not found for pid_tgid: 178954107396852
-alloc info not found for pid_tgid: 178954107396861
-alloc info not found for pid_tgid: 178954107396855
-alloc info not found for pid_tgid: 178954107396854
-    b               19.64877
-alloc info not found for pid_tgid: 178954107396802
-    p               10.00070
-source: 53903957
-alloc info not found for pid_tgid: 178954107396802
-    b               18.78469
-alloc info not found for pid_tgid: 178954107396802
-    p                9.65635
-source: 16672544
-========== Process 0[tgid=41666, tid=41666] statistics summary ==========
-emulated time =66.698395914
-total delay   =0
-PEBS sample total 129569 7832989
-LBR sample total 0
-bpftime sample total 155619
+[2025-03-11 22:56:32.651] [info] [agent-transformer.cpp:39] Entering bpftime syscal transformer agent
+[2025-03-11 22:56:32.651] [stderr] [info] [text_segment_transformer.cpp:246] Page zero setted up..
+[2025-03-11 22:56:32.651] [stderr] [info] [text_segment_transformer.cpp:274] Rewriting executable segments..
+[2025-03-11 22:56:35][info][288036] Global shm constructed. shm_open_type 1 for bpftime_maps_shm
+[2025-03-11 22:56:35][info][288036] Global shm initialized
+[2025-03-11 22:56:35][info][288036] Register attach-impl defined helper bpf_get_func_arg, index 183
+[2025-03-11 22:56:35][info][288036] Register attach-impl defined helper bpf_get_func_ret_id, index 184
+[2025-03-11 22:56:35][info][288036] Register attach-impl defined helper bpf_get_retval, index 186
+[2025-03-11 22:56:35][info][288036] Initializing agent..
+[2025-03-11 22:56:35][info][288036] Attach successfully
+[2025-03-11 22:56:35][info][288036] Agent syscall trace setup exiting..
+========== Process 0[tgid=288036, tid=288036] statistics summary ==========
+emulated time =3.986657727
+total delay   =2.471582719
+PEBS sample total 289 2952
+LBR sample total 5
+bpftime sample total 0
 CXLController:
 Total system memory capacity: 60GB
   Page Type: PAGE
   Global Counter:
     Local: 0
-    Remote: 127880
-    HITM: 366383248
+    Remote: 284
+    HITM: 99090889
 Topology:
 Switch:
   Events:
@@ -105,7 +50,7 @@ Switch:
   Expander:
     Events:
       Load: 0
-      Store: 127880
+      Store: 284
       Migrate in: 0
       Migrate out: 0
       Hit Old: 0
@@ -114,5 +59,5 @@ Statistics:
   Number of Switches: 2
   Number of Endpoints: 3
   Number of Threads created: 1
-  Memory Freed: 8436132 bytes
+  Memory Freed: 0 bytes
 

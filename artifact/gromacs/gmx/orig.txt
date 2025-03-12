@@ -1,0 +1,26 @@
+   :-) GROMACS - gmx mdrun, 2026.0-dev-20250308-ea62118dab-dirty-unknown (-:
+
+Executable:   /home/try/Documents/CXLMemSim-dev/cmake-build-debug/../workloads/gromacs/build/bin/gmx
+Data prefix:  /home/try/Documents/CXLMemSim-dev/workloads/gromacs (source tree)
+Working dir:  /home/try/Documents/CXLMemSim-dev/cmake-build-debug
+Command line:
+  gmx mdrun -s ../workloads/gromacs/build/topol.tpr -nsteps 1000
+
+
+-------------------------------------------------------
+Program:     gmx mdrun, version 2026.0-dev-20250308-ea62118dab-dirty-unknown
+Source file: src/gromacs/commandline/cmdlineparser.cpp (line 271)
+Function:    void gmx::CommandLineParser::parse(int*, char**)
+
+Error in user input:
+Invalid command-line options
+  In command-line option -s
+    File '../workloads/gromacs/build/topol.tpr' does not exist or is not
+    accessible.
+    The file could not be opened.
+      Reason: No such file or directory
+      (call to fopen() returned error code 2)
+
+For more information and tips for troubleshooting, please check the GROMACS
+website at https://manual.gromacs.org/current/user-guide/run-time-errors.html
+-------------------------------------------------------

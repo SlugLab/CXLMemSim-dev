@@ -1,8 +1,7 @@
-./bin/llama-cli    --model DeepSeek-R1-Distill-Qwen-32B-Q2_K.gguf     --cache-type-k q8_0     --threads 24     --prompt '<｜User｜>What is 1+1?<｜Assistant｜>'     -no-cnv
 build: 4798 (1782cdfe) with cc (Ubuntu 14.2.0-4ubuntu2~24.04) 14.2.0 for x86_64-linux-gnu
 main: llama backend init
 main: load the model and apply lora adapter, if any
-llama_model_loader: loaded meta data with 27 key-value pairs and 771 tensors from DeepSeek-R1-Distill-Qwen-32B-Q2_K.gguf (version GGUF V3 (latest))
+llama_model_loader: loaded meta data with 27 key-value pairs and 771 tensors from ../workloads/llama.cpp/build/DeepSeek-R1-Distill-Qwen-32B-Q2_K.gguf (version GGUF V3 (latest))
 llama_model_loader: Dumping metadata keys/values. Note: KV overrides do not apply in this output.
 llama_model_loader: - kv   0:                       general.architecture str              = qwen2
 llama_model_loader: - kv   1:                               general.type str              = model
@@ -38,7 +37,7 @@ llama_model_loader: - type q4_K:   64 tensors
 llama_model_loader: - type q6_K:    1 tensors
 print_info: file format = GGUF V3 (latest)
 print_info: file type   = Q2_K - Medium
-print_info: file size   = 11.46 GiB (3.01 BPW)
+print_info: file size   = 11.46 GiB (3.01 BPW) 
 load: special_eos_id is not in special_eog_ids - the tokenizer config may be incorrect
 load: special tokens cache size = 22
 load: token to piece cache size = 0.9310 MB
@@ -120,43 +119,48 @@ llama_init_from_model: graph nodes  = 2246
 llama_init_from_model: graph splits = 1
 common_init_from_params: setting dry_penalty_last_n to ctx_size = 4096
 common_init_from_params: warming up the model with an empty run - please wait ... (--no-warmup to disable)
-main: llama threadpool init, n_threads = 24
+main: llama threadpool init, n_threads = 16
 
-system_info: n_threads = 24 (n_threads_batch = 24) / 24 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX_VNNI = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | LLAMAFILE = 1 | OPENMP = 1 | AARCH64_REPACK = 1 |
+system_info: n_threads = 16 (n_threads_batch = 16) / 24 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX_VNNI = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | LLAMAFILE = 1 | OPENMP = 1 | AARCH64_REPACK = 1 | 
 
-sampler seed: 2940439051
-sampler params:
-        repeat_last_n = 64, repeat_penalty = 1.000, frequency_penalty = 0.000, presence_penalty = 0.000
-        dry_multiplier = 0.000, dry_base = 1.750, dry_allowed_length = 2, dry_penalty_last_n = 4096
-        top_k = 40, top_p = 0.950, min_p = 0.050, xtc_probability = 0.000, xtc_threshold = 0.100, typical_p = 1.000, top_n_sigma = -1.000, temp = 0.800
-        mirostat = 0, mirostat_lr = 0.100, mirostat_ent = 5.000
-sampler chain: logits -> logit-bias -> penalties -> dry -> top-k -> typical -> top-p -> min-p -> xtc -> temp-ext -> dist
+sampler seed: 376962787
+sampler params: 
+	repeat_last_n = 64, repeat_penalty = 1.000, frequency_penalty = 0.000, presence_penalty = 0.000
+	dry_multiplier = 0.000, dry_base = 1.750, dry_allowed_length = 2, dry_penalty_last_n = 4096
+	top_k = 40, top_p = 0.950, min_p = 0.050, xtc_probability = 0.000, xtc_threshold = 0.100, typical_p = 1.000, top_n_sigma = -1.000, temp = 0.800
+	mirostat = 0, mirostat_lr = 0.100, mirostat_ent = 5.000
+sampler chain: logits -> logit-bias -> penalties -> dry -> top-k -> typical -> top-p -> min-p -> xtc -> temp-ext -> dist 
 generate: n_ctx = 4096, n_batch = 2048, n_predict = -1, n_keep = 1
 
 What is 1+1?<think>
-I need to calculate the sum of two numbers: 1 and 1.
+First, I recognize that the problem is asking for the sum of 1 and 1.
 
-First, I'll identify the numbers involved in the addition: 1 and 1.
+To solve this, I add the two numbers together.
 
-Next, I'll add these two numbers together: 1 plus 1.
-
-Finally, the result of the addition is 2.
+Therefore, 1 plus 1 equals 2.
 </think>
 
-To solve \(1 + 1\), follow these steps:
+To find the sum of 1 and 1, follow these easy steps:
 
-1. **Identify the numbers to add:**
-   The numbers are \(1\) and \(1\).
+1. **Start with the first number:**  
+   We have the number **1**.
 
-2. **Add the numbers together:**
-   \(1 + 1 = 2\).
+2. **Add the second number:**  
+   Add **1** to the first number.
 
-3. **Final Answer:**
-   \(\boxed{2}\) [end of text]
+3. **Calculate the sum:**  
+   \( 1 + 1 = 2 \)
+
+4. **Final Answer:**  
+   \[
+   \boxed{2}
+   \]
+
+So, the sum of 1 and 1 is **2**. [end of text]
 
 
-llama_perf_sampler_print:    sampling time =       8.30 ms /   147 runs   (    0.06 ms per token, 17708.71 tokens per second)
-llama_perf_context_print:        load time =    1083.18 ms
-llama_perf_context_print: prompt eval time =     810.71 ms /    10 tokens (   81.07 ms per token,    12.33 tokens per second)
-llama_perf_context_print:        eval time =   67364.69 ms /   136 runs   (  495.33 ms per token,     2.02 tokens per second)
-llama_perf_context_print:       total time =   68215.19 ms /   146 tokens
+llama_perf_sampler_print:    sampling time =       7.96 ms /   164 runs   (    0.05 ms per token, 20603.02 tokens per second)
+llama_perf_context_print:        load time =    1022.28 ms
+llama_perf_context_print: prompt eval time =     689.79 ms /    10 tokens (   68.98 ms per token,    14.50 tokens per second)
+llama_perf_context_print:        eval time =   37392.96 ms /   153 runs   (  244.40 ms per token,     4.09 tokens per second)
+llama_perf_context_print:       total time =   38120.86 ms /   163 tokens
