@@ -325,38 +325,48 @@ int clone_exit(struct trace_event_raw_sys_exit *ctx) {
     return 0;
 }
 
-// clone3 探针
 SEC("tracepoint/syscalls/sys_enter_clone3")
-int sys_clone3_probe(struct trace_event_raw_sys_enter *ctx) {
+int sys_enter_clone3(struct trace_event_raw_sys_enter *ctx) {
     u64 pid_tgid = bpf_get_current_pid_tgid();
     u32 pid = pid_tgid >> 32;
+
     bpf_printk("clone3 syscall called by pid: %u\n", pid);
 
-    // 获取参数
-    struct clone_args *cl_args = (struct clone_args *)ctx->args[0];
+    // 记录基本信息，但不尝试访问复杂的参数结构
+    // clone3 的第一个参数是指向 struct clone_args 的指针
+    // 在这里我们只记录这个指针的地址，而不尝试访问其内容
+    void *cl_args_ptr = (void *)ctx->args[0];
 
-    if (cl_args) {
-        // 读取 clone_args 中的 child_tid 指针
-        unsigned long *tid_ptr = NULL;
-        bpf_probe_read(&tid_ptr, sizeof(tid_ptr), &cl_args->child_tid);
-
-        if (tid_ptr) {
-            // 创建新的线程信息
-            struct proc_info thread_info = {
-                .parent_pid = pid,
-                .create_time = bpf_ktime_get_ns(),
-            };
-
-            // 更新线程计数
-            struct proc_info *parent_info = bpf_map_lookup_elem(&process_map, &pid);
-            if (parent_info) {
-                parent_info->thread_count += 1;
-            }
-
-            // 保存父进程信息，稍后在返回探针中获取实际线程 ID
-            bpf_map_update_elem(&thread_map, &tid_ptr, &thread_info, BPF_ANY);
-        }
+    // 更新线程计数
+    struct proc_info *parent_info = bpf_map_lookup_elem(&process_map, &pid);
+    if (parent_info) {
+        parent_info->thread_count += 1;
     }
+
+    return 0;
+}
+
+SEC("tracepoint/syscalls/sys_exit_clone3")
+int sys_exit_clone3(struct trace_event_raw_sys_exit *ctx) {
+    u64 pid_tgid = bpf_get_current_pid_tgid();
+    u32 parent_pid = pid_tgid >> 32;
+    u32 child_pid = (u32)ctx->ret;
+
+    if (child_pid > 0) {
+        bpf_printk("clone3 created new thread/process: %u\n", child_pid);
+
+        // 创建新的线程/进程信息
+        struct proc_info proc_info = {
+            .parent_pid = parent_pid,
+            .create_time = bpf_ktime_get_ns(),
+            .current_pid = child_pid,
+            .current_tid = child_pid,
+        };
+
+        // 更新映射
+        bpf_map_update_elem(&process_map, &child_pid, &proc_info, BPF_ANY);
+    }
+
     return 0;
 }
 
