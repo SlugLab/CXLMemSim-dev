@@ -106,10 +106,10 @@ int Monitors::enable(uint32_t tgid, uint32_t tid, bool is_process, uint64_t pebs
         SPDLOG_DEBUG("{}Process [tgid={}, tid={}]: enable to pebs.", target, mon[target].tgid,
                      mon[target].tid); // multiple tid multiple pid
         mon[target].lbr_ctx = new LBR(tgid, 1000);
+        SPDLOG_INFO("pid {}[tgid={}, tid={}] monitoring start", target, mon[target].tgid, mon[target].tid);
+        new std::jthread(mon[target].wait, &mon, target);
     }
-    SPDLOG_INFO("pid {}[tgid={}, tid={}] monitoring start", target, mon[target].tgid, mon[target].tid);
 
-    new std::jthread(mon[target].wait, &mon, target);
     return target;
 }
 void Monitors::disable(const uint32_t target) {
@@ -192,29 +192,34 @@ int Monitors::terminate(const uint32_t tgid, const uint32_t tid, const int32_t t
         }
         target = i;
         /* pebs stop */
-        delete mon[target].pebs_ctx;
-        delete mon[target].lbr_ctx;
-        delete mon[target].bpftime_ctx;
+        if (mon[target].is_process) {
+            if (mon[target].pebs_ctx == nullptr) {
+                exit(0);
+            }
+            delete mon[target].pebs_ctx;
+            delete mon[target].lbr_ctx;
+            delete mon[target].bpftime_ctx;
 
-        /* Save end time */
-        if (mon[target].end_exec_ts.tv_sec == 0 && mon[target].end_exec_ts.tv_nsec == 0) {
-            clock_gettime(CLOCK_MONOTONIC, &mon[i].end_exec_ts);
+            /* Save end time */
+            if (mon[target].end_exec_ts.tv_sec == 0 && mon[target].end_exec_ts.tv_nsec == 0) {
+                clock_gettime(CLOCK_MONOTONIC, &mon[i].end_exec_ts);
+            }
+            /* display results */
+            std::cout << std::format("========== Process {}[tgid={}, tid={}] statistics summary ==========\n", target,
+                                     mon[target].tgid, mon[target].tid);
+            double emulated_time =
+                (double)(mon[target].end_exec_ts.tv_sec - mon[target].start_exec_ts.tv_sec) +
+                (double)(mon[target].end_exec_ts.tv_nsec - mon[target].start_exec_ts.tv_nsec) / 1000000000;
+            std::cout << std::format("emulated time ={}", emulated_time) << std::endl;
+            std::cout << std::format("total delay   ={}", mon[target].total_delay) << std::endl;
+            std::cout << std::format("PEBS sample total {} {}", mon[target].before->pebs.total,
+                                     mon[target].after->pebs.llcmiss)
+                      << std::endl;
+            std::cout << std::format("LBR sample total {}", mon[target].before->lbr.total) << std::endl;
+            std::cout << std::format("bpftime sample total {}", mon[target].before->bpftime.total) << std::endl;
+            std::cout << std::format("{}", *controller) << std::endl;
+            break;
         }
-        /* display results */
-        std::cout << std::format("========== Process {}[tgid={}, tid={}] statistics summary ==========\n", target,
-                                 mon[target].tgid, mon[target].tid);
-        double emulated_time =
-            (double)(mon[target].end_exec_ts.tv_sec - mon[target].start_exec_ts.tv_sec) +
-            (double)(mon[target].end_exec_ts.tv_nsec - mon[target].start_exec_ts.tv_nsec) / 1000000000;
-        std::cout << std::format("emulated time ={}", emulated_time) << std::endl;
-        std::cout << std::format("total delay   ={}", mon[target].total_delay) << std::endl;
-        std::cout << std::format("PEBS sample total {} {}", mon[target].before->pebs.total,
-                                 mon[target].after->pebs.llcmiss)
-                  << std::endl;
-        std::cout << std::format("LBR sample total {}", mon[target].before->lbr.total) << std::endl;
-        std::cout << std::format("bpftime sample total {}", mon[target].before->bpftime.total) << std::endl;
-        std::cout << std::format("{}", *controller) << std::endl;
-        break;
     }
 
     return target;
@@ -343,10 +348,10 @@ void Monitor::wait(std::vector<Monitor> *mons, int target) {
         sleep_target = start_ts + wanted_delay * prev_wanted_delay;
         target_nsec = wanted_delay - prev_wanted_delay;
         interval_target = end_ts + interval_delay;
-        if (mon.bpftime_ctx->updater->get(mon.tid))
-            mon.bpftime_ctx->updater->update(mon.tgid, prev_wanted_delay.tv_nsec - mon.wanted_delay.tv_nsec);
-        else
-            clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &interval_target, nullptr);
+        // if (mon.bpftime_ctx->updater->get(mon.tid))
+        //     mon.bpftime_ctx->updater->update(mon.tgid, prev_wanted_delay.tv_nsec - mon.wanted_delay.tv_nsec);
+        // else
+        clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &interval_target, nullptr);
         // start time before we ask them to sleep
         clock_gettime(CLOCK_MONOTONIC, &start_ts);
         mon.stop();
@@ -364,5 +369,4 @@ void Monitor::wait(std::vector<Monitor> *mons, int target) {
         clock_gettime(CLOCK_MONOTONIC, &end_ts);
     }
     SPDLOG_INFO("{}:{}", prev_wanted_delay.tv_sec, prev_wanted_delay.tv_nsec);
-
 }

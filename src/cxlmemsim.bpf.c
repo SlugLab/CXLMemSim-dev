@@ -311,7 +311,7 @@ int clone_exit(struct trace_event_raw_sys_exit *ctx) {
         struct proc_info proc_info = {
             .parent_pid = parent_pid,
             .create_time = bpf_ktime_get_ns(),
-            .current_pid = child_pid,
+            .current_pid = parent_pid,
             .current_tid = child_pid,
         };
 
@@ -319,7 +319,7 @@ int clone_exit(struct trace_event_raw_sys_exit *ctx) {
         // 如果是线程，更新线程计数
 
         // 更新映射
-        bpf_map_update_elem(&process_map, &child_pid, &proc_info, BPF_ANY);
+        bpf_map_update_elem(&thread_map, &child_pid, &proc_info, BPF_ANY);
     }
 
     return 0;
@@ -359,12 +359,12 @@ int sys_exit_clone3(struct trace_event_raw_sys_exit *ctx) {
         struct proc_info proc_info = {
             .parent_pid = parent_pid,
             .create_time = bpf_ktime_get_ns(),
-            .current_pid = child_pid,
+            .current_pid = parent_pid,
             .current_tid = child_pid,
         };
 
         // 更新映射
-        bpf_map_update_elem(&process_map, &child_pid, &proc_info, BPF_ANY);
+        bpf_map_update_elem(&thread_map, &child_pid, &proc_info, BPF_ANY);
     }
 
     return 0;

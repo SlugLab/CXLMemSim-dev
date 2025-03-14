@@ -296,13 +296,13 @@ def main():
     # 策略组合参数
     parser.add_argument("--run-policy-combinations", action="store_true", help="运行策略组合测试")
     parser.add_argument("--allocation-policies", nargs="+", choices=ALLOCATION_POLICIES,
-                        help=f"分配策略选项: {', '.join(ALLOCATION_POLICIES)}")
+                        help=f"分配策略选项: {', '.join(ALLOCATION_POLICIES)}",default=ALLOCATION_POLICIES)
     parser.add_argument("--migration-policies", nargs="+", choices=MIGRATION_POLICIES,
-                        help=f"迁移策略选项: {', '.join(MIGRATION_POLICIES)}")
+                        help=f"迁移策略选项: {', '.join(MIGRATION_POLICIES)}",default=MIGRATION_POLICIES)
     parser.add_argument("--paging-policies", nargs="+", choices=PAGING_POLICIES,
-                        help=f"分页策略选项: {', '.join(PAGING_POLICIES)}")
+                        help=f"分页策略选项: {', '.join(PAGING_POLICIES)}",default=PAGING_POLICIES)
     parser.add_argument("--caching-policies", nargs="+", choices=CACHING_POLICIES,
-                        help=f"缓存策略选项: {', '.join(CACHING_POLICIES)}")
+                        help=f"缓存策略选项: {', '.join(CACHING_POLICIES)}",default=CACHING_POLICIES)
 
     # 错误处理
     parser.add_argument("--ignore-errors", action="store_true", help="忽略错误继续运行")

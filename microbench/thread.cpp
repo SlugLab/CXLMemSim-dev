@@ -41,9 +41,11 @@ int main() {
     print_thread_id("主线程 ");
 
     // 创建一些普通工作线程
-    std::vector<std::thread> threads;
+    std::vector<std::shared_ptr<std::thread>> threads;
     for (int i = 0; i < 3; ++i) {
-        threads.emplace_back(thread_function, i);
+    std::cout << "english, finally\n";
+	    std::shared_ptr<std::thread> thread = std::make_shared<std::thread>(thread_function, i);
+        threads.push_back(thread);
     }
 
     // 创建将调用exit_group的线程
@@ -51,8 +53,8 @@ int main() {
 
     // 等待所有工作线程完成
     for (auto& t : threads) {
-        if (t.joinable()) {
-            t.join();
+        if (t->joinable()) {
+            t->join();
         }
     }
 

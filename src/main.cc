@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
                           cxxopts::value<std::string>()->default_value("./microbench/malloc"))(
         "h,help", "Help for CXLMemSim", cxxopts::value<bool>()->default_value("false"))(
         "c,cpuset", "The CPUSET for CPU to set affinity on and only run the target process on those CPUs",
-        cxxopts::value<std::vector<int>>()->default_value("0"))("d,dramlatency", "The current platform's dram latency",
+        cxxopts::value<std::vector<int>>()->default_value("0,1,2,3,4,5,6,7"))("d,dramlatency", "The current platform's dram latency",
                                                                 cxxopts::value<double>()->default_value("110"))(
         "p,pebsperiod", "The pebs sample period", cxxopts::value<int>()->default_value("10"))(
         "m,mode", "Page mode or cacheline mode", cxxopts::value<std::string>()->default_value("p"))(
@@ -308,17 +308,19 @@ int main(int argc, char *argv[]) {
                 uint64_t wb_cnt = 0, target_l2stall = 0, target_llcmiss = 0, target_llchits = 0, target_l2miss = 0,
                          all_llcmiss = 0, all_prefetch = 0;
                 double writeback_latency;
-                /* read BPFTIMERUNTIME sample */
-                if (mon.bpftime_ctx->read(controller, &mon.after->bpftime) < 0) {
-                    SPDLOG_ERROR("[{}:{}:{}] Warning: Failed BPFTIMERUNTIME read", i, mon.tgid, mon.tid);
-                }
-                /* read PEBS sample */
-                if (mon.pebs_ctx->read(controller, &mon.after->pebs) < 0) {
-                    SPDLOG_ERROR("[{}:{}:{}] Warning: Failed PEBS read", i, mon.tgid, mon.tid);
-                }
-                /* read LBR sample */
-                if (mon.lbr_ctx->read(controller, &mon.after->lbr) < 0) {
-                    SPDLOG_ERROR("[{}:{}:{}] Warning: Failed LBR read", i, mon.tgid, mon.tid);
+                if (mon.is_process) {
+                    /* read BPFTIMERUNTIME sample */
+                    if (mon.bpftime_ctx->read(controller, &mon.after->bpftime) < 0) {
+                        SPDLOG_ERROR("[{}:{}:{}] Warning: Failed BPFTIMERUNTIME read", i, mon.tgid, mon.tid);
+                    }
+                    /* read PEBS sample */
+                    if (mon.pebs_ctx->read(controller, &mon.after->pebs) < 0) {
+                        SPDLOG_ERROR("[{}:{}:{}] Warning: Failed PEBS read", i, mon.tgid, mon.tid);
+                    }
+                    /* read LBR sample */
+                    if (mon.lbr_ctx->read(controller, &mon.after->lbr) < 0) {
+                        SPDLOG_ERROR("[{}:{}:{}] Warning: Failed LBR read", i, mon.tgid, mon.tid);
+                    }
                 }
                 target_llcmiss = mon.after->pebs.total - mon.before->pebs.total;
 

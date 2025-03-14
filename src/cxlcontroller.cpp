@@ -81,11 +81,11 @@ void CXLController::set_stats(mem_stats stats) {
 }
 
 void CXLController::set_process_info(const proc_info &process_info) {
-    monitors->enable(process_info.current_pid, process_info.current_tid, true, 1000, 0);
+    monitors->enable(process_info.current_pid, process_info.current_tid, true, 1000, helper.num_of_cpu());
 }
 
 void CXLController::set_thread_info(const proc_info &thread_info) {
-    monitors->enable(thread_info.current_pid, thread_info.current_tid, false, 0, 0);
+    monitors->enable(thread_info.current_pid, thread_info.current_tid, false, 0, helper.num_of_cpu());
 }
 void CXLController::perform_migration() {
     if (!migration_policy)
@@ -252,6 +252,7 @@ int CXLController::insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, 
     for (int i = last_index; i < index; i++) {
         // 更新当前时间戳
         current_timestamp += time_step;
+        // std::cout << std::format("{} {}", current_timestamp, i) << std::endl;
 
         // 首先检查LRU缓存
         auto cache_result = access_cache(phys_addr, current_timestamp);
