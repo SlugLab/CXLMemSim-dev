@@ -98,4 +98,11 @@ struct proc_info {
     struct mem_info mem_info;
 };
 
+// 线程创建参数
+struct thread_create_args {
+	void **thread_ptr;
+	void *attr;
+	void *start_routine;
+	void *arg;
+};
 #endif

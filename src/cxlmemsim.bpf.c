@@ -12,220 +12,53 @@
 
 #include "../include/bpftimeruntime.h"
 
+
+// 线程参数映射
 struct {
-    __uint(type, BPF_MAP_TYPE_HASH);
-    __uint(max_entries, 100000);
-    __type(key, u64);
-    __type(value, struct alloc_info);
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 10240);
+	__type(key, u64); // pid_tgid
+	__type(value, struct thread_create_args);
+} thread_create_args_map SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 100000);
+	__type(key, u64);
+	__type(value, struct alloc_info);
 } allocs_map SEC(".maps");
 
 struct {
-    __uint(type, BPF_MAP_TYPE_HASH);
-    __uint(max_entries, 10240);
-    __type(key, u32);
-    __type(value, struct mem_stats);
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 10240);
+	__type(key, u32);
+	__type(value, struct mem_stats);
 } stats_map SEC(".maps");
 
 // 存储线程信息的 map
 struct {
-    __uint(type, BPF_MAP_TYPE_HASH);
-    __uint(max_entries, 102400);
-    __type(key, u32); // tid as key
-    __type(value, struct proc_info);
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 102400);
+	__type(key, u32); // tid as key
+	__type(value, struct proc_info);
 } thread_map SEC(".maps");
 
 struct {
-    __uint(type, BPF_MAP_TYPE_HASH);
-    __uint(max_entries, 10240);
-    __type(key, u32);
-    __type(value, struct proc_info);
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 10240);
+	__type(key, u32);
+	__type(value, struct proc_info);
 } process_map SEC(".maps");
 
 // 用于处理多线程同步的自旋锁映射
 struct {
-    __uint(type, BPF_MAP_TYPE_HASH);
-    __uint(max_entries, 10240);
-    __type(key, u32);
-    __type(value, u32);
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 10240);
+	__type(key, u32);
+	__type(value, u32);
 } locks SEC(".maps");
 // 钩住OpenMP并行区域创建函数
-SEC("uprobe//usr/lib/x86_64-linux-gnu/libgomp.so.1:GOMP_parallel")
-int uprobe_omp_parallel(struct pt_regs *ctx) {
-    u64 pid_tgid = bpf_get_current_pid_tgid();
-    u32 pid = pid_tgid >> 32;
-    void *fn = (void *)PT_REGS_PARM1(ctx);  // 并行区域函数指针
-    void *data = (void *)PT_REGS_PARM2(ctx); // 用户数据指针
-    unsigned num_threads = (unsigned)PT_REGS_PARM3(ctx); // 线程数量
 
-    // 更新进程信息中的线程计数
-    struct proc_info *proc_info = bpf_map_lookup_elem(&process_map, &pid);
-    if (proc_info) {
-        proc_info->thread_count += num_threads;
-        bpf_map_update_elem(&process_map, &pid, proc_info, BPF_ANY);
-    }
-
-    return 0;
-}
-
-// 钩住GOMP_single_start函数 - 用于single构造
-SEC("uprobe//usr/lib/x86_64-linux-gnu/libgomp.so.1:GOMP_single_start")
-int uprobe_omp_single_start(struct pt_regs *ctx) {
-    u64 pid_tgid = bpf_get_current_pid_tgid();
-    u32 pid = pid_tgid >> 32;
-    u32 tid = (u32)pid_tgid;
-    // 返回值表示该线程是否执行single区域
-    return 0;
-}
-
-// 钩住GOMP_single_start的返回值
-SEC("uretprobe//usr/lib/x86_64-linux-gnu/libgomp.so.1:GOMP_single_start")
-int uretprobe_omp_single_start(struct pt_regs *ctx) {
-    u64 pid_tgid = bpf_get_current_pid_tgid();
-    u32 pid = pid_tgid >> 32;
-    u32 tid = (u32)pid_tgid;
-    bool is_selected = (bool)PT_REGS_RC(ctx);
-
-
-    return 0;
-}
-
-// OpenMP临界区钩子
-SEC("uprobe//usr/lib/x86_64-linux-gnu/libgomp.so.1:GOMP_critical_start")
-int uprobe_omp_critical_start(struct pt_regs *ctx) {
-    u64 pid_tgid = bpf_get_current_pid_tgid();
-    u32 pid = pid_tgid >> 32;
-    u32 tid = (u32)pid_tgid;
-
-
-    // 记录线程进入临界区
-    u32 locked = 1;
-    bpf_map_update_elem(&locks, &tid, &locked, BPF_ANY);
-
-    struct proc_info *item = bpf_map_lookup_elem(&thread_map, &tid);
-    if (item) {
-        item->is_locked = 1;
-        bpf_map_update_elem(&thread_map, &tid, item, BPF_ANY);
-    }
-
-    return 0;
-}
-
-SEC("uprobe//usr/lib/x86_64-linux-gnu/libgomp.so.1:GOMP_critical_end")
-int uprobe_omp_critical_end(struct pt_regs *ctx) {
-    u64 pid_tgid = bpf_get_current_pid_tgid();
-    u32 pid = pid_tgid >> 32;
-    u32 tid = (u32)pid_tgid;
-
-
-    // 记录线程离开临界区
-    u32 locked = 0;
-    bpf_map_update_elem(&locks, &tid, &locked, BPF_ANY);
-
-    struct proc_info *item = bpf_map_lookup_elem(&thread_map, &tid);
-    if (item) {
-        item->is_locked = 0;
-        bpf_map_update_elem(&thread_map, &tid, item, BPF_ANY);
-    }
-
-    return 0;
-}
-
-// OpenMP屏障同步点
-SEC("uprobe//usr/lib/x86_64-linux-gnu/libgomp.so.1:GOMP_barrier")
-int uprobe_omp_barrier(struct pt_regs *ctx) {
-    u64 pid_tgid = bpf_get_current_pid_tgid();
-    u32 pid = pid_tgid >> 32;
-    u32 tid = (u32)pid_tgid;
-
-
-    return 0;
-}
-
-// 线程同步：获取OpenMP锁
-SEC("uprobe//usr/lib/x86_64-linux-gnu/libgomp.so.1:omp_set_lock")
-int uprobe_omp_set_lock(struct pt_regs *ctx) {
-    u64 pid_tgid = bpf_get_current_pid_tgid();
-    u32 pid = pid_tgid >> 32;
-    u32 tid = (u32)pid_tgid;
-    void *lock = (void *)PT_REGS_PARM1(ctx);
-
-
-    // 记录线程获取锁
-    u32 locked = 1;
-    bpf_map_update_elem(&locks, &tid, &locked, BPF_ANY);
-
-    return 0;
-}
-
-// 线程同步：释放OpenMP锁
-SEC("uprobe//usr/lib/x86_64-linux-gnu/libgomp.so.1:omp_unset_lock")
-int uprobe_omp_unset_lock(struct pt_regs *ctx) {
-    u64 pid_tgid = bpf_get_current_pid_tgid();
-    u32 pid = pid_tgid >> 32;
-    u32 tid = (u32)pid_tgid;
-    void *lock = (void *)PT_REGS_PARM1(ctx);
-
-
-    // 记录线程释放锁
-    u32 locked = 0;
-    bpf_map_update_elem(&locks, &tid, &locked, BPF_ANY);
-
-    return 0;
-}
-// C++标准库线程创建函数的钩子
-SEC("uprobe//usr/lib/gcc/x86_64-linux-gnu/14/libstdc++.so:_ZNSt6thread15_M_start_threadESt10unique_ptrINS_6_StateESt14default_deleteIS1_EEPFvvE")
-int uprobe_cxx_thread_start(struct pt_regs *ctx) {
-    u64 pid_tgid = bpf_get_current_pid_tgid();
-    u32 pid = pid_tgid >> 32;
-    u32 tid = (u32)pid_tgid;
-
-    // 获取函数参数（注意：在BPF中我们不能直接访问complex C++对象的内部）
-    // 我们只能获取到原始指针
-    void *thread_state_ptr = (void *)PT_REGS_PARM1(ctx);  // unique_ptr参数
-    void *thread_func_ptr = (void *)PT_REGS_PARM2(ctx);   // 函数指针参数
-
-
-    // 记录线程创建事件到临时映射，供返回探针使用
-    struct {
-        u32 parent_pid;
-        u64 create_time;
-    } thread_info = {
-        .parent_pid = pid,
-        .create_time = bpf_ktime_get_ns(),
-    };
-
-    bpf_map_update_elem(&allocs_map, &pid_tgid, &thread_info, BPF_ANY);
-
-    return 0;
-}
-
-// C++标准库线程创建函数的返回钩子
-SEC("uretprobe//usr/lib/gcc/x86_64-linux-gnu/14/libstdc++.so:_ZNSt6thread15_M_start_threadESt10unique_ptrINS_6_StateESt14default_deleteIS1_EEPFvvE")
-int uretprobe_cxx_thread_start(struct pt_regs *ctx) {
-    u64 pid_tgid = bpf_get_current_pid_tgid();
-    u32 pid = pid_tgid >> 32;
-
-    // 获取之前保存的信息
-    void *thread_info_ptr = bpf_map_lookup_elem(&allocs_map, &pid_tgid);
-    if (!thread_info_ptr) {
-        return 0;
-    }
-
-    // 注意：C++线程创建函数不直接返回线程ID
-    // 需要在后续步骤中捕获（比如通过pthread_create的返回值）
-
-    // 在这里，我们可以增加进程的线程计数
-    struct proc_info *proc_info = bpf_map_lookup_elem(&process_map, &pid);
-    if (proc_info) {
-        proc_info->thread_count++;
-        bpf_map_update_elem(&process_map, &pid, proc_info, BPF_ANY);
-    }
-
-    // 清理临时信息
-    bpf_map_delete_elem(&allocs_map, &pid_tgid);
-
-    return 0;
-}
 // mmap的uprobe钩子
 SEC("uprobe//usr/lib/x86_64-linux-gnu/libc.so.6:mmap")
 int uprobe_mmap(struct pt_regs *ctx) {
@@ -921,6 +754,92 @@ int uretprobe_pthread_mutex_trylock(struct pt_regs *ctx) {
                 item->is_locked = 1;
                 bpf_map_update_elem(&thread_map, &tid, item, BPF_ANY);
             }
+        }
+    }
+
+    return 0;
+}
+
+SEC("uprobe//lib/x86_64-linux-gnu/libc.so.6:pthread_create")
+int pthread_create_probe(struct pt_regs *ctx)
+{
+	u64 pid_tgid = bpf_get_current_pid_tgid();
+	u32 pid = pid_tgid >> 32;
+
+	// 获取新线程的 ID（通过第一个参数）
+	unsigned long *thread_ptr;
+	bpf_probe_read(&thread_ptr, sizeof(thread_ptr),
+		       (void *)&PT_REGS_PARM1(ctx));
+
+
+	if (thread_ptr) {
+		// 创建新的线程信息
+		struct thread_create_args thread_info = {
+			.thread_ptr = thread_ptr,
+			.attr = NULL,
+			.start_routine = NULL,
+			.arg = NULL,
+		};
+		bpf_printk("pthread_create_probe: pid: %d thread_ptr: %lx\n", pid,
+			   (unsigned long)thread_ptr);
+		// 更新线程计数
+		struct proc_info *parent_info =
+			bpf_map_lookup_elem(&process_map, &pid);
+		if (parent_info) {
+			// __sync_fetch_and_add(&parent_info->thread_count, 1);
+			parent_info->thread_count += 1;
+		}
+
+		// 注意：我们需要在 return probe 中获取实际的线程 ID
+		// 这里先保存父进程信息
+		bpf_map_update_elem(&thread_create_args_map, &pid_tgid,
+				    &thread_info, BPF_ANY);
+	}
+
+	return 0;
+}
+SEC("uretprobe//lib/x86_64-linux-gnu/libc.so.6:pthread_create")
+int pthread_create_return_probe(struct pt_regs *ctx)
+{
+    u64 pid_tgid = bpf_get_current_pid_tgid();
+    u32 pid = pid_tgid >> 32;
+
+    // 获取 pthread_create 的返回值
+    int ret = PT_REGS_RC(ctx);
+
+    // 如果 pthread_create 成功（返回0）
+    if (ret == 0) {
+        struct thread_create_args *args =
+            bpf_map_lookup_elem(&thread_create_args_map, &pid_tgid);
+        if (args) {
+            // 获取线程指针
+            void **thread_ptrs = args->thread_ptr;
+
+            // 读取新创建的线程ID
+            if (thread_ptrs) {
+                u64 thread_id = 0;
+                // 正确读取 pthread_t 类型的值
+                bpf_probe_read(&thread_id, sizeof(thread_id), thread_ptrs);
+
+                if (thread_id != 0) {
+                    // 使用实际的线程ID更新信息
+                    struct proc_info updated_info;
+                    updated_info.parent_pid = pid;
+                    updated_info.current_pid = pid;
+                    updated_info.current_tid = thread_id;
+                    updated_info.create_time = bpf_ktime_get_ns();
+                    
+                    // 使用 %lu 或 %lx 格式打印无符号长整型
+                    bpf_printk("pthread_create_return_probe: pid: %d thread_id: %lu (0x%lx)\n",
+                        pid, thread_id, thread_id);
+                        
+                    // 将线程信息添加到进程映射中
+                    bpf_map_update_elem(&thread_map, &thread_id, &updated_info, BPF_ANY);
+                }
+            }
+
+            // 清理参数映射
+            bpf_map_delete_elem(&thread_create_args_map, &pid_tgid);
         }
     }
 

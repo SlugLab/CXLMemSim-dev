@@ -28,14 +28,11 @@
 
 BpfTimeRuntime::BpfTimeRuntime(pid_t tid, std::string program_location)
     : tid(tid), updater(new BPFUpdater<uint64_t, uint64_t>(10)) {
-    bpftime_initialize_global_shm(bpftime::shm_open_type::SHM_REMOVE_AND_CREATE);
+    bpftime_initialize_global_shm(bpftime::shm_open_type::SHM_OPEN_ONLY);
     SPDLOG_INFO("GLOBAL memory initialized ");
-    // load json program to shm
-    bpftime_import_global_shm_from_json(program_location.c_str());
-    SPDLOG_INFO("Program loaded to shm");
 }
 
-BpfTimeRuntime::~BpfTimeRuntime() { bpftime_remove_global_shm(); }
+BpfTimeRuntime::~BpfTimeRuntime() {  }
 int BpfTimeRuntime::read(CXLController *controller, BPFTimeRuntimeElem *elem) {
     mem_stats stats;
     proc_info proc_info1;
