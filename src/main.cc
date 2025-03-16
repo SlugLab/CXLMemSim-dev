@@ -107,7 +107,6 @@ int main(int argc, char *argv[]) {
     } else if (policy[0] == "numa") {
         policy1 = new NUMAPolicy();
     } else {
-        SPDLOG_ERROR("Unknown allocation policy: {}", policy[0]);
         policy1 = new AllocationPolicy();
     }
 
@@ -310,7 +309,6 @@ int main(int argc, char *argv[]) {
                 }
                 /* read LBR sample */
                 if (mon.lbr_ctx->read(controller, &mon.after->lbr) < 0) {
-                    SPDLOG_ERROR("[{}:{}:{}] Warning: Failed LBR read", i, mon.tgid, mon.tid);
                 }
                 target_llcmiss = mon.after->pebs.total - mon.before->pebs.total;
 

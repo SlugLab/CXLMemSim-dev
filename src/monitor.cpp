@@ -239,7 +239,6 @@ void Monitor::stop() { // thread create and proecess create get the pmu
             // in this case process or process group does not exist.
             // It might be a zombie or has terminated execution.
             this->status = MONITOR_TERMINATED;
-            SPDLOG_ERROR("Process [{}:{}] is terminated.", this->tgid, this->tid);
         } else if (errno == EPERM) {
             this->status = MONITOR_NOPERMISSION;
             SPDLOG_ERROR("Failed to signal to any of the target processes. Due to does not have permission.  It "
