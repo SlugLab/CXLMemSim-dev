@@ -362,6 +362,6 @@ void Monitor::wait(std::vector<Monitor> *mons, int target) {
         prev_wanted_delay = wanted_delay;
         clock_gettime(CLOCK_MONOTONIC, &end_ts);
     }
-    SPDLOG_INFO("{}:{}", prev_wanted_delay.tv_sec, prev_wanted_delay.tv_nsec);
+    // SPDLOG_INFO("{}:{}", prev_wanted_delay.tv_sec, prev_wanted_delay.tv_nsec);
 
 }

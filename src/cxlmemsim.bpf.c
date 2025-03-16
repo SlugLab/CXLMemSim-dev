@@ -57,9 +57,6 @@ int uprobe_omp_parallel(struct pt_regs *ctx) {
     void *data = (void *)PT_REGS_PARM2(ctx); // 用户数据指针
     unsigned num_threads = (unsigned)PT_REGS_PARM3(ctx); // 线程数量
 
-    bpf_printk("OMP parallel region start: pid=%u, threads=%u\n",
-               pid, num_threads);
-
     // 更新进程信息中的线程计数
     struct proc_info *proc_info = bpf_map_lookup_elem(&process_map, &pid);
     if (proc_info) {
@@ -70,26 +67,12 @@ int uprobe_omp_parallel(struct pt_regs *ctx) {
     return 0;
 }
 
-// 钩住OpenMP并行区域结束函数
-SEC("uretprobe//usr/lib/x86_64-linux-gnu/libgomp.so.1:GOMP_parallel")
-int uretprobe_omp_parallel(struct pt_regs *ctx) {
-    u64 pid_tgid = bpf_get_current_pid_tgid();
-    u32 pid = pid_tgid >> 32;
-
-    bpf_printk("OMP parallel region end: pid=%u\n", pid);
-
-    return 0;
-}
-
 // 钩住GOMP_single_start函数 - 用于single构造
 SEC("uprobe//usr/lib/x86_64-linux-gnu/libgomp.so.1:GOMP_single_start")
 int uprobe_omp_single_start(struct pt_regs *ctx) {
     u64 pid_tgid = bpf_get_current_pid_tgid();
     u32 pid = pid_tgid >> 32;
     u32 tid = (u32)pid_tgid;
-
-    bpf_printk("OMP single construct start: pid=%u, tid=%u\n", pid, tid);
-
     // 返回值表示该线程是否执行single区域
     return 0;
 }
@@ -102,8 +85,6 @@ int uretprobe_omp_single_start(struct pt_regs *ctx) {
     u32 tid = (u32)pid_tgid;
     bool is_selected = (bool)PT_REGS_RC(ctx);
 
-    bpf_printk("OMP single construct: pid=%u, tid=%u, selected=%d\n",
-               pid, tid, is_selected);
 
     return 0;
 }
@@ -115,7 +96,6 @@ int uprobe_omp_critical_start(struct pt_regs *ctx) {
     u32 pid = pid_tgid >> 32;
     u32 tid = (u32)pid_tgid;
 
-    bpf_printk("OMP critical section start: pid=%u, tid=%u\n", pid, tid);
 
     // 记录线程进入临界区
     u32 locked = 1;
@@ -136,7 +116,6 @@ int uprobe_omp_critical_end(struct pt_regs *ctx) {
     u32 pid = pid_tgid >> 32;
     u32 tid = (u32)pid_tgid;
 
-    bpf_printk("OMP critical section end: pid=%u, tid=%u\n", pid, tid);
 
     // 记录线程离开临界区
     u32 locked = 0;
@@ -158,7 +137,6 @@ int uprobe_omp_barrier(struct pt_regs *ctx) {
     u32 pid = pid_tgid >> 32;
     u32 tid = (u32)pid_tgid;
 
-    bpf_printk("OMP barrier reached: pid=%u, tid=%u\n", pid, tid);
 
     return 0;
 }
@@ -171,8 +149,6 @@ int uprobe_omp_set_lock(struct pt_regs *ctx) {
     u32 tid = (u32)pid_tgid;
     void *lock = (void *)PT_REGS_PARM1(ctx);
 
-    bpf_printk("OMP set lock: pid=%u, tid=%u, lock=%p\n",
-               pid, tid, lock);
 
     // 记录线程获取锁
     u32 locked = 1;
@@ -189,8 +165,6 @@ int uprobe_omp_unset_lock(struct pt_regs *ctx) {
     u32 tid = (u32)pid_tgid;
     void *lock = (void *)PT_REGS_PARM1(ctx);
 
-    bpf_printk("OMP unset lock: pid=%u, tid=%u, lock=%p\n",
-               pid, tid, lock);
 
     // 记录线程释放锁
     u32 locked = 0;
@@ -210,7 +184,6 @@ int uprobe_cxx_thread_start(struct pt_regs *ctx) {
     void *thread_state_ptr = (void *)PT_REGS_PARM1(ctx);  // unique_ptr参数
     void *thread_func_ptr = (void *)PT_REGS_PARM2(ctx);   // 函数指针参数
 
-    bpf_printk("C++ std::thread start detected in process %u (tid %u)\n", pid, tid);
 
     // 记录线程创建事件到临时映射，供返回探针使用
     struct {
@@ -246,8 +219,6 @@ int uretprobe_cxx_thread_start(struct pt_regs *ctx) {
     if (proc_info) {
         proc_info->thread_count++;
         bpf_map_update_elem(&process_map, &pid, proc_info, BPF_ANY);
-        bpf_printk("Incremented thread count for process %u to %u\n",
-                  pid, proc_info->thread_count);
     }
 
     // 清理临时信息
@@ -644,7 +615,6 @@ int uretprobe_fork(struct pt_regs *ctx) {
         struct mem_stats new_stats = {};
         bpf_map_update_elem(&stats_map, &child_pid, &new_stats, BPF_ANY);
 
-        bpf_printk("fork: parent=%u created child=%u\n", parent_pid, child_pid);
     }
 
     // 清理临时状态
@@ -716,7 +686,6 @@ int uretprobe_clone(struct pt_regs *ctx) {
                 bpf_map_update_elem(&process_map, &parent_pid, parent_info, BPF_ANY);
             }
 
-            bpf_printk("clone created thread: pid=%u, tid=%u\n", parent_pid, child_id);
         } else {
             // 这是一个进程，更新进程映射
             struct proc_info proc_info = clone_data->info;
@@ -730,7 +699,6 @@ int uretprobe_clone(struct pt_regs *ctx) {
             struct mem_stats new_stats = {};
             bpf_map_update_elem(&stats_map, &child_id, &new_stats, BPF_ANY);
 
-            bpf_printk("clone created process: parent=%u, child=%u\n", parent_pid, child_id);
         }
     }
 
@@ -801,7 +769,6 @@ int uprobe_exit(struct pt_regs *ctx) {
     u32 tid = (u32)pid_tgid;
     u32 pid = pid_tgid >> 32;
 
-    bpf_printk("exit: tid=%u, pid=%u\n", tid, pid);
 
     // 查找并删除线程信息
     struct proc_info *thread_info = bpf_map_lookup_elem(&thread_map, &tid);
@@ -832,7 +799,6 @@ int uprobe_exit_group(struct pt_regs *ctx) {
     u32 tid = (u32)pid_tgid;
     u32 pid = pid_tgid >> 32;
 
-    bpf_printk("exit_group: pid=%u\n", pid);
 
     // 获取退出状态码
     int exit_code = (int)PT_REGS_PARM1(ctx);
@@ -841,8 +807,6 @@ int uprobe_exit_group(struct pt_regs *ctx) {
     struct proc_info *proc_info = bpf_map_lookup_elem(&process_map, &pid);
     if (proc_info) {
         // 记录进程退出信息
-        bpf_printk("Process %u exiting with code %d, had %d threads\n",
-                  pid, exit_code, proc_info->thread_count);
 
         // 删除进程信息
         bpf_map_delete_elem(&process_map, &pid);
