@@ -36,8 +36,8 @@ int main(int argc, char *argv[]) {
                           cxxopts::value<std::string>()->default_value("./microbench/malloc"))(
         "h,help", "Help for CXLMemSim", cxxopts::value<bool>()->default_value("false"))(
         "c,cpuset", "The CPUSET for CPU to set affinity on and only run the target process on those CPUs",
-        cxxopts::value<std::vector<int>>()->default_value("0,1,2,3"))("d,dramlatency", "The current platform's dram latency",
-                                                                cxxopts::value<double>()->default_value("110"))(
+        cxxopts::value<std::vector<int>>()->default_value("0,1,2,3"))(
+        "d,dramlatency", "The current platform's dram latency", cxxopts::value<double>()->default_value("110"))(
         "p,pebsperiod", "The pebs sample period", cxxopts::value<int>()->default_value("10"))(
         "m,mode", "Page mode or cacheline mode", cxxopts::value<std::string>()->default_value("p"))(
         "o,topology", "The newick tree input for the CXL memory expander topology",
@@ -64,7 +64,8 @@ int main(int argc, char *argv[]) {
         "k,policy", "The policy of CXL memory controller",
         cxxopts::value<std::vector<std::string>>()->default_value("none,none,none,none"))(
         "e,env", "The environment variable for the CXL memory controller",
-        cxxopts::value<std::vector<std::string>>()->default_value("OMP_NUM_THREADS=24"));;
+        cxxopts::value<std::vector<std::string>>()->default_value("OMP_NUM_THREADS=24"));
+    ;
 
     auto result = options.parse(argc, argv);
     if (result["help"].as<bool>()) {
@@ -130,7 +131,7 @@ int main(int argc, char *argv[]) {
         hybridPolicy->add_policy(new HeatAwareMigrationPolicy());
         hybridPolicy->add_policy(new FrequencyBasedMigrationPolicy());
         policy2 = hybridPolicy;
-    }else {
+    } else {
         SPDLOG_ERROR("Unknown migration policy: {}", policy[1]);
         policy2 = new MigrationPolicy();
     }
@@ -150,7 +151,7 @@ int main(int argc, char *argv[]) {
         policy4 = new FIFOPolicy();
     } else if (policy[3] == "frequency") {
         policy4 = new FrequencyBasedInvalidationPolicy();
-    }  else {
+    } else {
         SPDLOG_ERROR("Unknown caching policy: {}", policy[3]);
         policy4 = new CachingPolicy();
     }
@@ -161,7 +162,7 @@ int main(int argc, char *argv[]) {
     for (auto i : cpuset) {
         if (!use_cpus || use_cpus & 1UL << i) {
             CPU_SET(i, &use_cpuset);
-            SPDLOG_DEBUG("use cpuid: {}{}", i, use_cpus);
+            std::cout << "use cpuid: " << i << " " << use_cpus << std::endl;
         }
     }
 
@@ -229,7 +230,7 @@ int main(int argc, char *argv[]) {
         sleep(1);
         std::vector<const char *> envp;
         envp.emplace_back("LD_PRELOAD=/root/.bpftime/libbpftime-agent.so");
-        envp.emplace_back("OMP_NUM_THREADS=24");
+        envp.emplace_back("OMP_NUM_THREADS=4");
         while (!env.empty()) {
             envp.emplace_back(env.back().c_str());
             env.pop_back();
@@ -308,15 +309,19 @@ int main(int argc, char *argv[]) {
                          all_llcmiss = 0, all_prefetch = 0;
                 double writeback_latency;
                 /* read BPFTIMERUNTIME sample */
-                if (mon.bpftime_ctx->read(controller, &mon.after->bpftime) < 0) {
-                    SPDLOG_ERROR("[{}:{}:{}] Warning: Failed BPFTIMERUNTIME read", i, mon.tgid, mon.tid);
-                }
-                /* read PEBS sample */
-                if (mon.pebs_ctx->read(controller, &mon.after->pebs) < 0) {
-                    SPDLOG_ERROR("[{}:{}:{}] Warning: Failed PEBS read", i, mon.tgid, mon.tid);
-                }
-                /* read LBR sample */
-                if (mon.lbr_ctx->read(controller, &mon.after->lbr) < 0) {
+                if (mon.is_process) {
+                    if (mon.bpftime_ctx->read(controller, &mon.after->bpftime) < 0) {
+                        SPDLOG_ERROR("[{}:{}:{}] Warning: Failed BPFTIMERUNTIME read", i, mon.tgid, mon.tid);
+                    }
+
+                    /* read PEBS sample */
+                    if (mon.pebs_ctx->read(controller, &mon.after->pebs) < 0) {
+                        SPDLOG_ERROR("[{}:{}:{}] Warning: Failed PEBS read", i, mon.tgid, mon.tid);
+                    }
+                    /* read LBR sample */
+                    if (mon.lbr_ctx->read(controller, &mon.after->lbr) < 0) {
+                        SPDLOG_ERROR("[{}:{}:{}] Warning: Failed LBR read", i, mon.tgid, mon.tid);
+                    }
                 }
                 target_llcmiss = mon.after->pebs.total - mon.before->pebs.total;
 
@@ -342,8 +347,8 @@ int main(int argc, char *argv[]) {
                 writeback_latency = (double)target_l2stall * avg_weight *
                                     (wb_cnt * target_llcmiss / (all_llcmiss + all_prefetch + 1) /
                                      (target_llchits + avg_weight * target_llcmiss + 1));
-                uint64_t emul_delay =0;//=
-                    //(controller->latency_lat + controller->bandwidth_lat + writeback_latency) * 1000000;
+                uint64_t emul_delay =
+                    (controller->latency_lat + controller->bandwidth_lat + writeback_latency) * 1000000;
 
                 SPDLOG_DEBUG("[{}:{}:{}] pebs: total={}, ", i, mon.tgid, mon.tid, mon.after->pebs.total);
 

@@ -32,7 +32,7 @@ BpfTimeRuntime::BpfTimeRuntime(pid_t tid, std::string program_location)
     SPDLOG_INFO("GLOBAL memory initialized ");
 }
 
-BpfTimeRuntime::~BpfTimeRuntime() {  }
+BpfTimeRuntime::~BpfTimeRuntime() {}
 int BpfTimeRuntime::read(CXLController *controller, BPFTimeRuntimeElem *elem) {
     mem_stats stats;
     proc_info proc_info1;
@@ -42,14 +42,14 @@ int BpfTimeRuntime::read(CXLController *controller, BPFTimeRuntimeElem *elem) {
         uint64_t key = 0; // 改为8字节
         uint64_t key1 = 0; // 改为8字节
         void *item2 = (void *)1;
-        while(item2){
+        while (item2) {
             int ret = bpftime_map_get_next_key(i, &key1, &key); // 获取key
             if (ret != 0) {
                 SPDLOG_DEBUG("Failed to get next key for map {}", i);
                 break;
             }
 
-            item2 = (void*)bpftime_map_lookup_elem(i, &key);
+            item2 = (void *)bpftime_map_lookup_elem(i, &key);
             SPDLOG_DEBUG("Process map key: {} {} thread_id:{}", key1, key,
                          std::this_thread::get_id()); // 使用std::this_thread获取当前线程ID
 
@@ -73,4 +73,3 @@ int BpfTimeRuntime::read(CXLController *controller, BPFTimeRuntimeElem *elem) {
     }
     return 0;
 }
-
