@@ -8,7 +8,7 @@
  *  Copyright 2025 Regents of the University of California
  *  UC Santa Cruz Sluglab.
  */
-#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_OFF
 #include "cxlendpoint.h"
 #include "helper.h"
 #include "monitor.h"
@@ -228,12 +228,13 @@ int main(int argc, char *argv[]) {
     if (t_process == 0) {
         sleep(1);
         std::vector<const char *> envp;
-        envp.push_back("LD_PRELOAD=/root/.bpftime/libbpftime-agent.so");
+        envp.emplace_back("LD_PRELOAD=/root/.bpftime/libbpftime-agent.so");
+        envp.emplace_back("OMP_NUM_THREADS=24");
         while (!env.empty()) {
-            envp.push_back(env.back().c_str());
+            envp.emplace_back(env.back().c_str());
             env.pop_back();
         }
-        envp.push_back(nullptr);
+        envp.emplace_back(nullptr);
         execve(filename, args, const_cast<char *const *>(envp.data()));
         SPDLOG_ERROR("Exec: failed to create target process");
         exit(1);

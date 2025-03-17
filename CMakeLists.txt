@@ -11,8 +11,8 @@ set(LINUX_SOURCE /lib/modules/${arch}/build/)
 
 set(CMAKE_CXX_STANDARD 26)
 add_subdirectory(lib/bpftime)
-# add_subdirectory(microbench)
-add_subdirectory(workloads)
+add_subdirectory(microbench)
+#add_subdirectory(workloads)
 
 list(APPEND CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR})
 
@@ -27,12 +27,12 @@ set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -latomic")
 add_executable(CXLMemSim ${SOURCE_FILES} src/main.cc)
 
 include_directories(CXLMemSim include ${cxxopts_INCLUDE_DIR} ${spdlog_INCLUDE_DIR} ${runtime_SOURCE_DIR}/include)
-target_link_libraries(CXLMemSim cxxopts::cxxopts bpftime_vm bpftime-object bpftime_base_attach_impl bpftime-agent ${CMAKE_CURRENT_BINARY_DIR}/lib/bpftime/runtime/libruntime.a -lspdlog -lfmt)
+target_link_libraries(CXLMemSim cxxopts::cxxopts bpftime_vm bpftime-object bpftime_base_attach_impl bpftime-agent )
 
 add_executable(CXLMemSimRoB ${SOURCE_FILES} src/rob.cc)
 
 include_directories(CXLMemSimRoB include ${cxxopts_INCLUDE_DIR} ${spdlog_INCLUDE_DIR} ${runtime_SOURCE_DIR}/include)
-target_link_libraries(CXLMemSimRoB cxxopts::cxxopts bpftime_vm bpftime-object bpftime_base_attach_impl bpftime-agent ${CMAKE_CURRENT_BINARY_DIR}/lib/bpftime/runtime/libruntime.a spdlog fmt)
+target_link_libraries(CXLMemSimRoB cxxopts::cxxopts bpftime_vm bpftime-object bpftime_base_attach_impl bpftime-agent)
 
 
 function(bpf prefix)

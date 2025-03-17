@@ -226,8 +226,8 @@ public:
     int insert(uint64_t timestamp, uint64_t tid, uint64_t phys_addr, uint64_t virt_addr, int index) override;
     void delete_entry(uint64_t addr, uint64_t length) override;
     void set_stats(mem_stats stats);
-    static void set_process_info(const proc_info &process_info);
-    static void set_thread_info(const proc_info &thread_info);
+    void set_process_info(const proc_info &process_info);
+    void set_thread_info(const proc_info &thread_info);
     void perform_migration();
     // 添加缓存访问方法
     std::optional<uint64_t> access_cache(uint64_t addr, uint64_t timestamp) { return lru_cache.get(addr, timestamp); }
