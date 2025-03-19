@@ -1,0 +1,138 @@
+use cpuid: 0 0
+use cpuid: 1 0
+use cpuid: 2 0
+use cpuid: 3 0
+terminate called after throwing an instance of 'boost::interprocess::interprocess_exception'
+  what():  No such file or directory
+[2025-03-17 00:26:00][error][16160] Unable to initialize shared memory: No such file or directory
+Read Time:           4.85132
+Graph has 61578415 nodes and 1468364884 directed edges for degree: 23
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.58891
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59416
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.58605
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59346
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59168
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59269
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.62056
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59942
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59446
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59869
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59073
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59246
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59771
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59360
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59610
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59455
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.62394
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59178
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59649
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59780
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59412
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59663
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59746
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59574
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59383
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59238
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59575
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59619
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59995
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59597
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59069
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59017
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59073
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59255
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59158
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59808
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59084
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.58651
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59148
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59049
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59412
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59532
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59429
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59668
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59074
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59867
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59653
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.58864
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59376
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59000
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59574
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59342
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.58908
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.61747
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59104
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59547
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59436
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.58922
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59498
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.58969
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59266
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.59362
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.61789
+Skipping largest intermediate component (ID: 12, approx. 64% of the graph)
+Trial Time:          2.58918
+Average Time:        2.59514

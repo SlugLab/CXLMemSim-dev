@@ -1,0 +1,88 @@
+use cpuid: 0 0
+use cpuid: 1 0
+use cpuid: 2 0
+use cpuid: 3 0
+[2025-03-17 01:04:58.723] [info] [bpftime_shm_internal.cpp:672] Global shm constructed. shm_open_type 1 for bpftime_maps_shm
+[2025-03-17 01:04:58.723] [info] [bpftime_shm_internal.cpp:34] Global shm initialized
+[2025-03-17 01:04:58.723] [info] [bpftimeruntime.cpp:32] GLOBAL memory initialized 
+pthread_create_probe: pid: 23211 thread_ptr: 56727d26d278
+pthread_create_return_probe: pid: 23211 thread_id: 132964664997568 (0x78ee3f9ff6c0)
+[2025-03-17 01:04:58.723] [info] [monitor.cpp:178] pid 0[tgid=23212, tid=23212] monitoring start
+[2025-03-17 01:04:58.723] [info] [helper.cpp:97] Detecting model...198
+[2025-03-17 01:04:59][info][23212] Global shm constructed. shm_open_type 1 for bpftime_maps_shm
+[2025-03-17 01:04:59][info][23212] Global shm initialized
+[2025-03-17 01:04:59][info][23212] Register attach-impl defined helper bpf_get_func_arg, index 183
+[2025-03-17 01:04:59][info][23212] Register attach-impl defined helper bpf_get_func_ret_id, index 184
+[2025-03-17 01:04:59][info][23212] Register attach-impl defined helper bpf_get_retval, index 186
+[2025-03-17 01:04:59][info][23212] Initializing agent..
+[2025-03-17 01:04:59][info][23212] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/sssp
+[2025-03-17 01:04:59][info][23212] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/sssp
+[2025-03-17 01:04:59][info][23212] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/sssp
+[2025-03-17 01:04:59][info][23212] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/sssp
+[2025-03-17 01:04:59][info][23212] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/sssp
+[2025-03-17 01:04:59][info][23212] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/sssp
+[2025-03-17 01:04:59][info][23212] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/sssp
+[2025-03-17 01:04:59][info][23212] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/sssp
+[2025-03-17 01:04:59][info][23212] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/sssp
+[2025-03-17 01:04:59][info][23212] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/sssp
+[2025-03-17 01:04:59][info][23212] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/sssp
+[2025-03-17 01:04:59][info][23212] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/sssp
+[2025-03-17 01:04:59][info][23212] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/sssp
+[2025-03-17 01:04:59][info][23212] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/sssp
+[2025-03-17 01:04:59][info][23212] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/sssp
+[2025-03-17 01:04:59][info][23212] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/sssp
+[2025-03-17 01:04:59][info][23212] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/sssp
+[2025-03-17 01:04:59][info][23212] Attach successfully
+.sg not allowed for weighted graphs
+========== Process 0[tgid=23212, tid=23212] statistics summary ==========
+emulated time =3.1780234800000002
+total delay   =5.629972059000001
+PEBS sample total 95 1106
+LBR sample total 1
+bpftime sample total 8030
+CXLController:
+Total system memory capacity: 60GB
+  Page Type: PAGE
+  Global Counter:
+    Local: 0
+    Remote: 94
+    HITM: 1012
+Topology:
+Switch:
+  Events:
+    Load: 0
+    Store: 0
+    Conflict: 0
+  Switch:
+    Events:
+      Load: 0
+      Store: 0
+      Conflict: 0
+    Expander:
+      Events:
+        Load: 0
+        Store: 0
+        Migrate in: 0
+        Migrate out: 0
+        Hit Old: 0
+    Expander:
+      Events:
+        Load: 0
+        Store: 0
+        Migrate in: 0
+        Migrate out: 0
+        Hit Old: 0
+  Expander:
+    Events:
+      Load: 0
+      Store: 94
+      Migrate in: 0
+      Migrate out: 0
+      Hit Old: 0
+
+Statistics:
+  Number of Switches: 2
+  Number of Endpoints: 3
+  Number of Threads created: 1
+  Memory Freed: 628252571 bytes
+

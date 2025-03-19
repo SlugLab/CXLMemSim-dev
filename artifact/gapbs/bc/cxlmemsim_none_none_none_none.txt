@@ -1,0 +1,372 @@
+use cpuid: 0 0
+use cpuid: 1 0
+use cpuid: 2 0
+use cpuid: 3 0
+[2025-03-16 23:09:57.854] [info] [bpftime_shm_internal.cpp:672] Global shm constructed. shm_open_type 1 for bpftime_maps_shm
+[2025-03-16 23:09:57.854] [info] [bpftime_shm_internal.cpp:34] Global shm initialized
+[2025-03-16 23:09:57.854] [info] [bpftimeruntime.cpp:32] GLOBAL memory initialized 
+pthread_create_probe: pid: 1021170 thread_ptr: 57c207a6c358
+pthread_create_return_probe: pid: 1021170 thread_id: 130598603585216 (0x76c75b5ff6c0)
+[2025-03-16 23:09:57.871] [info] [monitor.cpp:178] pid 0[tgid=1021171, tid=1021171] monitoring start
+[2025-03-16 23:09:57.871] [info] [helper.cpp:97] Detecting model...198
+[2025-03-16 23:09:58][info][1021171] Global shm constructed. shm_open_type 1 for bpftime_maps_shm
+[2025-03-16 23:09:58][info][1021171] Global shm initialized
+[2025-03-16 23:09:58][info][1021171] Register attach-impl defined helper bpf_get_func_arg, index 183
+[2025-03-16 23:09:58][info][1021171] Register attach-impl defined helper bpf_get_func_ret_id, index 184
+[2025-03-16 23:09:58][info][1021171] Register attach-impl defined helper bpf_get_retval, index 186
+[2025-03-16 23:09:58][info][1021171] Initializing agent..
+[2025-03-16 23:09:58][info][1021171] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
+[2025-03-16 23:09:58][info][1021171] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
+[2025-03-16 23:09:58][info][1021171] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
+[2025-03-16 23:09:58][info][1021171] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
+[2025-03-16 23:09:58][info][1021171] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
+[2025-03-16 23:09:58][info][1021171] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
+[2025-03-16 23:09:58][info][1021171] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
+[2025-03-16 23:09:58][info][1021171] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
+[2025-03-16 23:09:58][info][1021171] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
+[2025-03-16 23:09:58][info][1021171] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
+[2025-03-16 23:09:58][info][1021171] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
+[2025-03-16 23:09:58][info][1021171] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
+[2025-03-16 23:09:58][info][1021171] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
+[2025-03-16 23:09:58][info][1021171] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
+[2025-03-16 23:09:58][info][1021171] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
+[2025-03-16 23:09:58][info][1021171] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
+[2025-03-16 23:09:58][info][1021171] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/bc
+[2025-03-16 23:09:58][info][1021171] Attach successfully
+set affinity for thread 1021266
+[2025-03-16 23:10:03.926] [info] [monitor.cpp:178] pid 1[tgid=1021171, tid=1021266] monitoring start
+set affinity for thread 1021265
+[2025-03-16 23:10:03.926] [info] [monitor.cpp:178] pid 2[tgid=1021171, tid=1021265] monitoring start
+set affinity for thread 1021264
+[2025-03-16 23:10:03.926] [info] [monitor.cpp:178] pid 3[tgid=1021171, tid=1021264] monitoring start
+set affinity for thread 1021171
+Failed to setaffinity for thread 1021171
+pthread_create_probe: pid: 1021171 thread_ptr: 7ffe1d829648
+pthread_create_return_probe: pid: 1021171 thread_id: 138446826907328 (0x7deaa9f026c0)
+pthread_create_probe: pid: 1021171 thread_ptr: 7ffe1d8296c8
+pthread_create_return_probe: pid: 1021171 thread_id: 138446818514624 (0x7deaa97016c0)
+pthread_create_probe: pid: 1021171 thread_ptr: 7ffe1d829748
+pthread_create_return_probe: pid: 1021171 thread_id: 138446810121920 (0x7deaa8f006c0)
+Read Time:           7.45084
+Graph has 61578415 nodes and 1468364884 directed edges for degree: 23
+    a                0.02051
+source: 12307662
+    b                5.74842
+    p                2.83747
+Trial Time:          8.68877
+    a                0.02164
+source: 53903957
+    b                5.67307
+    p                2.79829
+Trial Time:          8.57074
+    a                0.02110
+source: 16672544
+    b                5.65471
+    p                2.83955
+Trial Time:          8.59224
+    a                0.02101
+source: 25178984
+    b                5.67701
+    p                2.83855
+Trial Time:          8.61411
+    a                0.02111
+source: 57095578
+    b                5.70271
+    p                2.84176
+Trial Time:          8.64280
+    a                0.02096
+source: 14680364
+    b                5.59155
+    p                2.73031
+Trial Time:          8.42076
+    a                0.02139
+source: 31737085
+    b                5.44871
+    p                2.74757
+Trial Time:          8.29485
+    a                0.02116
+source: 52389474
+    b                5.60794
+    p                2.84938
+Trial Time:          8.55692
+    a                0.02154
+source: 56680025
+    b                5.45567
+    p                2.75164
+Trial Time:          8.30674
+    a                0.02125
+source: 49903445
+    b                5.47408
+    p                2.77607
+Trial Time:          8.34849
+    a                0.02090
+source: 49058920
+    b                5.58187
+    p                2.81408
+Trial Time:          8.49405
+    a                0.02091
+source: 34564664
+    b                5.52611
+    p                2.82089
+Trial Time:          8.44529
+    a                0.02110
+source: 47733586
+    b                5.65041
+    p                2.86352
+Trial Time:          8.61281
+    a                0.02130
+source: 19314886
+    b                5.84537
+    p                2.71278
+Trial Time:          8.65718
+    a                0.02112
+source: 43208363
+    b                5.77090
+    p                2.84047
+Trial Time:          8.70956
+    a                0.02123
+source: 32701041
+    b                5.59488
+    p                2.81451
+Trial Time:          8.50874
+    a                0.02126
+source: 19756014
+    b                5.52329
+    p                2.81956
+Trial Time:          8.44221
+    a                0.02110
+source: 15081212
+    b                5.76942
+    p                2.83785
+Trial Time:          8.70543
+    a                0.02089
+source: 24679224
+    b                5.30536
+    p                2.57648
+Trial Time:          7.97992
+    a                0.02109
+source: 25798040
+    b                5.66606
+    p                2.80888
+Trial Time:          8.57393
+    a                0.02148
+source: 21787704
+    b                5.89553
+    p                2.85681
+Trial Time:          8.85102
+    a                0.02110
+source: 22442119
+    b                5.54752
+    p                2.83239
+Trial Time:          8.47830
+    a                0.02130
+source: 21845121
+    b                5.45118
+    p                2.74961
+Trial Time:          8.30035
+    a                0.02118
+source: 56235034
+    b                5.45285
+    p                2.70470
+Trial Time:          8.25781
+    a                0.02130
+source: 39604860
+    b                5.63071
+    p                2.84687
+Trial Time:          8.57636
+    a                0.02099
+source: 48965248
+    b                5.70971
+    p                2.79587
+Trial Time:          8.60459
+    a                0.02102
+source: 42388036
+    b                5.71114
+    p                2.85390
+Trial Time:          8.66417
+    a                0.02108
+source: 51847548
+    b                5.73169
+    p                2.90540
+Trial Time:          8.73627
+    a                0.02105
+source: 21791881
+    b                5.62299
+    p                2.74720
+Trial Time:          8.46975
+    a                0.02111
+source: 48243704
+    b                5.58651
+    p                2.84131
+Trial Time:          8.52713
+    a                0.02126
+source: 60971028
+    b                5.51841
+    p                2.73305
+Trial Time:          8.35003
+    a                0.02119
+source: 59490684
+    b                5.54767
+    p                2.80819
+Trial Time:          8.45409
+    a                0.02094
+source: 28222747
+    b                5.64722
+    p                2.84713
+Trial Time:          8.59328
+    a                0.02117
+source: 39591152
+    b                5.64451
+    p                2.84956
+Trial Time:          8.59323
+    a                0.02124
+source: 31286599
+    b                5.62023
+    p                2.82974
+Trial Time:          8.54984
+    a                0.02139
+source: 27443599
+    b                5.59825
+    p                2.83988
+Trial Time:          8.53688
+    a                0.02102
+source: 51233598
+    b                5.58541
+    p                2.78652
+Trial Time:          8.47088
+    a                0.02125
+source: 47178531
+    b                5.62392
+    p                2.78348
+Trial Time:          8.50597
+    a                0.02093
+source: 52020373
+    b                5.84926
+    p                2.87480
+Trial Time:          8.82214
+    a                0.02115
+source: 31748134
+    b                5.45427
+    p                2.75093
+Trial Time:          8.30513
+    a                0.02113
+source: 20128510
+    b                6.27994
+    p                2.90464
+Trial Time:          9.28450
+    a                0.02108
+source: 47869026
+    b                5.56734
+    p                2.80125
+Trial Time:          8.46701
+    a                0.02091
+source: 49959540
+    b                5.68855
+    p                2.88093
+Trial Time:          8.66780
+    a                0.02113
+source: 29806964
+    b                5.51438
+    p                2.75263
+Trial Time:          8.36525
+    a                0.02088
+source: 40744240
+    b                5.83981
+    p                2.81132
+Trial Time:          8.75029
+    a                0.02119
+source: 54345387
+    b                5.58769
+    p                2.81940
+Trial Time:          8.50694
+    a                0.02112
+source: 55889876
+    b                5.49010
+    p                2.81220
+Trial Time:          8.40124
+    a                0.02102
+source: 45173639
+    b                5.62415
+    p                2.87156
+Trial Time:          8.59441
+    a                0.02124
+source: 47626800
+    b                5.75039
+    p                2.85530
+Trial Time:          8.70431
+    a                0.02114
+source: 32934515
+    b                5.87068
+    p                2.81455
+Trial Time:          8.78343
+    a                0.02089
+source: 52888156
+    b                5.59409
+    p                2.79360
+Trial Time:          8.48622
+    a                0.02095
+source: 29025979
+    b                5.68067
+    p                2.78789
+Trial Time:          8.56730
+    a                0.02094
+source: 33782310
+    b                5.84559
+    p                2.81418
+Trial Time:          8.75940
+    a                0.02137
+source: 48644516
+    b                5.65212
+    p                2.83792
+Trial Time:          8.58988
+    a                0.02109
+source: 35169472
+    b                5.76341
+    p                2.71015
+Trial Time:          8.57190
+    a                0.02120
+source: 14365787
+    b                5.46686
+    p                2.75233
+Trial Time:          8.31897
+    a                0.02104
+source: 51079534
+    b                5.72221
+    p                2.85479
+Trial Time:          8.67571
+    a                0.02092
+source: 46321276
+    b                5.64957
+    p                2.88694
+Trial Time:          8.63605
+    a                0.02097
+source: 19731246
+    b                5.65856
+    p                2.80676
+Trial Time:          8.56458
+    a                0.02112
+source: 16641757
+    b                5.81520
+    p                2.70452
+Trial Time:          8.61825
+    a                0.02105
+source: 19658657
+    b                5.85061
+    p                2.85444
+Trial Time:          8.80418
+    a                0.02103
+source: 36467384
+    b                5.79058
+    p                2.91386
+Trial Time:          8.80402
+    a                0.02130
+source: 49007898
+    b                5.75127
+    p                2.88947
+Trial Time:          8.74044
+    a                0.02122
+source: 60494981
+    b                5.68903
+    p                2.87614
+Trial Time:          8.66479
+Average Time:        8.56468

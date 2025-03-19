@@ -106,6 +106,7 @@ int main(int argc, char *argv[]) {
     CachingPolicy *policy4;
 
     // 初始化分配策略
+    // Initialize allocation policy
     if (policy[0] == "interleave") {
         policy1 = new InterleavePolicy();
     } else if (policy[0] == "numa") {
@@ -115,6 +116,7 @@ int main(int argc, char *argv[]) {
     }
 
     // 初始化迁移策略
+    // Initialize migration policy
     if (policy[1] == "heataware") {
         policy2 = new HeatAwareMigrationPolicy();
     } else if (policy[1] == "frequency") {
@@ -128,6 +130,7 @@ int main(int argc, char *argv[]) {
     } else if (policy[1] == "hybrid") {
         auto *hybridPolicy = new HybridMigrationPolicy();
         // 可以添加多个策略到混合策略中
+        // Can add multiple policies to the hybrid policy
         hybridPolicy->add_policy(new HeatAwareMigrationPolicy());
         hybridPolicy->add_policy(new FrequencyBasedMigrationPolicy());
         policy2 = hybridPolicy;
@@ -137,6 +140,7 @@ int main(int argc, char *argv[]) {
     }
 
     // 初始化分页策略
+    // Initialize paging policy
     if (policy[2] == "hugepage") {
         policy3 = new HugePagePolicy();
     } else if (policy[2] == "pagetableaware") {
@@ -147,6 +151,7 @@ int main(int argc, char *argv[]) {
     }
 
     // 初始化缓存策略
+    // Initialize caching policy
     if (policy[3] == "fifo") {
         policy4 = new FIFOPolicy();
     } else if (policy[3] == "frequency") {

@@ -44,23 +44,29 @@ public:
     virtual ~MigrationPolicy() = default;
 
     // 基本的compute_once方法，决定是否需要执行迁移
+    // Basic compute_once method, determines whether migration should be executed
     int compute_once(CXLController *controller) override {
         auto migration_list = get_migration_list(controller);
         return migration_list.empty() ? 0 : 1;
     }
 
     // 获取需要迁移的地址列表
+    // Get the list of addresses that need migration
     std::vector<std::tuple<uint64_t, uint64_t>> get_migration_list(CXLController *controller) {
         std::vector<std::tuple<uint64_t, uint64_t>> migration_list;
         // 基类提供空实现
+        // Base class provides empty implementation
         return migration_list;
     }
     // 判断特定地址是否应该迁移
+    // Determine if a specific address should be migrated
     virtual bool should_migrate(uint64_t addr, uint64_t timestamp, int current_device) { return false; }
 
     // 为给定地址选择最佳的目标设备
+    // Select the best target device for a given address
     virtual int select_target_device(uint64_t addr, int current_device, CXLController *controller) {
         return -1; // -1表示不迁移
+                   // -1 means no migration
     }
 };
 
@@ -82,56 +88,76 @@ public:
     int compute_once(CXLController *) override { return 0; };
 
     // 判断是否应该缓存数据
+    // Determine if data should be cached
     virtual bool should_cache(uint64_t addr, uint64_t timestamp) {
         return true; // 默认行为，可以被子类覆盖
+                     // Default behavior, can be overridden by subclasses
     }
 
     // 判断是否应该进行后向失效
+    // Determine if backward invalidation should be performed
     virtual bool should_invalidate(uint64_t addr, uint64_t timestamp) {
         return false; // 默认行为，可以被子类覆盖
+                      // Default behavior, can be overridden by subclasses
     }
 
     // 获取需要失效的地址列表
+    // Get the list of addresses that need invalidation
     virtual std::vector<uint64_t> get_invalidation_list(CXLController *controller) {
         return {}; // 默认行为，可以被子类覆盖
+                   // Default behavior, can be overridden by subclasses
     }
 };
 
 struct LRUCacheEntry {
     uint64_t key; // 缓存键（地址）
+                  // Cache key (address)
     uint64_t value; // 缓存值
+                    // Cache value
     uint64_t timestamp; // 最后访问时间戳
+                        // Last access timestamp
 };
 
 // LRU缓存
+// LRU cache
 class LRUCache {
 public:
     int capacity; // 缓存容量
+                  // Cache capacity
     std::unordered_map<uint64_t, LRUCacheEntry> cache; // 缓存映射
+                                                       // Cache mapping
     std::list<uint64_t> lru_list; // LRU列表，最近使用的在前面
+                                  // LRU list, most recently used at front
     std::unordered_map<uint64_t, std::list<uint64_t>::iterator> lru_map; // 用于O(1)查找列表位置
+                                                                         // For O(1) lookup of list positions
 
     explicit LRUCache(int size) : capacity(size) {}
 
     // 获取缓存值，如果存在则更新访问顺序
+    // Get cache value, update access order if it exists
     std::optional<uint64_t> get(uint64_t key, uint64_t timestamp) {
         auto it = cache.find(key);
         if (it == cache.end()) {
             return std::nullopt; // 缓存未命中
+                                 // Cache miss
         }
 
         // 更新访问顺序
+        // Update access order
         lru_list.erase(lru_map[key]);
         lru_list.push_front(key);
         lru_map[key] = lru_list.begin();
 
         // 更新时间戳
+        // Update timestamp
         it->second.timestamp = timestamp;
 
         return it->second.value; // 返回缓存值
+                                 // Return cache value
     }
 
     // 添加或更新缓存
+    // Add or update cache
     void put(uint64_t key, uint64_t value, uint64_t timestamp) {
         // 如果已存在，先移除旧位置
         if (cache.find(key) != cache.end()) {

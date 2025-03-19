@@ -1,0 +1,249 @@
+use cpuid: 0 0
+use cpuid: 1 0
+use cpuid: 2 0
+use cpuid: 3 0
+[2025-03-17 01:00:43.618] [info] [bpftime_shm_internal.cpp:672] Global shm constructed. shm_open_type 1 for bpftime_maps_shm
+[2025-03-17 01:00:43.618] [info] [bpftime_shm_internal.cpp:34] Global shm initialized
+[2025-03-17 01:00:43.618] [info] [bpftimeruntime.cpp:32] GLOBAL memory initialized 
+pthread_create_probe: pid: 21590 thread_ptr: 5d0054486278
+pthread_create_return_probe: pid: 21590 thread_id: 125146337638080 (0x71d1e6fff6c0)
+[2025-03-17 01:00:43.628] [info] [monitor.cpp:178] pid 0[tgid=21591, tid=21591] monitoring start
+[2025-03-17 01:00:43.628] [info] [helper.cpp:97] Detecting model...198
+[2025-03-17 01:00:44][info][21591] Global shm constructed. shm_open_type 1 for bpftime_maps_shm
+[2025-03-17 01:00:44][info][21591] Global shm initialized
+[2025-03-17 01:00:44][info][21591] Register attach-impl defined helper bpf_get_func_arg, index 183
+[2025-03-17 01:00:44][info][21591] Register attach-impl defined helper bpf_get_func_ret_id, index 184
+[2025-03-17 01:00:44][info][21591] Register attach-impl defined helper bpf_get_retval, index 186
+[2025-03-17 01:00:44][info][21591] Initializing agent..
+[2025-03-17 01:00:44][info][21591] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/pr
+[2025-03-17 01:00:44][info][21591] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/pr
+[2025-03-17 01:00:44][info][21591] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/pr
+[2025-03-17 01:00:44][info][21591] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/pr
+[2025-03-17 01:00:44][info][21591] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/pr
+[2025-03-17 01:00:44][info][21591] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/pr
+[2025-03-17 01:00:44][info][21591] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/pr
+[2025-03-17 01:00:44][info][21591] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/pr
+[2025-03-17 01:00:44][info][21591] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/pr
+[2025-03-17 01:00:44][info][21591] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/pr
+[2025-03-17 01:00:44][info][21591] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/pr
+[2025-03-17 01:00:44][info][21591] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/pr
+[2025-03-17 01:00:44][info][21591] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/pr
+[2025-03-17 01:00:44][info][21591] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/pr
+[2025-03-17 01:00:44][info][21591] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/pr
+[2025-03-17 01:00:44][info][21591] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/pr
+[2025-03-17 01:00:44][info][21591] Executable path: /home/try/Documents/CXLMemSim-dev/workloads/gapbs/pr
+[2025-03-17 01:00:44][info][21591] Attach successfully
+set affinity for thread 21600
+[2025-03-17 01:00:47.779] [info] [monitor.cpp:178] pid 1[tgid=21591, tid=21600] monitoring start
+set affinity for thread 21599
+[2025-03-17 01:00:47.779] [info] [monitor.cpp:178] pid 2[tgid=21591, tid=21599] monitoring start
+set affinity for thread 21598
+[2025-03-17 01:00:47.780] [info] [monitor.cpp:178] pid 3[tgid=21591, tid=21598] monitoring start
+========== Process 0[tgid=21591, tid=21591] statistics summary ==========
+emulated time =255.068989178
+total delay   =2096.61644366
+PEBS sample total 141 1528
+LBR sample total 0
+bpftime sample total 10316
+CXLController:
+Total system memory capacity: 60GB
+  Page Type: PAGE
+  Global Counter:
+    Local: 0
+    Remote: 137
+    HITM: 33335
+Topology:
+Switch:
+  Events:
+    Load: 0
+    Store: 0
+    Conflict: 0
+  Switch:
+    Events:
+      Load: 0
+      Store: 0
+      Conflict: 0
+    Expander:
+      Events:
+        Load: 0
+        Store: 0
+        Migrate in: 0
+        Migrate out: 0
+        Hit Old: 0
+    Expander:
+      Events:
+        Load: 0
+        Store: 0
+        Migrate in: 0
+        Migrate out: 0
+        Hit Old: 0
+  Expander:
+    Events:
+      Load: 0
+      Store: 137
+      Migrate in: 0
+      Migrate out: 0
+      Hit Old: 0
+
+Statistics:
+  Number of Switches: 2
+  Number of Endpoints: 3
+  Number of Threads created: 4
+  Memory Freed: 262989110 bytes
+
+========== Process 1[tgid=21591, tid=21600] statistics summary ==========
+emulated time =5292.692693876
+total delay   =0
+PEBS sample total 0 0
+LBR sample total 0
+bpftime sample total 0
+CXLController:
+Total system memory capacity: 60GB
+  Page Type: PAGE
+  Global Counter:
+    Local: 0
+    Remote: 137
+    HITM: 33335
+Topology:
+Switch:
+  Events:
+    Load: 0
+    Store: 0
+    Conflict: 0
+  Switch:
+    Events:
+      Load: 0
+      Store: 0
+      Conflict: 0
+    Expander:
+      Events:
+        Load: 0
+        Store: 0
+        Migrate in: 0
+        Migrate out: 0
+        Hit Old: 0
+    Expander:
+      Events:
+        Load: 0
+        Store: 0
+        Migrate in: 0
+        Migrate out: 0
+        Hit Old: 0
+  Expander:
+    Events:
+      Load: 0
+      Store: 137
+      Migrate in: 0
+      Migrate out: 0
+      Hit Old: 0
+
+Statistics:
+  Number of Switches: 2
+  Number of Endpoints: 3
+  Number of Threads created: 4
+  Memory Freed: 262989110 bytes
+
+========== Process 2[tgid=21591, tid=21599] statistics summary ==========
+emulated time =5292.692798884
+total delay   =0
+PEBS sample total 0 0
+LBR sample total 0
+bpftime sample total 0
+CXLController:
+Total system memory capacity: 60GB
+  Page Type: PAGE
+  Global Counter:
+    Local: 0
+    Remote: 137
+    HITM: 33335
+Topology:
+Switch:
+  Events:
+    Load: 0
+    Store: 0
+    Conflict: 0
+  Switch:
+    Events:
+      Load: 0
+      Store: 0
+      Conflict: 0
+    Expander:
+      Events:
+        Load: 0
+        Store: 0
+        Migrate in: 0
+        Migrate out: 0
+        Hit Old: 0
+    Expander:
+      Events:
+        Load: 0
+        Store: 0
+        Migrate in: 0
+        Migrate out: 0
+        Hit Old: 0
+  Expander:
+    Events:
+      Load: 0
+      Store: 137
+      Migrate in: 0
+      Migrate out: 0
+      Hit Old: 0
+
+Statistics:
+  Number of Switches: 2
+  Number of Endpoints: 3
+  Number of Threads created: 4
+  Memory Freed: 262989110 bytes
+
+========== Process 3[tgid=21591, tid=21598] statistics summary ==========
+emulated time =5292.692892463
+total delay   =0
+PEBS sample total 0 0
+LBR sample total 0
+bpftime sample total 0
+CXLController:
+Total system memory capacity: 60GB
+  Page Type: PAGE
+  Global Counter:
+    Local: 0
+    Remote: 137
+    HITM: 33335
+Topology:
+Switch:
+  Events:
+    Load: 0
+    Store: 0
+    Conflict: 0
+  Switch:
+    Events:
+      Load: 0
+      Store: 0
+      Conflict: 0
+    Expander:
+      Events:
+        Load: 0
+        Store: 0
+        Migrate in: 0
+        Migrate out: 0
+        Hit Old: 0
+    Expander:
+      Events:
+        Load: 0
+        Store: 0
+        Migrate in: 0
+        Migrate out: 0
+        Hit Old: 0
+  Expander:
+    Events:
+      Load: 0
+      Store: 137
+      Migrate in: 0
+      Migrate out: 0
+      Hit Old: 0
+
+Statistics:
+  Number of Switches: 2
+  Number of Endpoints: 3
+  Number of Threads created: 4
+  Memory Freed: 262989110 bytes
+

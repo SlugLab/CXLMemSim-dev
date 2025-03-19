@@ -1,0 +1,2 @@
+Read Time:           4.55125
+Input graph is directed but tc requires undirected

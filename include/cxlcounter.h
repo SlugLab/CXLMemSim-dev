@@ -40,13 +40,13 @@ const char tlbhits1gName[] = "tlbhits1g";
 const char tlbmisses1gName[] = "tlbmisses1g";
 const char ptwcountName[] = "ptwcount";
 
-// 基础计数器模板类
+// 基础计数器模板类 (Basic counter template class)
 template<const char* Name>
 class AtomicCounter {
 public:
     std::atomic<uint64_t> value = 0;
     constexpr AtomicCounter() noexcept = default;
-    constexpr AtomicCounter(const AtomicCounter& other) noexcept : value(other.value.load()) { // 复制构造函数
+    constexpr AtomicCounter(const AtomicCounter& other) noexcept : value(other.value.load()) { // 复制构造函数 (Copy constructor)
 
     };
     AtomicCounter& operator=(const AtomicCounter&other) {
@@ -56,7 +56,7 @@ public:
         return *this;
     };
 
-    // C++26允许constexpr修饰原子操作
+    // C++26允许constexpr修饰原子操作 (C++26 allows constexpr to modify atomic operations)
     constexpr void increment() noexcept {
         value.fetch_add(1, std::memory_order_relaxed);
     }
@@ -69,12 +69,12 @@ public:
         return get();
     }
 
-    // 用于可能需要记录的事件日志
+    // 用于可能需要记录的事件日志 (For event logs that may need to be recorded)
     void log_increment(std::source_location loc = std::source_location::current()) const {
-        // 未来可以实现日志记录
+        // 未来可以实现日志记录 (Logging can be implemented in the future)
     }
 };
-// 确保AtomicCounter满足Counter概念
+// 确保AtomicCounter满足Counter概念 (Ensure AtomicCounter meets the Counter concept)
 template<const char* Name>
 inline constexpr bool implements_counter_concept = requires(AtomicCounter<Name> t) {
     { t.value } -> std::convertible_to<uint64_t>;
@@ -90,12 +90,12 @@ struct std::formatter<AtomicCounter<Name>> {
 
     template <typename FormatContext>
     auto format(const AtomicCounter<Name>& counter, FormatContext& ctx) const -> decltype(ctx.out()) {
-        // 简化formatter实现，避免嵌套std::format调用
+        // 简化formatter实现，避免嵌套std::format调用 (Simplify formatter implementation, avoid nested std::format calls)
         return format_to(ctx.out(), "{}", counter.get());
     }
 };
 
-// 使用C++20的enum class和强类型枚举
+// 使用C++20的enum class和强类型枚举 (Use C++20 enum class and strong-typed enumerations)
 enum class EventType {
     Load,
     Store,
@@ -108,7 +108,7 @@ enum class EventType {
     Hitm
 };
 
-// 开关事件计数器
+// 开关事件计数器 (Switch event counter)
 class CXLSwitchEvent {
 public:
     AtomicCounter<loadName> load;
@@ -117,7 +117,7 @@ public:
 
     constexpr CXLSwitchEvent() noexcept = default;
 
-    // 使用C++20的模板元编程和编译期字符串实现更灵活的接口
+    // 使用C++20的模板元编程和编译期字符串实现更灵活的接口 (Use C++20 template metaprogramming and compile-time strings to implement more flexible interfaces)
     template<EventType Type>
     constexpr void increment() noexcept {
         if constexpr (Type == EventType::Load) {

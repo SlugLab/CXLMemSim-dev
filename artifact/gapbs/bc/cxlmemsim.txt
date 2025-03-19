@@ -1,0 +1,330 @@
+use cpuid: 0 0
+use cpuid: 1 0
+use cpuid: 2 0
+use cpuid: 3 0
+terminate called after throwing an instance of 'boost::interprocess::interprocess_exception'
+  what():  No such file or directory
+[2025-03-16 23:52:09][error][12705] Unable to initialize shared memory: No such file or directory
+Read Time:           4.87533
+Graph has 61578415 nodes and 1468364884 directed edges for degree: 23
+    a                0.07271
+source: 12307662
+    b               18.88618
+    p                9.73261
+Trial Time:          28.84429
+    a                0.07517
+source: 53903957
+    b               18.27212
+    p                9.37846
+Trial Time:          27.87942
+    a                0.07515
+source: 16672544
+    b               18.42344
+    p                9.56542
+Trial Time:          28.21812
+    a                0.07537
+source: 25178984
+    b               18.62856
+    p                9.60531
+Trial Time:          28.46356
+    a                0.07512
+source: 57095578
+    b               18.64763
+    p                9.61641
+Trial Time:          28.49359
+    a                0.07509
+source: 14680364
+    b               18.31032
+    p                9.33991
+Trial Time:          27.87965
+    a                0.07523
+source: 31737085
+    b               17.87687
+    p                9.43314
+Trial Time:          27.53971
+    a                0.07517
+source: 52389474
+    b               18.40092
+    p                9.62391
+Trial Time:          28.25465
+    a                0.07491
+source: 56680025
+    b               17.82472
+    p                9.50743
+Trial Time:          27.56152
+    a                0.07516
+source: 49903445
+    b               17.98882
+    p                9.56458
+Trial Time:          27.78296
+    a                0.07542
+source: 49058920
+    b               18.41079
+    p                9.67667
+Trial Time:          28.31777
+    a                0.07512
+source: 34564664
+    b               18.17439
+    p                9.71132
+Trial Time:          28.11546
+    a                0.07506
+source: 47733586
+    b               18.61890
+    p                9.73736
+Trial Time:          28.58631
+    a                0.07515
+source: 19314886
+    b               18.94506
+    p                9.13698
+Trial Time:          28.31188
+    a                0.07514
+source: 43208363
+    b               18.72817
+    p                9.58337
+Trial Time:          28.54164
+    a                0.07513
+source: 32701041
+    b               18.43889
+    p                9.61024
+Trial Time:          28.27882
+    a                0.07513
+source: 19756014
+    b               18.21897
+    p                9.64743
+Trial Time:          28.09640
+    a                0.07496
+source: 15081212
+    b               18.77474
+    p                9.57059
+Trial Time:          28.57547
+    a                0.07528
+source: 24679224
+    b               17.34292
+    p                8.83327
+Trial Time:          26.40639
+    a                0.07499
+source: 25798040
+    b               18.58101
+    p                9.59104
+Trial Time:          28.40247
+    a                0.07511
+source: 21787704
+    b               19.22965
+    p                9.58351
+Trial Time:          29.04366
+    a                0.07510
+source: 22442119
+    b               18.11411
+    p                9.52083
+Trial Time:          27.86550
+    a                0.07503
+source: 21845121
+    b               17.78522
+    p                9.30554
+Trial Time:          27.32104
+    a                0.07510
+source: 56235034
+    b               17.89116
+    p                9.24685
+Trial Time:          27.36839
+    a                0.07504
+source: 39604860
+    b               18.49227
+    p                9.65030
+Trial Time:          28.37261
+    a                0.07523
+source: 48965248
+    b               18.56565
+    p                9.46693
+Trial Time:          28.26316
+    a                0.07521
+source: 42388036
+    b               18.61865
+    p                9.69682
+Trial Time:          28.54585
+    a                0.07524
+source: 51847548
+    b               18.83646
+    p                9.82580
+Trial Time:          28.89425
+    a                0.07511
+source: 21791881
+    b               18.37878
+    p                9.40944
+Trial Time:          28.01849
+    a                0.07517
+source: 48243704
+    b               18.39479
+    p                9.68936
+Trial Time:          28.31441
+    a                0.07501
+source: 60971028
+    b               18.06630
+    p                9.40748
+Trial Time:          27.70374
+    a                0.07508
+source: 59490684
+    b               18.34397
+    p                9.74616
+Trial Time:          28.32022
+    a                0.07518
+source: 28222747
+    b               18.58275
+    p                9.64021
+Trial Time:          28.45337
+    a                0.07501
+source: 39591152
+    b               18.58231
+    p                9.68192
+Trial Time:          28.49441
+    a                0.07513
+source: 31286599
+    b               18.42615
+    p                9.57367
+Trial Time:          28.23004
+    a                0.07523
+source: 27443599
+    b               18.27870
+    p                9.54370
+Trial Time:          28.05274
+    a                0.07507
+source: 51233598
+    b               18.21344
+    p                9.51992
+Trial Time:          27.96348
+    a                0.07498
+source: 47178531
+    b               18.56262
+    p                9.69212
+Trial Time:          28.48495
+    a                0.07530
+source: 52020373
+    b               18.93012
+    p                9.66510
+Trial Time:          28.82588
+    a                0.07509
+source: 31748134
+    b               17.93708
+    p                9.42970
+Trial Time:          27.59697
+    a                0.07514
+source: 20128510
+    b               20.28751
+    p                9.71006
+Trial Time:          30.22802
+    a                0.07512
+source: 47869026
+    b               18.37944
+    p                9.57702
+Trial Time:          28.18667
+    a                0.07524
+source: 49959540
+    b               18.79192
+    p                9.86025
+Trial Time:          28.88256
+    a                0.07516
+source: 29806964
+    b               18.16141
+    p                9.55288
+Trial Time:          27.94467
+    a                0.07503
+source: 40744240
+    b               19.02549
+    p                9.54821
+Trial Time:          28.80395
+    a                0.07514
+source: 54345387
+    b               18.13352
+    p                9.52472
+Trial Time:          27.88886
+    a                0.07517
+source: 55889876
+    b               18.08208
+    p                9.71041
+Trial Time:          28.02292
+    a                0.07505
+source: 45173639
+    b               18.53097
+    p                9.82870
+Trial Time:          28.58988
+    a                0.07513
+source: 47626800
+    b               18.73354
+    p                9.58291
+Trial Time:          28.54676
+    a                0.07513
+source: 32934515
+    b               19.12660
+    p                9.55924
+Trial Time:          28.91630
+    a                0.09164
+source: 52888156
+    b               18.22744
+    p                9.50116
+Trial Time:          27.97555
+    a                0.07508
+source: 29025979
+    b               18.49126
+    p                9.44422
+Trial Time:          28.16584
+    a                0.07488
+source: 33782310
+    b               19.04727
+    p                9.51380
+Trial Time:          28.79110
+    a                0.07504
+source: 48644516
+    b               18.57639
+    p                9.59713
+Trial Time:          28.40585
+    a                0.07546
+source: 35169472
+    b               18.79656
+    p                9.17178
+Trial Time:          28.19915
+    a                0.07500
+source: 14365787
+    b               17.79166
+    p                9.43922
+Trial Time:          27.46125
+    a                0.07515
+source: 51079534
+    b               18.79703
+    p                9.64555
+Trial Time:          28.67330
+    a                0.07506
+source: 46321276
+    b               18.55384
+    p                9.80204
+Trial Time:          28.58646
+    a                0.07509
+source: 19731246
+    b               18.45792
+    p                9.56818
+Trial Time:          28.25674
+    a                0.07510
+source: 16641757
+    b               18.89973
+    p                9.12716
+Trial Time:          28.25748
+    a                0.07491
+source: 19658657
+    b               19.03233
+    p                9.60661
+Trial Time:          28.87059
+    a                0.07530
+source: 36467384
+    b               19.03658
+    p                9.92919
+Trial Time:          29.19790
+    a                0.07523
+source: 49007898
+    b               18.82617
+    p                9.76451
+Trial Time:          28.82240
+    a                0.07516
+source: 60494981
+    b               18.71921
+    p                9.74118
+Trial Time:          28.69419
+Average Time:        28.29768
